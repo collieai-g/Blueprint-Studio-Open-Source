@@ -33,6 +33,25 @@ def main(argv=None) -> int:
     library.add_argument("--host", default="127.0.0.1")
     library.add_argument("--port", type=int, default=8787)
     library.add_argument("--no-open", action="store_true")
+    connect_day = commands.add_parser("workday-connect", help="把私人工作室接到公司後台，讓 Codex 儲存每日工作")
+    connect_day.add_argument("path", help="私人工作室路徑")
+    connect_day.add_argument("--data", required=True, help="已初始化的公司資料目錄")
+    for action, help_text in (
+        ("workday-save", "保存 AI 整理好的工作成果、決定、參考資料與待辦"),
+        ("workday-list", "搜尋已保存的每日工作"),
+        ("workday-show", "讀取一份每日工作及待辦進度"),
+    ):
+        day_command = commands.add_parser(action, help=help_text)
+        location = day_command.add_mutually_exclusive_group(required=True)
+        location.add_argument("--workspace", help="已連接公司後台的私人工作室")
+        location.add_argument("--data", help="已初始化的公司資料目錄")
+        if action == "workday-save":
+            day_command.add_argument("--input", default="-", help="整理結果 JSON 檔案；- 代表標準輸入（預設）")
+        elif action == "workday-list":
+            day_command.add_argument("--date", default="", help="YYYY-MM-DD")
+            day_command.add_argument("--query", default="")
+        else:
+            day_command.add_argument("id", help="工作紀錄編號")
     for action in ("create", "mark"):
         command = commands.add_parser(action, help="建立新文件夾" if action == "create" else "標記現有文件夾")
         command.add_argument("path", help="父目錄" if action == "create" else "現有文件夾")
@@ -54,6 +73,11 @@ def main(argv=None) -> int:
     package.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command and args.command.startswith("workday-"):
+            from blueprint_library.commands import run_workday_command
+            result = run_workday_command(args)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         if args.command == "library-init":
             from blueprint_library.server import initialize_library
             password = os.environ.get("BLUEPRINT_ADMIN_PASSWORD")

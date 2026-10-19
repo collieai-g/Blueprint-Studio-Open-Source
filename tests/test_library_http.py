@@ -87,6 +87,22 @@ class LibraryHTTPTests(unittest.TestCase):
         self.assertTrue(result["item"]["id"])
         return result["item"]
 
+    def workday_payload(self, **overrides):
+        payload = {
+            "date": "2026-10-19", "source": "Codex", "source_key": "http-chat-day-001",
+            "title": "介面研究工作日", "summary": "PRIVATE-WORKDAY：整理金融網站導航參考",
+            "entries": [
+                {"type": "outcome", "title": "完成導航比較", "content": "保留三個介面方向"},
+                {"type": "decision", "title": "採用簡潔導航", "content": "優先使用清楚文字標籤"},
+                {"type": "reference", "title": "研究參考", "url": "https://example.com/workday-reference",
+                 "tags": ["工作日參考"]},
+                {"type": "todo", "title": "製作導航草圖", "content": "明日確認手機版排列",
+                 "due_date": "2026-10-20"},
+            ],
+        }
+        payload.update(overrides)
+        return payload
+
     def test_health_is_public_but_company_routes_require_authentication(self):
         self.create_item()
         status, _, health = self.json_request("GET", "/health", authenticated=False)
@@ -315,6 +331,157 @@ class LibraryHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIs(current["item"]["pinned"], True)
         self.assertEqual(current["item"]["version"], updated["item"]["version"])
+
+    def test_workday_instructions_and_saved_company_routes_require_authentication(self):
+        status, _, result = self.json_request("POST", "/api/workdays", data=self.workday_payload())
+        self.assertEqual(status, 201, result)
+        report_id = result["workday"]["id"]
+        for path in ("/api/workday-instructions", "/api/workdays", "/api/workdays/" + report_id,
+                     "/api/todos"):
+            with self.subTest(path=path):
+                status, _, response = self.json_request("GET", path, authenticated=False)
+                self.assertEqual(status, 401, response)
+                self.assertNotIn("PRIVATE-WORKDAY", json.dumps(response))
+        status, headers, instructions = self.json_request("GET", "/api/workday-instructions")
+        self.assertEqual(status, 200, instructions)
+        self.assertEqual(headers.get("Cache-Control"), "no-store")
+        self.assertIsInstance(instructions["instruction"], str)
+        self.assertTrue(instructions["instruction"].strip())
+        self.assertIsInstance(instructions["format"], dict)
+        self.assertIn("source_key", instructions["format"])
+        self.assertIn("entries", instructions["format"])
+
+    def test_workday_import_requires_write_protection_and_is_atomic_on_invalid_entry(self):
+        payload = self.workday_payload()
+        for options, expected in (
+            ({"authenticated": False}, 401),
+            ({"write_header": False}, 403),
+            ({"origin": "https://other.example"}, 403),
+            ({"content_type": "text/plain"}, 415),
+        ):
+            with self.subTest(protection=options):
+                status, _, result = self.json_request("POST", "/api/workdays", data=payload, **options)
+                self.assertEqual(status, expected, result)
+        invalid = self.workday_payload(entries=[
+            {"type": "reference", "title": "不能部分保存", "url": "https://example.com/rollback-reference"},
+            {"type": "todo", "title": "無效日期", "due_date": "2026-02-30"},
+        ])
+        status, _, result = self.json_request("POST", "/api/workdays", data=invalid)
+        self.assertEqual(status, 400, result)
+        status, _, result = self.json_request("POST", "/api/workdays", data={**payload, "overwrite": True})
+        self.assertEqual(status, 400, result)
+        for path, key in (("/api/workdays", "workdays"), ("/api/todos", "todos"), ("/api/items", "items")):
+            status, _, result = self.json_request("GET", path)
+            self.assertEqual(status, 200, result)
+            self.assertEqual(result["total"], 0)
+            self.assertEqual(result[key], [])
+
+    def test_workday_retry_preserves_todo_progress_and_manual_bookmark_after_restart(self):
+        bookmark = self.create_item(url="https://example.com/workday-reference", tags=["人工標記"],
+                                    notes="請保留原有研究筆記")
+        payload = self.workday_payload()
+        status, _, imported = self.json_request("POST", "/api/workdays", data=payload)
+        self.assertEqual(status, 201, imported)
+        self.assertIs(imported["created"], True)
+        self.assertIs(imported["duplicate"], False)
+        report_id = imported["workday"]["id"]
+        reference = next(entry for entry in imported["workday"]["entries"] if entry["type"] == "reference")
+        self.assertEqual(reference["library_item_id"], bookmark["id"])
+        status, _, todos = self.json_request("GET", "/api/todos")
+        self.assertEqual(status, 200, todos)
+        self.assertEqual(todos["total"], 1)
+        todo = todos["todos"][0]
+        self.assertIs(todo["done"], False)
+        status, _, completed = self.json_request("PATCH", "/api/todos/" + todo["id"], data={
+            "done": True, "expected_version": todo["version"]})
+        self.assertEqual(status, 200, completed)
+        self.assertIs(completed["todo"]["done"], True)
+        self.assertTrue(completed["todo"]["completed_at"])
+        self.stop_server()
+        self.start_server()
+        status, _, duplicate = self.json_request("POST", "/api/workdays", data=payload)
+        self.assertEqual(status, 200, duplicate)
+        self.assertIs(duplicate["created"], False)
+        self.assertIs(duplicate["duplicate"], True)
+        self.assertEqual(duplicate["workday"]["id"], report_id)
+        saved_todo = next(entry for entry in duplicate["workday"]["entries"] if entry["type"] == "todo")
+        self.assertIs(saved_todo["done"], True)
+        self.assertEqual(saved_todo["version"], completed["todo"]["version"])
+        status, _, conflict = self.json_request("POST", "/api/workdays", data={**payload, "summary": "不能覆寫已保存紀錄"})
+        self.assertEqual(status, 409, conflict)
+        status, _, report = self.json_request("GET", "/api/workdays/" + report_id)
+        self.assertEqual(status, 200, report)
+        self.assertEqual(report["workday"]["summary"], payload["summary"])
+        status, _, original = self.json_request("GET", "/api/items/" + bookmark["id"])
+        self.assertEqual(status, 200, original)
+        self.assertEqual(original["item"]["tags"], bookmark["tags"])
+        self.assertEqual(original["item"]["notes"], bookmark["notes"])
+        self.assertEqual(original["item"]["version"], bookmark["version"])
+        status, _, export = self.json_request("GET", "/api/export")
+        self.assertEqual(status, 200, export)
+        self.assertEqual([entry["id"] for entry in export["workdays"]], [report_id])
+        self.assertNotIn(self.password, json.dumps(export))
+
+    def test_workday_chat_keys_date_search_and_todo_queries_are_independent(self):
+        for payload in (
+            self.workday_payload(),
+            self.workday_payload(source_key="another-chat-same-day", title="另一段工作對話", summary="另一段工作內容"),
+        ):
+            status, _, result = self.json_request("POST", "/api/workdays", data=payload)
+            self.assertEqual(status, 201, result)
+        status, _, reports = self.json_request("GET", "/api/workdays?date=2026-10-19&q=" + quote("金融網站"))
+        self.assertEqual(status, 200, reports)
+        self.assertEqual(reports["total"], 1)
+        self.assertEqual(reports["workdays"][0]["title"], "介面研究工作日")
+        status, _, todos = self.json_request("GET", "/api/todos?done=0&date=2026-10-19&q=" + quote("導航草圖"))
+        self.assertEqual(status, 200, todos)
+        self.assertEqual(todos["total"], 2)
+        for query, expected in (("done=1", 0), ("done=all", 2), ("date=2026-10-18", 0), ("limit=1&offset=1", 2)):
+            status, _, result = self.json_request("GET", "/api/todos?" + query)
+            self.assertEqual(status, 200, result)
+            self.assertEqual(result["total"], expected)
+            if query.startswith("limit="):
+                self.assertEqual(len(result["todos"]), 1)
+        status, _, info = self.json_request("GET", "/api/info")
+        self.assertEqual(status, 200, info)
+        self.assertEqual(info["stats"]["workdays"], 2)
+        self.assertEqual(info["stats"]["todos_open"], 2)
+        self.assertEqual(info["stats"]["todos_done"], 0)
+        for path in (
+            "/api/workdays?date=2026-02-30", "/api/workdays?limit=bad", "/api/workdays?offset=-1",
+            "/api/todos?done=true", "/api/todos?done=", "/api/todos?date=2026-13-01", "/api/todos?limit=0",
+        ):
+            with self.subTest(invalid_filter=path):
+                status, _, result = self.json_request("GET", path)
+                self.assertEqual(status, 400, result)
+
+    def test_todo_completion_requires_write_protection_and_current_version(self):
+        status, _, imported = self.json_request("POST", "/api/workdays", data=self.workday_payload())
+        self.assertEqual(status, 201, imported)
+        todo = next(entry for entry in imported["workday"]["entries"] if entry["type"] == "todo")
+        path = "/api/todos/" + todo["id"]
+        update = {"done": True, "expected_version": todo["version"]}
+        for options, expected in (
+            ({"authenticated": False}, 401),
+            ({"write_header": False}, 403),
+            ({"origin": "https://other.example"}, 403),
+            ({"content_type": "text/plain"}, 415),
+        ):
+            with self.subTest(protection=options):
+                status, _, result = self.json_request("PATCH", path, data=update, **options)
+                self.assertEqual(status, expected, result)
+        for invalid in ({**update, "title": "不能改寫原始紀錄"}, {**update, "done": "true"}):
+            status, _, result = self.json_request("PATCH", path, data=invalid)
+            self.assertEqual(status, 400, result)
+        status, _, completed = self.json_request("PATCH", path, data=update)
+        self.assertEqual(status, 200, completed)
+        self.assertIs(completed["todo"]["done"], True)
+        status, _, stale = self.json_request("PATCH", path, data={**update, "done": False})
+        self.assertEqual(status, 409, stale)
+        status, _, info = self.json_request("GET", "/api/info")
+        self.assertEqual(status, 200, info)
+        self.assertEqual(info["stats"]["todos_open"], 0)
+        self.assertEqual(info["stats"]["todos_done"], 1)
 
 
 if __name__ == "__main__":

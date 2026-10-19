@@ -21,11 +21,12 @@ from pathlib import Path
 from blueprint_folders.core import CATEGORIES
 
 from .classify import classify_item, normalize_url
+from .workdays import WorkdayMixin
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
 MAX_TEXT_SIZE = 200 * 1024
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 _SOURCE_ROOT = Path(__file__).resolve().parent.parent
 _SOURCE_TYPES = {"website", "youtube", "code", "document", "image", "video", "other"}
 _SORT_ORDERS = {
@@ -102,7 +103,7 @@ def _identifier(value, label: str = "編號") -> str:
     return _text(value, label, 100, empty=False)
 
 
-class Store:
+class Store(WorkdayMixin):
     """A SQLite-backed private library. Open connections per operation/thread."""
 
     def __init__(self, data_dir):
@@ -197,7 +198,8 @@ class Store:
                 "CREATE INDEX IF NOT EXISTS items_pinned ON items(pinned, archived)",
             ):
                 conn.execute(statement)
-            conn.execute("PRAGMA user_version = 2")
+            self._initialize_workdays(conn)
+            conn.execute("PRAGMA user_version = 3")
 
     def _collection_id(self, conn, value):
         if value is None or value == "":
@@ -488,6 +490,7 @@ class Store:
 
     def stats(self) -> dict:
         with self._connection() as conn:
+            conn.execute("BEGIN")
             row = conn.execute("""SELECT COUNT(*) AS all_items,
                 COALESCE(SUM(archived=0),0) AS total,
                 COALESCE(SUM(archived=0 AND kind='file'),0) AS files,
@@ -498,10 +501,12 @@ class Store:
                 COALESCE(SUM(archived=1),0) AS archived FROM items""").fetchone()
             result = dict(row)
             result["collections"] = conn.execute("SELECT COUNT(*) FROM collections").fetchone()[0]
+            result.update(self._workday_stats(conn))
             return result
 
     def export_metadata(self) -> dict:
         with self._connection() as conn:
+            conn.execute("BEGIN")
             items = [self._public(row) for row in conn.execute("SELECT * FROM items ORDER BY created_at,id")]
             collections = [dict(row) for row in conn.execute("SELECT c.*,COUNT(i.id) AS count FROM collections c LEFT JOIN items i ON i.collection_id=c.id AND i.archived=0 GROUP BY c.id ORDER BY c.created_at,c.id")]
             history = []
@@ -513,4 +518,5 @@ class Store:
             return {"format": "blueprint-library-metadata", "version": 1, "exported_at": _now(),
                     "includes_file_bytes": False,
                     "backup_note": "此檔只包含資料索引、文字及修改紀錄。完整備份亦需保存私人資料目錄內的原始檔案。",
-                    "items": items, "collections": collections, "history": history}
+                    "items": items, "collections": collections, "history": history,
+                    "workdays": self._export_workdays(conn)}

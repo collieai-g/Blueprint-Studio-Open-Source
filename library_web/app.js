@@ -12,6 +12,7 @@
   let searchTimer;
   let commandTimer;
   let sidebarReturnFocus;
+  let workdaysUI;
 
   class ApiError extends Error {
     constructor(message, status) { super(message); this.status = status; }
@@ -121,6 +122,8 @@
 
   const ICONS = {
     dashboard: ['M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z'],
+    calendar: ['M4 5h16v16H4Z M4 10h16 M8 3v4 M16 3v4 M8 14h2 M14 14h2 M8 18h2'],
+    checklist: ['M9 5h12 M9 12h12 M9 19h12 M3 5l1 1 2-3 M3 12l1 1 2-3 M3 19l1 1 2-3'],
     folder: ['M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z'],
     bookmark: ['M6 3h12v18l-6-4-6 4Z'], play: ['M9 7l8 5-8 5Z', 'M3 5h18v14H3Z'],
     star: ['m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z'],
@@ -139,6 +142,8 @@
   };
   const VIEWS = {
     dashboard: ['工作台', '最近文件、收藏與待整理資料，一眼掌握。', 'YOUR WORKSPACE'],
+    workdays: ['每日工作', '留下每天的成果、決定、參考與下一步。', 'DAILY WORK'],
+    todos: ['待辦事項', '從工作對話留下的下一步，逐項完成。', 'NEXT ACTIONS'],
     files: ['文件庫', '工作文件與程式碼，用清楚的圖案與標籤歸位。', 'FILE LIBRARY'],
     links: ['資料收藏', '收好網站、UI 靈感與每一個值得參考的連結。', 'YOUR REFERENCES'],
     youtube: ['YouTube 學習', '把影片中的啟發，變成下一步用得到的知識。', 'LEARN & APPLY'],
@@ -280,8 +285,8 @@
     finally { if (request === state.request) $('item-grid').setAttribute('aria-busy', 'false'); }
   }
 
-  function refresh(resetPage = true) { if (resetPage) state.offset = 0; return loadItems(); }
-  async function refreshAfterWrite() { await Promise.all([loadCollections(), loadInfo()]); await refresh(); }
+  function refresh(resetPage = true) { if (resetPage) state.offset = 0; if (['workdays', 'todos'].includes(state.view)) return workdaysUI?.refreshCurrent?.() || Promise.resolve(); return loadItems(); }
+  async function refreshAfterWrite() { await Promise.all([loadCollections(), loadInfo()]); await refresh(); if (state.view === 'dashboard') await workdaysUI?.refreshDashboard(); }
 
   function setView(view, collectionId = '') {
     if (!Object.hasOwn(VIEWS, view) && view !== 'collection') return;
@@ -291,11 +296,16 @@
     const [title, description, eyebrow] = view === 'collection' ? [collection?.name || '收藏集', collection?.description || '放在一起的參考，讓想法更容易接起來。', 'YOUR COLLECTION'] : VIEWS[view];
     $('page-title').replaceChildren(document.createTextNode(title), element('span', 'title-dot', '.'));
     $('breadcrumb-current').textContent = title; $('page-description').textContent = description; $('page-eyebrow').textContent = eyebrow;
-    $('dashboard-panel').hidden = view !== 'dashboard'; $('library-toolbar').hidden = view === 'dashboard';
+    const workView = ['workdays', 'todos'].includes(view);
+    $('dashboard-panel').hidden = view !== 'dashboard'; $('library-toolbar').hidden = view === 'dashboard'; $('library-panel').hidden = workView; $('workdays-panel').hidden = !workView;
+    $('work-panel-title').textContent = view === 'todos' ? '待辦清單' : '工作紀錄';
     $('library-heading').textContent = view === 'dashboard' ? '最近更新' : view === 'collection' ? '收藏集內容' : '所有資料';
     $('sort-order').hidden = view === 'dashboard'; $('collection-filter').hidden = view === 'collection' || view === 'unfiled';
     document.querySelectorAll('.main-nav [data-view]').forEach((button) => { const active = button.dataset.view === view; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
-    populateCollectionSelects(); closeSidebar(); notice(''); refresh();
+    populateCollectionSelects(); closeSidebar(); notice('');
+    workdaysUI?.setView(view);
+    if (!workView) refresh();
+    if (view === 'dashboard') workdaysUI?.refreshDashboard();
   }
 
   function openDialog(id) {
@@ -512,22 +522,39 @@
   async function searchCommands() {
     const request = ++state.commandRequest, query = $('command-search').value.trim();
     let matchingActions = 0;
-    $('command-actions').querySelectorAll('[data-action]').forEach((button) => { const terms = { upload: '加入檔案 上傳文件 upload file', link: '收藏連結 網站 youtube link', collection: '新增收藏集 collection' }; const matches = !query || terms[button.dataset.action].toLowerCase().includes(query.toLowerCase()); button.hidden = !matches; if (matches) matchingActions += 1; });
+    $('command-actions').querySelectorAll('[data-action], [data-workday-action]').forEach((button) => { const terms = { upload: '加入檔案 上傳文件 upload file', link: '收藏連結 網站 youtube link', collection: '新增收藏集 collection', workday: '整理今日工作 每日 工作紀錄 待辦 daily work todo' }; const matches = !query || terms[button.dataset.action || 'workday'].toLowerCase().includes(query.toLowerCase()); button.hidden = !matches; if (matches) matchingActions += 1; });
     $('command-actions').hidden = matchingActions === 0; $('command-results').replaceChildren();
     if (!query) { $('command-status').textContent = '搜尋全部未封存資料'; return; }
     $('command-status').textContent = '正在搜尋…';
     try {
-      const data = await api(`/api/items?${new URLSearchParams({ q: query, archived: '0', limit: '12', sort: 'updated' })}`);
+      const results = await Promise.allSettled([
+        api(`/api/items?${new URLSearchParams({ q: query, archived: '0', limit: '8', sort: 'updated' })}`),
+        api(`/api/workdays?${new URLSearchParams({ q: query, limit: '4' })}`),
+        api(`/api/todos?${new URLSearchParams({ q: query, done: 'all', limit: '4' })}`)
+      ]);
       if (request !== state.commandRequest) return;
-      const items = Array.isArray(data.items) ? data.items : [];
-      $('command-status').textContent = items.length ? `找到 ${data.total} 項資料` : '未找到資料，試試其他名稱或標籤。';
-      $('command-results').replaceChildren(...items.map((item) => {
-        const button = element('button', 'command-result'); button.type = 'button';
-        const image = element('img'); image.src = `/icons/${categoryKey(item.category)}.svg`; image.alt = '';
-        const group = element('span'); group.append(element('strong', '', item.title || item.file_name), element('small', '', `${categoryName(item.category)} · ${collectionName(item.collection_id)}`));
-        button.append(image, group, icon('arrow-up-right'));
-        button.addEventListener('click', () => { $('command-dialog').close(); openDetail(item.id); }); return button;
-      }));
+      const items = results[0].status === 'fulfilled' ? results[0].value : { items: [], total: 0 };
+      const workdays = results[1].status === 'fulfilled' ? results[1].value : { workdays: [], total: 0 };
+      const todos = results[2].status === 'fulfilled' ? results[2].value : { todos: [], total: 0 };
+      const total = (Number(items.total) || 0) + (Number(workdays.total) || 0) + (Number(todos.total) || 0);
+      const failed = results.some((result) => result.status === 'rejected');
+      $('command-status').textContent = total ? `找到 ${total} 項資料${failed ? '，部分資料暫時未能搜尋。' : ''}` : failed ? '部分資料暫時未能搜尋，請稍後再試。' : '未找到資料，試試其他名稱或標籤。';
+      const nodes = [];
+      function appendGroup(label, entries, category, title, subtitle, activate) {
+        if (!entries.length) return;
+        nodes.push(element('p', 'nav-label command-group-label', label));
+        entries.forEach((entry) => {
+          const button = element('button', 'command-result'); button.type = 'button';
+          const image = element('img'); image.src = `/icons/${category(entry)}.svg`; image.alt = '';
+          const group = element('span'); group.append(element('strong', '', title(entry)), element('small', '', subtitle(entry)));
+          button.append(image, group, icon('arrow-up-right'));
+          button.addEventListener('click', () => { $('command-dialog').close(); activate(entry); }); nodes.push(button);
+        });
+      }
+      appendGroup('文件與收藏', items.items || [], (item) => categoryKey(item.category), (item) => item.title || item.file_name, (item) => `${categoryName(item.category)} · ${collectionName(item.collection_id)}`, (item) => openDetail(item.id));
+      appendGroup('每日工作', workdays.workdays || [], () => 'calendar', (item) => item.title || `${item.date} 工作紀錄`, (item) => `${item.date} · ${item.source || '工作紀錄'}`, (item) => workdaysUI?.openReport(item.id));
+      appendGroup('待辦事項', todos.todos || [], () => 'document', (item) => item.title, (item) => `${item.done ? '已完成' : '未完成'} · ${item.date} · ${item.workday_title || '每日工作'}`, (item) => workdaysUI?.openReport(item.workday_id));
+      $('command-results').replaceChildren(...nodes);
     } catch (error) { if (request === state.commandRequest) $('command-status').textContent = error.message; }
   }
   function firstCommandButton() { return $('command-results').querySelector('button') || (!$('command-actions').hidden ? $('command-actions').querySelector('button:not([hidden])') : null); }
@@ -551,13 +578,14 @@
     state.contextIds = [...state.selected]; $('context-markdown').value = ''; $('context-task').value = state.view === 'youtube' ? 'learning' : 'general'; openDialog('context-dialog'); generateContext();
   }
 
-  document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => { if (!state.busy) button.closest('dialog').close(); }));
+  document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => { if (!state.busy && !workdaysUI?.isBusy?.()) button.closest('dialog').close(); }));
   document.querySelectorAll('dialog').forEach((dialog) => {
-    dialog.addEventListener('cancel', (event) => { if (state.busy) event.preventDefault(); });
-    dialog.addEventListener('click', (event) => { if (event.target !== dialog || state.busy) return; const box = dialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close(); });
+    dialog.addEventListener('cancel', (event) => { if (state.busy || workdaysUI?.isBusy?.()) event.preventDefault(); });
+    dialog.addEventListener('click', (event) => { if (event.target !== dialog || state.busy || workdaysUI?.isBusy?.()) return; const box = dialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close(); });
   });
   document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
   document.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => { if ($('command-dialog').open) $('command-dialog').close(); openAdd(button.dataset.action); }));
+  document.querySelectorAll('[data-workday-action]').forEach((button) => button.addEventListener('click', () => { if ($('command-dialog').open) $('command-dialog').close(); workdaysUI?.openImport(); }));
   $('add-item').addEventListener('click', () => { $('add-menu').hidden = !$('add-menu').hidden; $('add-item').setAttribute('aria-expanded', String(!$('add-menu').hidden)); });
   document.addEventListener('click', (event) => { if (!event.target.closest('.add-wrapper')) { $('add-menu').hidden = true; $('add-item').setAttribute('aria-expanded', 'false'); } });
   $('empty-add').addEventListener('click', () => openAdd(state.view === 'files' ? 'upload' : state.view === 'youtube' ? 'youtube' : 'link'));
@@ -586,10 +614,13 @@
   $('context-download').addEventListener('click', () => { const blob = new Blob([$('context-markdown').value], { type: 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = element('a'); link.href = url; link.download = 'blueprint-ai-handoff.md'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); });
 
   async function init() {
+    workdaysUI = window.BlueprintWorkdays;
+    workdaysUI?.init({ api, element, icon, notice, openDialog, setView, refreshInfo: loadInfo, refreshLibrary: async () => { await loadCollections(); if (!['workdays', 'todos'].includes(state.view)) await refresh(); } });
+    workdaysUI?.setView('dashboard');
     renderStaticIcons(); populateCategories('category-filter', false, true); populateCategories('link-category', true); populateCategories('detail-category'); populateCategories('collection-icon');
     try { const preferences = JSON.parse(localStorage.getItem('blueprint-backend-display-v1') || '{}'); if (preferences.layout === 'list') state.layout = 'list'; if (['updated', 'created', 'title'].includes(preferences.sort)) state.sort = preferences.sort; } catch { /* Display preference only; company data remains on server. */ }
     applyDisplayPreferences(); $('library-toolbar').hidden = true; $('sort-order').hidden = true; $('page-date').textContent = new Date().toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' });
-    try { await Promise.all([loadInfo(), loadCollections()]); await loadItems(); }
+    try { await Promise.all([loadInfo(), loadCollections()]); await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]); }
     catch (error) { $('item-grid').setAttribute('aria-busy', 'false'); $('result-count').textContent = '未能連接資料庫'; notice(error.message, true); }
   }
   init();

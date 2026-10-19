@@ -102,13 +102,11 @@ main { width: 100%; max-width: 1432px; padding: 30px 36px 0; margin: 0 auto; }
 .subtle-label { color: #89739f; font-size: 9px; font-weight: 600; letter-spacing: .12em; }
 .welcome-card h2 { margin: 7px 0 8px; color: #5a456e; font-size: 23px; font-weight: 600; letter-spacing: -.025em; }
 .welcome-card p { color: #8a6e9f; font-size: 11px; }
-.welcome-art { position: relative; width: 228px; height: 104px; flex: 0 0 228px; margin: -10px 9px -10px 20px; }
-.art-orbit { position: absolute; top: -7px; left: 15px; width: 183px; height: 130px; border: 1px solid #d8cfea; border-radius: 50%; transform: rotate(-17deg); }
-.art-orbit::after { content: ""; position: absolute; inset: 14px -16px; border: 1px solid #dfd7ed; border-radius: 50%; transform: rotate(39deg); }
-.welcome-art img { position: absolute; width: 78px; height: 78px; padding: 8px; border: 1px solid #e3dcee; border-radius: 15px; background: #ffffffb8; box-shadow: 0 8px 16px #7f709418; object-fit: contain; }
-.welcome-art img:nth-of-type(1) { top: 12px; left: 7px; transform: rotate(-13deg); }
-.welcome-art img:nth-of-type(2) { top: -4px; left: 80px; z-index: 1; transform: rotate(8deg); }
-.welcome-art img:nth-of-type(3) { top: 37px; left: 143px; width: 67px; height: 67px; transform: rotate(-7deg); }
+.welcome-copy { flex: 1; min-width: 0; }
+.welcome-copy > .button { margin-top: 16px; }
+.welcome-art { display: flex; align-items: center; justify-content: flex-end; gap: 14px; width: 228px; height: 88px; flex: 0 0 228px; margin-left: 24px; }
+.art-orbit { display: none; }
+.welcome-art img { width: 64px; height: 64px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; object-fit: contain; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 17px; }
 .stat-card { min-width: 0; padding: 15px 18px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); text-align: left; transition: border-color .15s, box-shadow .15s; }
 .stat-card:hover { border-color: #c9bfed; box-shadow: 0 3px 10px #4b3b7810; }
@@ -295,7 +293,8 @@ input[type=file]::file-selector-button { margin-right: 13px; padding: 7px 11px; 
   .topbar { padding-right: 27px; padding-left: 27px; }
   main { padding-right: 27px; padding-left: 27px; }
   .welcome-card { padding-right: 22px; padding-left: 25px; }
-  .welcome-art { width: 175px; flex-basis: 175px; transform: scale(.85); transform-origin: right center; margin-left: -8px; }
+  .welcome-art { width: 180px; flex-basis: 180px; gap: 10px; margin-left: 16px; }
+  .welcome-art img { width: 52px; height: 52px; }
   .welcome-card h2 { font-size: 21px; }
   .stats-grid, .quick-actions { gap: 11px; }
   .quick-action { gap: 9px; padding: 13px 11px; }
@@ -315,7 +314,8 @@ input[type=file]::file-selector-button { margin-right: 13px; padding: 7px 11px; 
   .topbar { height: 68px; padding-right: 28px; padding-left: 23px; }
   main { padding: 29px 28px 0; }
   .top-actions { gap: 17px; }
-  .welcome-art { width: 220px; flex-basis: 220px; transform: none; margin-left: 10px; }
+  .welcome-art { width: 204px; flex-basis: 204px; margin-left: 16px; }
+  .welcome-art img { width: 58px; height: 58px; }
   .welcome-card h2 { font-size: 23px; }
   .quick-action { padding: 15px; }
   .quick-icon { width: 36px; height: 36px; flex-basis: 36px; }
@@ -337,12 +337,13 @@ input[type=file]::file-selector-button { margin-right: 13px; padding: 7px 11px; 
   .page-heading h1 { font-size: 27px; }
   #page-description { margin-top: 6px; font-size: 11px; }
   .page-date { padding-top: 23px; font-size: 8px; }
-  .welcome-card { min-height: 170px; padding: 22px; position: relative; }
-  .welcome-card > div:first-child { position: relative; z-index: 1; width: 100%; }
+  .welcome-card { display: block; min-height: 0; padding: 22px; }
+  .welcome-card > div:first-child { width: 100%; }
   .subtle-label { font-size: 8px; letter-spacing: .1em; }
   .welcome-card h2 { max-width: 245px; margin: 8px 0 9px; font-size: 21px; line-height: 1.5; }
   .welcome-card p { max-width: 235px; font-size: 10px; line-height: 1.8; }
-  .welcome-art { position: absolute; right: -105px; bottom: 8px; width: 220px; height: 104px; margin: 0; opacity: .15; transform: rotate(-15deg) scale(1.2); pointer-events: none; }
+  .welcome-art { justify-content: flex-start; width: 100%; height: 44px; margin: 18px 0 0; gap: 18px; }
+  .welcome-art img { width: 44px; height: 44px; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
   .stat-card { padding: 15px 16px 13px; }
   .stat-card > span { gap: 7px; font-size: 11px; }
@@ -433,4 +434,147 @@ input[type=file]::file-selector-button { margin-right: 13px; padding: 7px 11px; 
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Daily work: review useful outcomes, then keep the next action visible. */
+.text-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 4px 0; border: 0; background: transparent; color: #756584; font-size: 11px; line-height: 1.5; text-align: left; }
+.text-button:hover { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+.text-button .ui-icon { width: 13px; height: 13px; }
+.work-dashboard-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 15px; margin-top: 25px; }
+.work-dashboard-card { min-width: 0; padding: 19px 20px 17px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
+.dashboard-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.dashboard-section-heading h2 { color: #554b61; font-size: 13px; font-weight: 600; }
+#dashboard-workdays, #dashboard-todos { min-width: 0; }
+#dashboard-workdays > .muted, #dashboard-todos > .muted { padding: 13px 0; color: var(--muted); font-size: 12px; }
+.workdays-panel > .section-title { margin-top: 0; margin-bottom: 17px; }
+.workdays-panel > .section-title h2 { font-size: 15px; }
+#work-result-count { margin-top: 5px; color: var(--muted); font-size: 11px; }
+.work-toolbar { display: flex; align-items: flex-end; gap: 11px; margin-bottom: 18px; }
+.work-toolbar > label:not(.search-field) { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--muted); font-size: 10px; }
+.work-toolbar input[type=date], .work-toolbar select { width: 100%; height: 39px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: #665a72; font-size: 12px; }
+.work-toolbar .work-date-field { width: 163px; flex: 0 0 163px; }
+.work-toolbar #todo-status-field { width: 120px; flex: 0 0 120px; }
+.work-list { display: flex; flex-direction: column; gap: 11px; }
+.work-card { min-width: 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.work-title, .work-title-button { display: inline-block; max-width: 100%; margin: 0; padding: 0; border: 0; background: transparent; color: #54475e; font-size: 14px; font-weight: 600; line-height: 1.6; text-align: left; overflow-wrap: anywhere; }
+button.work-title:hover, button.work-title-button:hover { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+.work-card h3 { min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.work-summary { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; white-space: pre-wrap; }
+.work-meta, .work-counts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; color: var(--muted); font-size: 10px; }
+.work-meta .ui-icon, .work-counts .ui-icon { width: 13px; height: 13px; }
+.work-meta > span, .work-counts > span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.work-source { min-width: 0; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+#dashboard-workdays .work-card { padding: 13px 0; border: 0; border-top: 1px solid #eeeaf1; border-radius: 0; }
+#dashboard-workdays .work-card:first-child { padding-top: 0; border-top: 0; }
+#dashboard-workdays .work-card:last-child { padding-bottom: 0; }
+#dashboard-workdays .work-title, #dashboard-workdays .work-title-button { font-size: 12px; }
+#dashboard-workdays .work-summary { -webkit-line-clamp: 1; margin-top: 5px; font-size: 11px; }
+#dashboard-workdays .work-meta, #dashboard-workdays .work-counts { margin-top: 7px; font-size: 10px; gap: 5px 9px; }
+#work-page { font-size: 11px; }
+.work-import-dialog { width: min(820px, calc(100% - 40px)); }
+.work-report-dialog { width: min(800px, calc(100% - 40px)); }
+.import-guide { margin-top: 18px; padding: 17px 18px; border: 1px solid #e5def0; border-radius: 9px; background: #f8f5fc; }
+.import-guide h3 { margin-bottom: 7px; color: #665174; font-size: 13px; font-weight: 550; }
+.import-guide p { max-width: 650px; color: #776584; font-size: 12px; line-height: 1.9; }
+.import-guide .actions { gap: 8px; margin-top: 14px; }
+.import-guide .button { min-height: 35px; padding: 7px 12px; font-size: 11px; }
+#work-json-input { min-height: 185px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; tab-size: 2; }
+#work-json-input::placeholder { font-size: 11px; }
+#work-import-status { margin-top: 13px; color: #626d5f; font-size: 12px; overflow-wrap: anywhere; }
+#work-import-status:empty { display: none; }
+.source-key-details { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 7px; background: #fcfbfd; }
+.source-key-details summary { color: #7c6991; font-size: 11px; cursor: pointer; }
+.source-key-details > p { margin-top: 9px; font-size: 11px; }
+.source-key-details .field { margin-top: 10px; }
+.draft-section-heading { margin-top: 23px; }
+.draft-section-heading h3 { color: #665174; font-size: 13px; font-weight: 600; }
+#draft-entries { min-width: 0; }
+.work-report-summary { margin: 17px 0 21px; padding: 15px 17px; border: 1px solid #eae4f0; border-radius: 8px; background: #f8f5fb; color: #756282; font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; white-space: pre-wrap; }
+.work-report-summary:empty { display: none; }
+#work-report-meta { overflow-wrap: anywhere; font-size: 11px; }
+#work-report-reload { margin-top: 17px; }
+@media (max-width: 900px) {
+  .work-dashboard-card { padding: 17px; }
+  .work-dashboard-grid { gap: 12px; }
+}
+@media (max-width: 650px) {
+  .welcome-copy > .button { margin-top: 13px; font-size: 11px; }
+  .work-dashboard-grid { grid-template-columns: 1fr; gap: 13px; margin-top: 23px; }
+  .work-dashboard-card { padding: 17px; }
+  .dashboard-section-heading { margin-bottom: 13px; }
+  .dashboard-section-heading h2 { font-size: 12px; }
+  .dashboard-section-heading .text-button { font-size: 10px; }
+  .workdays-panel > .section-title { align-items: flex-start; gap: 10px; }
+  .workdays-panel > .section-title > .button { min-height: 35px; padding: 7px 10px; font-size: 10px; }
+  .workdays-panel > .section-title h2 { font-size: 14px; }
+  #work-result-count { font-size: 10px; }
+  .work-toolbar { flex-wrap: wrap; gap: 9px; }
+  .work-toolbar .search-field { flex-basis: 100%; }
+  .work-toolbar .work-date-field, .work-toolbar #todo-status-field { flex: 1; width: auto; }
+  .work-toolbar input[type=date], .work-toolbar select { font-size: 16px; }
+  .work-card { padding: 15px 16px; }
+  .work-title, .work-title-button, .work-card h3 { font-size: 13px; }
+  .work-summary { font-size: 11px; }
+  .work-meta, .work-counts { gap: 5px 9px; font-size: 10px; }
+  .work-import-dialog, .work-report-dialog { width: calc(100% - 24px); padding: 21px 20px; }
+  .import-guide { padding: 14px; }
+  .import-guide h3 { font-size: 12px; }
+  .import-guide p { font-size: 11px; }
+  .import-guide .actions { gap: 7px; }
+  .import-guide .button { flex: 1 1 120px; min-height: 35px; font-size: 10px; padding: 7px; }
+  #work-json-input { min-height: 170px; font-size: 16px; }
+  #work-json-input::placeholder { font-size: 11px; }
+  .draft-section-heading { gap: 8px; }
+  .draft-section-heading h3 { font-size: 12px; }
+  .work-report-summary { margin-top: 14px; padding: 13px; font-size: 12px; }
+  #work-import-status { font-size: 11px; }
+}
+
+/* Dynamic work records and preview controls. */
+.work-card > .work-meta:first-child { margin-top: 0; margin-bottom: 5px; }
+.work-open-count { display: inline-block; margin-top: 11px; padding: 3px 7px; border-radius: 4px; background: #f1edf9; color: #78648e; font-size: 10px; }
+.work-todo { min-width: 0; padding: 14px 0; border-bottom: 1px solid #eeeaf1; }
+.work-todo:first-child { padding-top: 0; }
+.work-todo:last-child { padding-bottom: 0; border-bottom: 0; }
+.work-todo-label { display: flex; align-items: flex-start; gap: 10px; min-width: 0; cursor: pointer; }
+.work-todo-label > input[type=checkbox] { width: 17px; height: 17px; margin-top: 3px; }
+.work-todo-title { flex: 1; min-width: 0; color: #5c4e67; font-size: 13px; font-weight: 500; line-height: 1.7; overflow-wrap: anywhere; }
+.work-todo-detail { min-width: 0; padding-left: 27px; }
+.work-todo-detail > .work-meta { margin-top: 6px; }
+.work-todo.is-done .work-todo-title { color: #8a7d95; text-decoration: line-through; text-decoration-color: #b5a7bf; }
+.work-entry-content { margin-top: 7px; color: #776584; font-size: 12px; line-height: 1.85; overflow-wrap: anywhere; white-space: pre-wrap; }
+.work-inline-button { display: inline-block; max-width: 100%; margin-top: 7px; padding: 0; border: 0; background: transparent; color: #7a6690; font-size: 10px; line-height: 1.7; text-align: left; overflow-wrap: anywhere; }
+.work-inline-button:hover { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+.work-todo-error { margin-top: 12px; margin-left: 27px; padding: 10px 12px; border: 1px solid #efd8d2; border-radius: 7px; background: #fff5f1; color: #a26658; font-size: 11px; overflow-wrap: anywhere; }
+.work-todo-error .button { margin-top: 8px; }
+#work-list > .work-todo { padding: 16px 19px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+#dashboard-todos .work-todo-title { font-size: 12px; }
+#dashboard-workdays .work-open-count { margin-top: 8px; font-size: 9px; }
+.work-draft-entry { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 15px; min-width: 0; min-inline-size: 0; width: 100%; margin: 18px 0 0; padding: 17px; border: 1px solid #e5ddec; border-radius: 9px; background: #fdfcfe; }
+.work-draft-entry > legend { max-width: 100%; padding: 0 7px; color: #7b6590; font-size: 11px; font-weight: 550; }
+.work-entry-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; color: #776584; font-size: 11px; font-weight: 500; }
+.work-entry-field input, .work-entry-field select, .work-entry-field textarea { width: 100%; min-width: 0; min-height: 38px; padding: 8px 10px; font-size: 12px; font-weight: 400; line-height: 1.7; }
+.work-entry-field textarea { min-height: 85px; resize: vertical; }
+.work-entry-field:has(textarea), .work-entry-field:has(input[type=url]) { grid-column: 1 / -1; }
+.work-draft-entry > .button { grid-column: 1 / -1; justify-self: end; min-height: 31px; margin-top: 1px; padding: 5px 9px; border-color: transparent; background: transparent; color: #956b64; font-size: 11px; }
+.work-draft-entry > .button:hover { background: #fff0eb; }
+.work-report-section { margin-top: 22px; }
+.work-report-section > h3 { margin-bottom: 13px; padding-bottom: 9px; border-bottom: 1px solid var(--line); color: #675071; font-size: 13px; font-weight: 600; }
+.work-report-entry { min-width: 0; margin: 14px 0; padding: 1px 0 1px 14px; border-left: 2px solid #dfd6ec; }
+.work-report-entry h4 { margin: 0; color: #61506d; font-size: 13px; font-weight: 600; line-height: 1.7; overflow-wrap: anywhere; }
+.work-reference-link { display: inline-block; max-width: 100%; margin-top: 7px; color: var(--accent-dark); font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; }
+.work-report-section .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.work-report-section .tag { display: inline-block; max-width: 100%; padding: 2px 7px; border-radius: 4px; background: #f3eff8; color: #7f669a; font-size: 10px; overflow-wrap: anywhere; }
+@media (max-width: 650px) {
+  .work-todo-title { font-size: 12px; }
+  .work-entry-content { font-size: 11px; }
+  #work-list > .work-todo { padding: 14px 15px; }
+  .work-draft-entry { grid-template-columns: 1fr; gap: 12px; padding: 14px; }
+  .work-entry-field input, .work-entry-field select, .work-entry-field textarea { font-size: 16px; }
+  .work-entry-field input::placeholder { font-size: 11px; }
+  .work-report-section { margin-top: 20px; }
+  .work-report-section > h3 { font-size: 12px; }
+  .work-report-entry { padding-left: 11px; }
+  .work-report-entry h4 { font-size: 12px; }
+  .work-todo-error { padding: 9px; font-size: 10px; }
 }

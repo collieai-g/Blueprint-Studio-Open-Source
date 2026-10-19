@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Rebuild the Blueprint folder icon family (build dependency: Pillow).
+"""Build the original Blueprint outline icon family (build dependency: Pillow).
 
-SVGs and raster assets share the same drawing commands. The application itself
-does not import Pillow. Run: python tools/build_icons.py
+All artwork uses a 64-unit canvas. SVG and transparent PNG assets share the same
+vector commands; the application itself has no Pillow dependency.
 """
 
 from __future__ import annotations
@@ -15,15 +15,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 KINDS = ("general", "chat", "web", "finance", "document", "calendar", "automation", "research")
-NAVY = "#122743"
-CYAN = "#52ead9"
-WHITE = "#f2fbff"
-MUTED = "#8cb0cc"
-GRADIENTS = {
-    "body": ("#1b3e60", "#10223b"),
-    "tab": ("#3c8198", "#205169"),
-    "accent": ("#8bfff0", "#33bfae"),
-}
+OUTLINE = "#343A40"
+ACCENT = "#647F89"
+SIZE = 64
 
 
 def rgb(value: str) -> tuple[int, int, int]:
@@ -31,209 +25,149 @@ def rgb(value: str) -> tuple[int, int, int]:
 
 
 class Canvas:
-    """Small dual SVG/Pillow vector renderer, with supersampled raster output."""
+    """Small dual SVG/Pillow stroke renderer with supersampled raster output."""
 
-    def __init__(self, scale: int = 3):
+    def __init__(self, scale: int = 16):
         self.scale = scale
-        self.image = Image.new("RGBA", (512 * scale, 512 * scale))
+        self.image = Image.new("RGBA", (SIZE * scale, SIZE * scale))
         self.parts: list[str] = []
-        self.gradient_images: dict[str, Image.Image] = {}
 
-    def _paint(self, mask: Image.Image, fill: str) -> None:
-        if fill.startswith("url(#"):
-            name = fill[5:-1]
-            if name not in self.gradient_images:
-                first, last = map(rgb, GRADIENTS[name])
-                layer = Image.new("RGBA", self.image.size)
-                painter = ImageDraw.Draw(layer)
-                for y in range(layer.height):
-                    fraction = min(1, max(0, (y / self.scale - 60) / 390))
-                    color = tuple(round(a + (b - a) * fraction) for a, b in zip(first, last))
-                    painter.line((0, y, layer.width, y), fill=color + (255,))
-                self.gradient_images[name] = layer
-            self.image.paste(self.gradient_images[name], (0, 0), mask)
-        else:
-            self.image.paste(rgb(fill) + (255,), (0, 0), mask)
-
-    def _mask(self) -> tuple[Image.Image, ImageDraw.ImageDraw]:
-        mask = Image.new("L", self.image.size)
-        return mask, ImageDraw.Draw(mask)
-
-    def rounded(self, box, radius, fill: str, stroke: str | None = None, width: float = 1):
-        x0, y0, x1, y1 = box
-        self.parts.append(
-            f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" rx="{radius}" '
-            f'fill="{fill}" stroke="{stroke or "none"}" stroke-width="{width}"/>'
-        )
-        mask, draw = self._mask()
-        draw.rounded_rectangle(tuple(v * self.scale for v in box), radius * self.scale, fill=255)
-        self._paint(mask, fill)
-        if stroke:
-            mask, draw = self._mask()
-            draw.rounded_rectangle(tuple(v * self.scale for v in box), radius * self.scale, outline=255, width=max(1, round(width * self.scale)))
-            self._paint(mask, stroke)
-
-    def ellipse(self, box, fill: str | None = None, stroke: str | None = None, width: float = 1):
-        x0, y0, x1, y1 = box
-        self.parts.append(
-            f'<ellipse cx="{(x0+x1)/2}" cy="{(y0+y1)/2}" rx="{(x1-x0)/2}" ry="{(y1-y0)/2}" '
-            f'fill="{fill or "none"}" stroke="{stroke or "none"}" stroke-width="{width}"/>'
-        )
-        if fill:
-            mask, draw = self._mask()
-            draw.ellipse(tuple(v * self.scale for v in box), fill=255)
-            self._paint(mask, fill)
-        if stroke:
-            mask, draw = self._mask()
-            draw.ellipse(tuple(v * self.scale for v in box), outline=255, width=max(1, round(width * self.scale)))
-            self._paint(mask, stroke)
-
-    def line(self, points, color=WHITE, width=12):
-        self.parts.append(
-            '<polyline points="' + " ".join(f"{x},{y}" for x, y in points)
-            + f'" fill="none" stroke="{color}" stroke-width="{width}" stroke-linecap="round" stroke-linejoin="round"/>'
-        )
-        mask, draw = self._mask()
-        scaled = [(x * self.scale, y * self.scale) for x, y in points]
-        draw.line(scaled, fill=255, width=round(width * self.scale), joint="curve")
-        r = width * self.scale / 2
-        for x, y in scaled:
-            draw.ellipse((x - r, y - r, x + r, y + r), fill=255)
-        self._paint(mask, color)
-
-    def path(self, commands, fill: str, stroke: str | None = None, width: float = 1):
-        """Support M/L/Q/C/Z, sampling curves only in the raster rendition."""
-        d: list[str] = []
+    def path(self, commands, color=ACCENT, width=1.75):
+        """Draw M/L/Q/C/Z commands without fills, with round caps and joins."""
+        data = []
+        subpaths = []
         vertices = []
         current = (0, 0)
         for command in commands:
             op, *values = command
-            d.append(op + " ".join(str(v) for v in values))
-            if op in ("M", "L"):
+            data.append(op + " ".join(str(value) for value in values))
+            if op == "M":
+                if vertices:
+                    subpaths.append(vertices)
+                current = tuple(values)
+                vertices = [current]
+            elif op == "L":
                 current = tuple(values)
                 vertices.append(current)
             elif op == "Q":
-                p0, p1, p2 = current, values[:2], values[2:]
-                for i in range(1, 25):
-                    t = i / 24
-                    vertices.append(tuple((1-t)**2*p0[j] + 2*(1-t)*t*p1[j] + t*t*p2[j] for j in (0, 1)))
-                current = tuple(p2)
+                first, control, last = current, values[:2], values[2:]
+                for step in range(1, 25):
+                    t = step / 24
+                    vertices.append(tuple((1-t)**2*first[j] + 2*(1-t)*t*control[j] + t*t*last[j] for j in (0, 1)))
+                current = tuple(last)
             elif op == "C":
-                p0, p1, p2, p3 = current, values[:2], values[2:4], values[4:]
-                for i in range(1, 33):
-                    t = i / 32
-                    vertices.append(tuple((1-t)**3*p0[j] + 3*(1-t)**2*t*p1[j] + 3*(1-t)*t*t*p2[j] + t**3*p3[j] for j in (0, 1)))
-                current = tuple(p3)
-        self.parts.append(f'<path d="{" ".join(d)}" fill="{fill}" stroke="{stroke or "none"}" stroke-width="{width}" stroke-linejoin="round"/>')
-        mask, draw = self._mask()
-        scaled = [(x * self.scale, y * self.scale) for x, y in vertices]
-        draw.polygon(scaled, fill=255)
-        self._paint(mask, fill)
-        if stroke:
-            mask, draw = self._mask()
-            draw.line(scaled + [scaled[0]], fill=255, width=round(width * self.scale), joint="curve")
-            self._paint(mask, stroke)
+                first, control1, control2, last = current, values[:2], values[2:4], values[4:]
+                for step in range(1, 33):
+                    t = step / 32
+                    vertices.append(tuple((1-t)**3*first[j] + 3*(1-t)**2*t*control1[j] + 3*(1-t)*t*t*control2[j] + t**3*last[j] for j in (0, 1)))
+                current = tuple(last)
+            elif op == "Z" and vertices:
+                vertices.append(vertices[0])
+                current = vertices[0]
+        if vertices:
+            subpaths.append(vertices)
+        self.parts.append(
+            f'<path d="{" ".join(data)}" fill="none" stroke="{color}" '
+            f'stroke-width="{width}" stroke-linecap="round" stroke-linejoin="round"/>'
+        )
+        painter = ImageDraw.Draw(self.image)
+        stroke = rgb(color) + (255,)
+        radius = width * self.scale / 2
+        for vertices in subpaths:
+            points = [(x * self.scale, y * self.scale) for x, y in vertices]
+            painter.line(points, fill=stroke, width=round(width * self.scale), joint="curve")
+            for x, y in points:
+                painter.ellipse((x-radius, y-radius, x+radius, y+radius), fill=stroke)
+
+    def line(self, points, color=ACCENT, width=1.75):
+        self.path([("M", *points[0]), *(("L", *point) for point in points[1:])], color, width)
+
+    def rounded(self, box, radius=2.5, color=ACCENT, width=1.75):
+        x0, y0, x1, y1 = box
+        self.path([
+            ("M", x0+radius, y0), ("L", x1-radius, y0),
+            ("Q", x1, y0, x1, y0+radius), ("L", x1, y1-radius),
+            ("Q", x1, y1, x1-radius, y1), ("L", x0+radius, y1),
+            ("Q", x0, y1, x0, y1-radius), ("L", x0, y0+radius),
+            ("Q", x0, y0, x0+radius, y0), ("Z",),
+        ], color, width)
+
+    def ellipse(self, box, color=ACCENT, width=1.75):
+        x0, y0, x1, y1 = box
+        cx, cy = (x0+x1)/2, (y0+y1)/2
+        rx, ry = (x1-x0)/2, (y1-y0)/2
+        k = 0.55228475
+        self.path([
+            ("M", cx+rx, cy),
+            ("C", cx+rx, cy+k*ry, cx+k*rx, cy+ry, cx, cy+ry),
+            ("C", cx-k*rx, cy+ry, cx-rx, cy+k*ry, cx-rx, cy),
+            ("C", cx-rx, cy-k*ry, cx-k*rx, cy-ry, cx, cy-ry),
+            ("C", cx+k*rx, cy-ry, cx+rx, cy-k*ry, cx+rx, cy), ("Z",),
+        ], color, width)
 
     def svg(self, title: str) -> str:
-        defs = ''.join(
-            f'<linearGradient id="{name}" x1="0" y1="60" x2="0" y2="450" gradientUnits="userSpaceOnUse">'
-            f'<stop stop-color="{colors[0]}"/><stop offset="1" stop-color="{colors[1]}"/></linearGradient>'
-            for name, colors in GRADIENTS.items()
-        )
         return (
-            '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img">'
-            f'<title>Blueprint folder: {html.escape(title)}</title><defs>{defs}</defs>'
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img">'
+            f'<title>Blueprint folder: {html.escape(title)}</title>'
             + ''.join(self.parts) + '</svg>\n'
         )
 
 
 def draw_base(c: Canvas) -> None:
+    # A single unfilled contour, shared by every category.
     c.path([
-        ("M", 58, 153), ("L", 58, 108), ("Q", 58, 77, 89, 77),
-        ("L", 179, 77), ("Q", 192, 77, 203, 91), ("L", 228, 121),
-        ("L", 420, 121), ("Q", 454, 121, 454, 153), ("L", 454, 202),
-        ("L", 58, 202), ("Z",),
-    ], "url(#tab)")
-    c.line([(86, 108), (169, 108)], CYAN, 7)
-    c.rounded((38, 143, 474, 442), 48, "url(#body)", "#345d78", 3)
-    c.line([(82, 165), (426, 165)], "#58d9cf", 3)
-    # Shared corner details keep the family recognizable without using text.
-    c.rounded((396, 184, 429, 202), 7, "url(#accent)")
-    c.line([(80, 410), (110, 410)], "#4c7e96", 4)
-    c.ellipse((121, 406, 129, 414), "#4c7e96")
+        ("M", 8, 20), ("L", 8, 18), ("Q", 8, 14, 12, 14),
+        ("L", 23, 14), ("Q", 24.5, 14, 25.5, 15),
+        ("L", 30, 20), ("L", 52, 20), ("Q", 56, 20, 56, 24),
+        ("L", 56, 48), ("Q", 56, 52, 52, 52),
+        ("L", 12, 52), ("Q", 8, 52, 8, 48), ("Z",),
+    ], OUTLINE, 2.1)
 
 
 def draw_symbol(c: Canvas, kind: str) -> None:
-    if kind == "general":
-        for box in ((167, 217, 238, 282), (266, 217, 337, 282), (167, 308, 238, 373)):
-            c.rounded(box, 15, "#244963", WHITE, 6)
-        c.rounded((266, 308, 337, 373), 15, "url(#accent)")
-        c.line([(287, 340), (316, 340)], NAVY, 7)
-        c.line([(302, 326), (302, 354)], NAVY, 7)
-    elif kind == "chat":
+    # General intentionally stays blank: a new folder has no assigned purpose.
+    if kind == "chat":
         c.path([
-            ("M", 259, 270), ("L", 337, 270), ("Q", 365, 270, 365, 297),
-            ("L", 365, 331), ("Q", 365, 355, 341, 355), ("L", 339, 377),
-            ("L", 309, 355), ("L", 259, 355), ("Q", 235, 355, 235, 331),
-            ("L", 235, 296), ("Q", 235, 270, 259, 270), ("Z",),
-        ], "url(#accent)")
-        c.path([
-            ("M", 168, 218), ("L", 287, 218), ("Q", 316, 218, 316, 247),
-            ("L", 316, 288), ("Q", 316, 317, 287, 317), ("L", 223, 317),
-            ("L", 188, 345), ("L", 188, 317), ("L", 168, 317),
-            ("Q", 139, 317, 139, 288), ("L", 139, 247), ("Q", 139, 218, 168, 218), ("Z",),
-        ], "#173651", WHITE, 8)
-        for x in (183, 227, 271):
-            c.ellipse((x-6, 263, x+6, 275), CYAN)
+            ("M", 25, 28), ("L", 39, 28), ("Q", 42, 28, 42, 31),
+            ("L", 42, 39), ("Q", 42, 42, 39, 42), ("L", 30, 42),
+            ("L", 25, 46), ("L", 25, 42), ("Q", 22, 42, 22, 39),
+            ("L", 22, 31), ("Q", 22, 28, 25, 28), ("Z",),
+        ])
+        c.line([(27, 34), (37, 34)], width=1.6)
+        c.line([(27, 38), (33, 38)], width=1.6)
     elif kind == "web":
-        c.rounded((144, 211, 368, 374), 20, "#173651", WHITE, 8)
-        c.line([(148, 249), (364, 249)], WHITE, 7)
-        for x in (165, 183, 201):
-            c.ellipse((x-3, 228, x+3, 234), CYAN)
-        c.ellipse((211, 268, 301, 358), stroke=CYAN, width=7)
-        c.ellipse((238, 268, 274, 358), stroke=CYAN, width=5)
-        c.line([(213, 313), (299, 313)], CYAN, 5)
+        c.ellipse((23, 27, 41, 45))
+        c.ellipse((28, 27, 36, 45), width=1.4)
+        c.line([(23, 36), (41, 36)], width=1.4)
     elif kind == "finance":
-        c.line([(151, 231), (151, 370), (366, 370)], WHITE, 8)
-        c.rounded((179, 310, 208, 348), 6, WHITE)
-        c.rounded((235, 280, 264, 348), 6, WHITE)
-        c.rounded((291, 244, 320, 348), 6, "url(#accent)")
-        c.line([(179, 273), (231, 242), (270, 254), (341, 212)], CYAN, 10)
-        c.line([(313, 211), (342, 211), (342, 239)], CYAN, 9)
+        c.line([(23, 28), (23, 44), (42, 44)])
+        c.line([(27, 37), (32, 32), (36, 35), (42, 28)])
+        c.line([(37, 28), (42, 28), (42, 33)])
     elif kind == "document":
         c.path([
-            ("M", 194, 207), ("L", 282, 207), ("L", 329, 255),
-            ("L", 329, 355), ("Q", 329, 378, 306, 378), ("L", 194, 378),
-            ("Q", 171, 378, 171, 355), ("L", 171, 230), ("Q", 171, 207, 194, 207), ("Z",),
-        ], "#173651", WHITE, 8)
-        c.path([("M", 282, 209), ("L", 282, 254), ("L", 326, 254), ("Z",)], "url(#accent)")
-        c.line([(204, 286), (294, 286)], WHITE, 8)
-        c.line([(204, 316), (294, 316)], WHITE, 8)
-        c.line([(204, 346), (261, 346)], CYAN, 8)
+            ("M", 27, 26), ("L", 35, 26), ("L", 41, 32),
+            ("L", 41, 44), ("Q", 41, 46, 39, 46),
+            ("L", 27, 46), ("Q", 25, 46, 25, 44),
+            ("L", 25, 28), ("Q", 25, 26, 27, 26), ("Z",),
+        ])
+        c.line([(35, 26), (35, 32), (41, 32)], width=1.5)
+        c.line([(29, 37), (37, 37)], width=1.5)
+        c.line([(29, 41), (35, 41)], width=1.5)
     elif kind == "calendar":
-        c.rounded((152, 224, 360, 375), 23, "#173651", WHITE, 8)
-        c.line([(157, 269), (355, 269)], WHITE, 7)
-        c.line([(200, 207), (200, 241)], CYAN, 12)
-        c.line([(312, 207), (312, 241)], CYAN, 12)
-        for x, y in ((185, 291), (236, 291), (287, 291), (185, 333), (236, 333)):
-            c.rounded((x, y, x+24, y+20), 5, WHITE)
-        c.line([(290, 341), (299, 350), (319, 328)], CYAN, 9)
+        c.rounded((22, 29, 42, 46))
+        c.line([(22, 34), (42, 34)], width=1.5)
+        c.line([(27, 26), (27, 31)])
+        c.line([(37, 26), (37, 31)])
+        c.line([(28, 40), (31, 43), (36, 38)])
     elif kind == "automation":
-        c.line([(185, 255), (256, 255), (256, 336), (328, 336)], CYAN, 9)
-        c.line([(256, 255), (328, 255)], CYAN, 9)
-        c.rounded((143, 220, 213, 290), 19, "#173651", WHITE, 8)
-        c.rounded((301, 220, 371, 290), 19, "#173651", WHITE, 8)
-        c.rounded((301, 309, 371, 379), 19, "#173651", WHITE, 8)
-        c.path([("M", 179, 236), ("L", 169, 255), ("L", 180, 255), ("L", 173, 275), ("L", 190, 251), ("L", 180, 251), ("Z",)], CYAN)
-        c.line([(325, 248), (331, 254), (345, 240)], CYAN, 6)
-        c.line([(325, 341), (331, 347), (345, 333)], CYAN, 6)
+        c.line([(28, 31), (32, 31), (32, 43), (36, 43)], width=1.5)
+        c.line([(32, 31), (36, 31)], width=1.5)
+        c.rounded((22, 28, 28, 34), 1.5, width=1.6)
+        c.rounded((36, 28, 42, 34), 1.5, width=1.6)
+        c.rounded((36, 40, 42, 46), 1.5, width=1.6)
     elif kind == "research":
-        c.line([(157, 240), (206, 240)], MUTED, 7)
-        c.line([(157, 273), (190, 273)], MUTED, 7)
-        c.line([(157, 306), (198, 306)], MUTED, 7)
-        c.line([(305, 324), (353, 372)], CYAN, 22)
-        c.ellipse((210, 219, 329, 338), "#173651", WHITE, 10)
-        c.line([(244, 284), (260, 269), (272, 280), (294, 255)], CYAN, 8)
+        c.ellipse((23, 27, 37, 41))
+        c.line([(35, 39), (42, 46)], width=2)
 
 
 def build(output: Path) -> None:
@@ -249,22 +183,23 @@ def build(output: Path) -> None:
         raster.resize((256, 256), Image.Resampling.LANCZOS).save(output / f"{kind}-256.png", optimize=True)
         previews.append(raster)
 
-    sheet = Image.new("RGB", (1200, 656), "#eef4f8")
+    sheet = Image.new("RGB", (1200, 660), "#F6F7F8")
     draw = ImageDraw.Draw(sheet)
     try:
-        font = ImageFont.truetype("DejaVuSans.ttf", 20)
-        heading_font = ImageFont.truetype("DejaVuSans.ttf", 25)
+        font = ImageFont.truetype("DejaVuSans.ttf", 16)
+        heading_font = ImageFont.truetype("DejaVuSans.ttf", 22)
     except OSError:
         font = heading_font = ImageFont.load_default()
-    draw.text((36, 22), "BLUEPRINT / FOLDER ICONS", fill=NAVY, font=heading_font)
+    draw.text((36, 24), "BLUEPRINT / OUTLINE FOLDERS", fill=OUTLINE, font=heading_font)
     for i, (kind, preview) in enumerate(zip(KINDS, previews)):
-        x = 18 + (i % 4) * 296
-        y = 66 + (i // 4) * 288
-        draw.rounded_rectangle((x, y, x+280, y+272), 22, fill="white")
-        sheet.paste(preview.resize((232, 232), Image.Resampling.LANCZOS), (x+24, y-3), preview.resize((232, 232), Image.Resampling.LANCZOS))
-        draw.text((x+140, y+233), kind.upper(), fill=NAVY, font=font, anchor="mm")
+        x = 24 + (i % 4) * 294
+        y = 80 + (i // 4) * 278
+        draw.rounded_rectangle((x, y, x+270, y+252), 14, fill="white")
+        thumbnail = preview.resize((208, 208), Image.Resampling.LANCZOS)
+        sheet.paste(thumbnail, (x+31, y+2), thumbnail)
+        draw.text((x+135, y+222), kind.upper(), fill=OUTLINE, font=font, anchor="mm")
     sheet.save(output / "contact-sheet.png", optimize=True)
-    print(f"Built {len(KINDS)} icon families and contact-sheet.png in {output}")
+    print(f"Built {len(KINDS)} outline icon families and contact-sheet.png in {output}")
 
 
 if __name__ == "__main__":

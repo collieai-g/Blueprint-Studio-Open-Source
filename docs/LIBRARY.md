@@ -3,7 +3,8 @@
 [返回首頁](../README.md)
 
 **Blueprint Studio Backend｜藍圖工作室（後台）** 是為創業者而設、可逐步擴充的工作後台。
-你可以為自己或公司部署獨立工作室。今版集中兩個功能：整理公司的文件，以及收藏網站／UI 參考和 YouTube 知識連結。
+你可以為自己或公司部署獨立工作室。今版可整理公司的文件、收藏網站／UI 參考和 YouTube 知識連結，
+亦可保存每日工作成果及待辦。
 這是有登入及伺服器保存功能的後台，與舊版只保存在瀏覽器的資料包介面分開。
 
 ## 可以做甚麼？
@@ -19,6 +20,8 @@
 | 入口 | 用途 |
 | --- | --- |
 | 工作台 | 查看最近資料，快速上傳或新增設計／YouTube 參考 |
+| 每日工作 | 查看按成果、決定、參考及待辦分組的工作紀錄 |
+| 待辦事項 | 按工作日期及完成狀態搜尋，勾選已完成工作 |
 | 文件庫／資料收藏／YouTube 學習 | 按資料類型瀏覽 |
 | 星號收藏 | 找回自己標星的重要資料 |
 | 待整理 | 查看尚未放進收藏集的資料 |
@@ -27,6 +30,7 @@
 
 用頂部搜尋或 `⌘K`／`Ctrl+K` 找資料。清單支援分類篩選、排序及卡片／清單切換。
 手機可用左上角開啟導覽。顯示偏好只保存在目前瀏覽器；公司資料保存在伺服器。
+每日工作支援 AI 整理結果預覽及本機 Codex 寫入，見[連接與用法](DAILY_WORK.md)。
 
 介面以 [Shape of AI](https://www.shapeof.ai/#tuners) 的篩選、範本及圖示識別等互動原則作參考，
 採用原創版面及本專案自製圖示。
@@ -106,6 +110,7 @@ python3 blueprint.py library --data "../藍圖公司資料"
 使用 Docker 則更新程式後重新執行 `docker compose up -d --build`，保留同一個 volume。
 更新前先處理本機程式修改，並備份私人資料。
 1.3 版會自動為舊資料庫加入星號欄位；原有資料、附件、帳號及修改紀錄保留。
+1.4 版加入每日工作及待辦資料表；現有資料保持原樣。匯出清單亦包含工作紀錄及待辦進度。
 
 「匯出資料清單」包含筆記、標記、收藏夾、已抽取的可讀文字及修改紀錄，**不包含原始檔案附件**。
 完整備份需先停止服務，再備份整個私人資料目錄或 Docker volume，包括 SQLite 相關檔案及 `blobs/`。
@@ -134,6 +139,10 @@ python3 blueprint.py library --data "../藍圖公司資料"
 | 上傳／下載文件 | `POST /api/files`、`GET /api/files/{id}` |
 | 預覽規則分類 | `POST /api/classify` |
 | 產生選取資料的 AI 交接 | `POST /api/context` |
+| 取得每日整理指令及格式 | `GET /api/workday-instructions` |
+| 搜尋／儲存每日工作 | `GET /api/workdays`、`POST /api/workdays` |
+| 查看一份工作紀錄 | `GET /api/workdays/{id}` |
+| 搜尋／完成待辦 | `GET /api/todos`、`PATCH /api/todos/{id}` |
 | 匯出 metadata | `GET /api/export` |
 
 API 需要管理員 HTTP Basic 登入。寫入另外需要 `Content-Type: application/json`

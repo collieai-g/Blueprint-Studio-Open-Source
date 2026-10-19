@@ -304,12 +304,12 @@ class LibraryStoreTests(unittest.TestCase):
 
     def test_future_schema_is_rejected_without_modifying_database(self):
         with sqlite3.connect(self.store.db_path) as conn:
-            conn.execute("PRAGMA user_version=3")
+            conn.execute(f"PRAGMA user_version={SCHEMA_VERSION + 1}")
         before = self.store.db_path.read_bytes()
         self.assert_error(500, lambda: Store(self.data))
         self.assertEqual(self.store.db_path.read_bytes(), before)
         with sqlite3.connect(self.store.db_path) as conn:
-            self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 3)
+            self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION + 1)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+from datetime import date as calendar_date
 import hashlib
 import hmac
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -199,6 +200,43 @@ class LibraryHandler(BaseHTTPRequestHandler):
                                "product_name": "Blueprint Studio Backend",
                                "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
                                "classification": "rules", "stats": store.stats()})
+        if method == "GET" and path == "/api/workday-instructions":
+            from .integration import workday_example, workday_instruction
+            requested_date = parse_qs(parsed.query, keep_blank_values=True).get("date", [None])[0]
+            if requested_date is not None:
+                try:
+                    if calendar_date.fromisoformat(requested_date).isoformat() != requested_date:
+                        raise ValueError
+                except ValueError as exc:
+                    raise LibraryError("日期需要使用 YYYY-MM-DD 格式。") from exc
+            return self._json({"instruction": workday_instruction(requested_date),
+                               "format": workday_example(requested_date)})
+        if path == "/api/workdays":
+            if method == "GET":
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                return self._json(store.list_workdays(
+                    q=query.get("q", [""])[0], date=query.get("date", [""])[0],
+                    limit=int(query.get("limit", ["30"])[0]),
+                    offset=int(query.get("offset", ["0"])[0])))
+            if method == "POST":
+                result = store.import_workday(self._body(), actor=actor)
+                return self._json(result, 201 if result["created"] else 200)
+        workday_match = re.fullmatch(r"/api/workdays/([a-zA-Z0-9-]+)", path)
+        if workday_match and method == "GET":
+            return self._json({"workday": store.get_workday(workday_match.group(1))})
+        if path == "/api/todos" and method == "GET":
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            done = query.get("done", ["0"])[0]
+            if done not in {"0", "1", "all"}:
+                raise LibraryError("待辦狀態需要 0、1 或 all。")
+            return self._json(store.list_todos(
+                done=None if done == "all" else done == "1",
+                date=query.get("date", [""])[0], q=query.get("q", [""])[0],
+                limit=int(query.get("limit", ["100"])[0]),
+                offset=int(query.get("offset", ["0"])[0])))
+        todo_match = re.fullmatch(r"/api/todos/([a-zA-Z0-9-]+)", path)
+        if todo_match and method == "PATCH":
+            return self._json({"todo": store.update_todo(todo_match.group(1), self._body(), actor=actor)})
         if path == "/api/collections":
             if method == "GET":
                 return self._json({"collections": store.list_collections()})
@@ -270,7 +308,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
         if path == "/api/export" and method == "GET":
             return self._json(store.export_metadata(), extra={"Content-Disposition": 'attachment; filename="blueprint-library-metadata.json"'})
         if method == "GET":
-            if path in {"/", "/index.html", "/app.js", "/style.css"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/style.css"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()

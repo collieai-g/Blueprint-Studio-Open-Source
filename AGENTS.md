@@ -12,6 +12,10 @@ reasoning when the user asks. The user's expanded scope authorizes a persistent
 company backend. Its core scope is file organization and website/YouTube
 collections. The user now authorizes a minimal workspace UI with practical
 navigation, favourites, unfiled items, and explicit selected-source AI handoff.
+The user also authorizes daily work records and checkable todos. The current AI
+curates its visible conversation into useful outcomes, decisions, references and
+unfinished tasks; the backend stores the curated result. Keep this distinct from
+automatic access to other AI platforms or an unconfigured summarization model.
 Do not add unrelated company features, simulated AI connections or OS icon hooks.
 
 - `blueprint_folders/`: Python 3.10+ standard-library CLI for actual folders.
@@ -25,6 +29,10 @@ Do not add unrelated company features, simulated AI connections or OS icon hooks
 - Automatic categories currently use explicit local metadata/keyword rules.
   Describe these truthfully; there is no connected language model or silent AI
   access to conversations, YouTube transcripts or external page contents.
+- `workday-connect` links a private workspace to an existing company library;
+  its `WORKDAY.md` tells Codex how to save a day through `workday-save`. Follow
+  that private binding for daily-save requests. Do not save company records in
+  this public source checkout or silently create a library at a guessed path.
 - Folder identity lives in `.blueprint/folder.json`; preserve unknown fields.
 - `link` binds an external private studio to this shared tool checkout. Keep
   studios outside this repository; `blueprint-studio.py` delegates to the current
