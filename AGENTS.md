@@ -9,6 +9,11 @@ Do not add an embedded model, API key requirement, database, or OS icon hooks.
 - `dist/index.html`: generated, standalone offline browser build.
 - `assets/icons/`: consistent portable SVG/PNG artwork.
 - Folder identity lives in `.blueprint/folder.json`; preserve unknown fields.
+- `link` binds an external private studio to this shared tool checkout. Keep
+  studios outside this repository; `blueprint-studio.py` delegates to the current
+  shared code. Preserve studio source, guidance and binding extensions on relink.
+- Publish reusable tool changes here. Keep private studio projects and personal
+  instructions in their own directories; do not stage them into this repository.
 - Preserve existing source files and `AGENTS.md` when adding markers.
 - Browser storage belongs to that browser; use ZIP/JSON for transfer and backup.
 - After editing web source, run `python tools/build_web.py`.

@@ -21,6 +21,8 @@ def main(argv=None) -> int:
     serve.add_argument("--no-open", action="store_true")
     setup = commands.add_parser("init", help="建立工作室根目錄及 AI 管理指引")
     setup.add_argument("path")
+    link = commands.add_parser("link", help="建立獨立工作室，連結共用工具以使用功能更新")
+    link.add_argument("path", help="工具目錄以外嘅私人工作室路徑")
     for action in ("create", "mark"):
         command = commands.add_parser(action, help="建立新文件夾" if action == "create" else "標記現有文件夾")
         command.add_argument("path", help="父目錄" if action == "create" else "現有文件夾")
@@ -68,6 +70,9 @@ def main(argv=None) -> int:
             return 0
         if args.command == "init":
             result = init_studio(args.path)
+        elif args.command == "link":
+            from .workspaces import link_workspace
+            result = link_workspace(args.path)
         elif args.command == "create":
             result = create_folder(args.path, args.name, args.description, args.category, args.tag)
         elif args.command == "mark":

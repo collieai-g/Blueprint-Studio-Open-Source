@@ -13,6 +13,73 @@ for use with Codex. Start with an empty folder and develop its purpose over time
 
 上圖為示範資料；首次開啟的工作區是空白的。
 
+## 公開工具與自己的工作室一齊更新
+
+需要長期用 Codex 管理 AI 程式專案時，建議保留一份共用工具，
+再建立一個獨立的私人工作室。工作室透過小型啟動檔使用同一份工具，
+無需為自己另複製一套程式或維護第二個 fork。
+
+```text
+你的電腦/
+├── blueprint-folder-agent/       # 公開工具，通用功能在這裏更新
+└── 藍圖專員工作室/               # 自己的專案、標記、工作指引
+    ├── blueprint-studio.py       # 連結共用工具的啟動檔
+    ├── AGENTS.md                 # 可自行補充的 Codex 工作指引
+    ├── .blueprint/tool.json      # 本機工具位置
+    └── WhatsApp客服/             # 個別專案的程式碼及身份卡
+```
+
+需要 Git 和 Python 3.10+。在你準備存放兩個文件夾的位置執行：
+
+```sh
+git clone https://github.com/collieai-g/blueprint-folder-agent.git
+python3 blueprint-folder-agent/blueprint.py link "藍圖專員工作室"
+python3 "藍圖專員工作室/blueprint-studio.py" create "第一個專員"
+python3 "藍圖專員工作室/blueprint-studio.py" --version
+```
+
+在 Codex 開啟「藍圖專員工作室」作為自己的工作專案。之後可直接說：
+
+> 請先讀 AGENTS.md、.blueprint/tool.json 及工作室清單，使用 blueprint-studio.py
+> 管理這個工作室。按我們的對話更新專案身份標記；通用工具功能到連結的工具專案
+> 開發，私人程式碼及指引保存在本工作室。
+
+在工作室內，指令可以省略工作室路徑：
+
+```sh
+python3 blueprint-studio.py create "WhatsApp客服" --category chat --tag 開發中
+python3 blueprint-studio.py mark "WhatsApp客服" --description "企業客服回覆" --tag WhatsApp
+python3 blueprint-studio.py search "WhatsApp"
+python3 blueprint-studio.py reindex
+```
+
+| 你更新的內容 | 如何在兩邊生效 |
+| --- | --- |
+| 在本機共用工具開發通用功能 | 測試後提交、推送到公開 GitHub；自己的啟動檔已使用這份程式 |
+| GitHub 上已有新功能 | 本機拉取新版；工作室下次執行就使用新版 |
+| 自己的專案、標記或 Codex 指引 | 保存在工作室，可持續修改；與公開工具分開管理 |
+
+拉取公開更新，在存放兩個文件夾的父目錄執行：
+
+```sh
+git -C blueprint-folder-agent pull --ff-only
+python3 "藍圖專員工作室/blueprint-studio.py" --version
+```
+
+工具在同一路徑更新後，啟動檔會使用更新的程式；已啟動的本機服務請重新啟動。
+如有本機工具修改，先讓 Codex 檢查 Git 狀態並處理提交／分支，再拉取更新。
+工作室內的自訂指引及程式碼會保留。更新工具不會自動修改各個 AI 專案的程式碼，
+日後如功能需要改資料格式，應另外提供遷移步驟。
+
+`link` 亦可連結既有工作室，保留現有 `AGENTS.md`、專案及身份資料。
+工作室與工具目錄必須分開。搬動共用工具，或改用新版 ZIP 解壓後的新位置，
+請用新位置的 `blueprint.py link "工作室路徑"` 重新連結；本機路徑需在各裝置分別設定。
+此功能不會自動拉取 GitHub 或跨裝置同步私人內容。
+
+啟動檔的 `gui`／`serve` 仍開啟下述瀏覽器資料包介面，並不直接讀寫工作室檔案。
+瀏覽器介面更新前請匯出 JSON／ZIP 備份；使用固定的 localhost 網址及同一瀏覽器，
+避免因下載路徑或網址改變而開啟另一個儲存空間。
+
 ## 直接使用
 
 下載並用瀏覽器開啟 **`dist/index.html`**。它是包含全部程式碼與圖示的單一 HTML，

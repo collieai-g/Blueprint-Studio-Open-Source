@@ -52,6 +52,11 @@ FOLDER_GUIDANCE = """# 藍圖專員文件夾
 STUDIO_GUIDANCE = """# 藍圖專員工作室
 
 本目錄用普通文件夾管理獨立 AI 專員。
+若本目錄有 `blueprint-studio.py`，使用它執行工作室操作；先讀
+`.blueprint/tool.json` 了解共用工具位置。`create`、`search`、`reindex`
+會自動使用本工作室路徑，例如 `python3 blueprint-studio.py create "新專員"`。
+通用功能在共用工具專案開發；本目錄保存私人專案、身份標記及自訂指引。
+工具更新後重新執行啟動器即可使用新版；私人內容不加入公開工具的 Git 提交。
 尋找專員時，先搜尋 `.blueprint/INDEX.csv`，再讀候選文件夾的
 `.blueprint/folder.json` 及適用的 `AGENTS.md`，按需要開啟詳細內容。
 建立新專員時，使用 Blueprint Folders 的 `create` 指令，傳入名稱、用途和標籤。
