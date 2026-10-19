@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1423">
+  <title>藍圖 · 智能資料夾</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">藍</div>
+        <div><div class="brand-name">藍圖 · 智能資料夾</div><div class="brand-caption">專員工作室</div></div>
+      </div>
+      <div class="top-actions">
+        <button class="button quiet" id="import-button" type="button">匯入資料包</button>
+        <button class="button quiet" id="export-all-button" type="button">備份全部 JSON</button>
+        <button class="button primary" id="new-button" type="button"><span aria-hidden="true">＋</span> 空白資料夾</button>
+      </div>
+    </header>
+
+    <p class="privacy-note"><span aria-hidden="true">◈</span> 本機瀏覽器保存，下載資料包帶去 Codex。手機與電腦之間可用資料包轉移。</p>
+
+    <main class="workspace">
+      <section class="library panel" aria-labelledby="library-heading">
+        <div class="section-heading"><div><p class="eyebrow">WORKSPACE</p><h1 id="library-heading">我的資料夾 <span class="count-chip" id="folder-count">0</span></h1></div></div>
+        <label class="search-field"><span class="sr-only">搜尋資料夾、用途與標籤</span><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜尋名稱、用途或標籤…" autocomplete="off"></label>
+        <div id="folder-grid" class="folder-grid" aria-label="資料夾清單"></div>
+        <div id="library-empty" class="empty-state">
+          <div class="empty-folder" aria-hidden="true">＋</div>
+          <h2>先留一個空間畀你嘅想法</h2>
+          <p>開一個空白資料夾，再逐步加入用途、標記與內容。</p>
+          <button class="button primary" id="empty-new-button" type="button">建立空白資料夾</button>
+        </div>
+        <div id="search-empty" class="empty-state" hidden><h2>未找到相關資料夾</h2><p>試試其他名稱、用途或標籤。</p></div>
+      </section>
+
+      <aside class="editor panel" aria-label="資料夾內容">
+        <div id="editor-empty" class="editor-empty"><p class="eyebrow">FOLDER DETAILS</p><h2>由你定義，逐步成形。</h2><p>選擇一個資料夾，設定同一風格嘅圖案，或者加入你準備交畀 Codex 嘅內容。</p><p class="footer-note">這裏管理瀏覽器內的資料包；下載 ZIP 後，才會取得可解壓的實際文件夾。</p></div>
+        <div id="editor-content" class="editor-content" hidden>
+          <div class="editor-heading"><img id="selected-icon" class="selected-icon" alt=""><div><p class="eyebrow">FOLDER DETAILS</p><h2 id="selected-title">未命名資料夾</h2></div></div>
+          <p id="save-state" class="save-state" aria-live="polite">已儲存至此瀏覽器</p>
+          <form id="folder-form" autocomplete="off">
+            <div class="field"><label for="folder-name">資料夾名稱</label><input id="folder-name" maxlength="120" placeholder="未命名資料夾"></div>
+            <div class="field"><label for="folder-description">用途 <span class="optional">可稍後補充</span></label><textarea id="folder-description" rows="3" maxlength="8000" placeholder="呢個資料夾將會做啲乜？"></textarea></div>
+            <div class="field"><label for="folder-tags">標籤 <span class="optional">逗號分隔</span></label><input id="folder-tags" maxlength="3300" placeholder="例如：客服, WhatsApp, 廣東話"></div>
+            <fieldset class="field icon-field"><legend>選擇圖案</legend><div id="icon-picker" class="icon-picker"></div></fieldset>
+          </form>
+
+          <section class="files-section" aria-labelledby="files-heading">
+            <div class="section-heading compact"><h3 id="files-heading">資料夾內容 <span id="file-count" class="count-chip">0</span></h3><button class="button quiet small" id="upload-files-button" type="button">加入檔案</button></div>
+            <p class="footer-note">可加入文件與程式。文字可在此修改；其他檔案原樣保存。瀏覽器工作區總量約 2 MB，請定期下載備份。</p>
+            <div id="file-list" class="file-list"></div>
+            <details id="new-file-details" class="file-editor"><summary>＋ 新增文字檔案</summary><div class="field"><label for="new-file-path">相對路徑</label><input id="new-file-path" placeholder="例如：notes/需求.md"></div><div class="field"><label for="new-file-content">內容</label><textarea id="new-file-content" rows="5" placeholder="記低想法、貼上文件或程式碼…"></textarea></div><button id="add-text-file-button" class="button" type="button">加入資料夾</button></details>
+            <div id="file-preview" class="file-preview" hidden><div class="section-heading compact"><strong id="preview-title"></strong><button class="button quiet small" id="close-preview-button" type="button">關閉</button></div><label class="sr-only" for="preview-content">檔案內容</label><textarea id="preview-content" rows="9" spellcheck="false"></textarea><p class="footer-note">修改會自動保存。</p></div>
+          </section>
+
+          <div class="editor-actions"><button id="download-zip-button" class="button primary" type="button">↓ 下載完整資料包 ZIP</button><button id="copy-codex-button" class="button" type="button">複製 Codex 指令</button><div class="secondary-actions"><button id="export-json-button" class="button quiet small" type="button">匯出 JSON</button><button id="delete-button" class="button quiet danger small" type="button">刪除資料夾</button></div></div>
+          <details id="codex-details" class="codex-details"><summary>交畀 Codex 嘅指令</summary><textarea id="codex-prompt" rows="5" readonly aria-label="Codex 指令"></textarea><p class="footer-note">先下載及解壓資料包，再將資料夾交畀 Codex；本程式未連接 Codex。</p></details>
+        </div>
+      </aside>
+    </main>
+    <footer class="footer-note app-footer">資料只保存在目前瀏覽器，並非雲端同步。清除瀏覽器資料前，請先下載備份。</footer>
+  </div>
+  <input id="import-input" type="file" accept=".json,.zip,application/json,application/zip" hidden>
+  <input id="files-input" type="file" multiple hidden>
+  <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+  <script src="icons.js"></script>
+  <script src="packager.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
