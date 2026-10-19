@@ -32,13 +32,16 @@ MAX_JSON_BYTES = 512 * 1024
 PASSWORD_ROUNDS = 310_000
 
 
-def initialize_library(data_dir, username: str, password: str) -> dict:
+def initialize_library(data_dir, username: str, password: str, company_profile=None) -> dict:
     """Create a one-owner library. Existing credentials are never overwritten."""
     if (not isinstance(username, str) or not username.strip() or len(username) > 80
             or re.search(r"[:\x00-\x1f\x7f]", username)):
         raise LibraryError("管理員名稱需為 1–80 字，不能包含冒號或控制字元。")
     if not isinstance(password, str) or not 12 <= len(password) <= 1024:
         raise LibraryError("管理員密碼需要 12–1,024 個字元。")
+    if company_profile is not None:
+        from .company import _fields
+        _fields(company_profile, versioned=False)
     store = Store(data_dir)
     directory = Path(data_dir).expanduser().resolve()
     credential_path = directory / "access.json"
@@ -53,6 +56,8 @@ def initialize_library(data_dir, username: str, password: str) -> dict:
         directory.chmod(0o700)
     except OSError:
         pass  # ACL-based filesystems can enforce privacy differently.
+    if company_profile is not None:
+        store.bootstrap_company_profile(company_profile)
     return {"data_path": str(directory), "username": username.strip(), "version": __version__}
 
 
@@ -196,10 +201,20 @@ class LibraryHandler(BaseHTTPRequestHandler):
         store = self.server.store
         actor = self.server.credential["username"]
         if method == "GET" and path == "/api/info":
-            return self._json({"version": __version__, "company_name": "藍圖工作室 Blueprint Studio",
+            profile = store.get_company_profile()
+            return self._json({"version": __version__, "company_name": profile["name"] or "藍圖工作室 Blueprint Studio",
+                               "company_profile": profile,
                                "product_name": "Blueprint Studio Backend",
                                "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
                                "classification": "rules", "stats": store.stats()})
+        if path == "/api/company-profile":
+            if method == "GET":
+                return self._json({"company_profile": store.get_company_profile()})
+            if method == "PATCH":
+                return self._json({"company_profile": store.update_company_profile(self._body())})
+        if path == "/api/install-instructions" and method == "GET":
+            from .onboarding import installation_instruction
+            return self._json({"instruction": installation_instruction()})
         if method == "GET" and path == "/api/workday-instructions":
             from .integration import workday_example, workday_instruction
             requested_date = parse_qs(parsed.query, keep_blank_values=True).get("date", [None])[0]
@@ -221,9 +236,13 @@ class LibraryHandler(BaseHTTPRequestHandler):
             if method == "POST":
                 result = store.import_workday(self._body(), actor=actor)
                 return self._json(result, 201 if result["created"] else 200)
-        workday_match = re.fullmatch(r"/api/workdays/([a-zA-Z0-9-]+)", path)
+        workday_match = re.fullmatch(r"/api/workdays/([a-zA-Z0-9-]+)(/history)?", path)
         if workday_match and method == "GET":
+            if workday_match.group(2):
+                return self._json({"versions": store.item_workday_history(workday_match.group(1))})
             return self._json({"workday": store.get_workday(workday_match.group(1))})
+        if workday_match and method == "PATCH" and not workday_match.group(2):
+            return self._json(store.update_workday(workday_match.group(1), self._body(), actor=actor))
         if path == "/api/todos" and method == "GET":
             query = parse_qs(parsed.query, keep_blank_values=True)
             done = query.get("done", ["0"])[0]

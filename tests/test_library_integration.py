@@ -7,9 +7,10 @@ import shlex
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from blueprint_library.integration import (
-    connect_workday, existing_workday_data, resolve_workday_data,
+    connect_workday, existing_workday_data, get_workday_binding, resolve_workday_data,
     workday_example, workday_instruction,
 )
 from blueprint_library.server import initialize_library
@@ -289,6 +290,79 @@ class WorkdayIntegrationTests(unittest.TestCase):
         # No shared mutable payload can leak edits from a previous preview.
         example["entries"].clear()
         self.assertEqual(len(workday_example("2026-10-19")["entries"]), 4)
+
+    def test_cloud_binding_only_saves_environment_references_and_rejects_local_resolution(self):
+        with patch.dict("os.environ", {"TEST_BACKEND_USER": "private-user-value",
+                                      "TEST_BACKEND_PASS": "private-password-value"}):
+            result = connect_workday(self.workspace, url="https://company.example/", tool_root=self.tool,
+                                     username_env="TEST_BACKEND_USER", password_env="TEST_BACKEND_PASS")
+        self.assertEqual(result["mode"], "cloud")
+        self.assertEqual(result["url"], "https://company.example")
+        binding = get_workday_binding(self.workspace)
+        self.assertEqual(binding["mode"], "cloud")
+        self.assertNotIn("data_path", binding)
+        self.assertEqual(binding["username_env"], "TEST_BACKEND_USER")
+        for filename in ("AGENTS.md", "WORKDAY.md", ".blueprint/workday.json"):
+            content = (self.workspace / filename).read_text(encoding="utf-8")
+            self.assertNotIn("private-user-value", content)
+            self.assertNotIn("private-password-value", content)
+        self.assert_error(400, lambda: resolve_workday_data(self.workspace))
+        self.assertFalse((self.workspace / "library.sqlite3").exists())
+        self.assertFalse((self.workspace / "blobs").exists())
+        guide = (self.workspace / "WORKDAY.md").read_text(encoding="utf-8")
+        for phrase in ("Codex", "Claude Code", "Gemini CLI", "今日收工", "workday-revise",
+                       "expected_version", "明確提供", "待辦完成狀態"):
+            self.assertIn(phrase, guide)
+
+    def test_switch_between_cloud_and_local_clears_only_old_location_fields(self):
+        self.connect()
+        config_path = self.workspace / ".blueprint" / "workday.json"
+        config = json.loads(config_path.read_bytes())
+        config["extension"] = {"retain": True}
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        connect_workday(self.workspace, url="https://backend.example", tool_root=self.tool)
+        cloud = get_workday_binding(self.workspace)
+        self.assertEqual(cloud["extension"], {"retain": True})
+        self.assertNotIn("data_path", cloud)
+        self.connect()
+        local = get_workday_binding(self.workspace)
+        self.assertEqual(local["mode"], "local")
+        self.assertEqual(local["extension"], {"retain": True})
+        self.assertNotIn("url", local)
+        self.assertNotIn("password_env", local)
+        self.assertEqual(resolve_workday_data(self.workspace), self.data)
+
+    def test_legacy_v14_files_are_upgraded_without_changing_custom_bytes(self):
+        from blueprint_library.integration import _legacy_guide, _LEGACY_BLOCK
+        self.connect()
+        config_path = self.workspace / ".blueprint" / "workday.json"
+        config = json.loads(config_path.read_bytes())
+        config.pop("mode")
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        (self.workspace / "WORKDAY.md").write_bytes(_legacy_guide(self.workspace, self.tool))
+        agents = self.workspace / "AGENTS.md"
+        prefix, suffix = b"# My original instructions\r\n\r\n", b"\r\n\r\n# After block\r\n"
+        agents.write_bytes(prefix + _LEGACY_BLOCK.replace(b"\n", b"\r\n") + suffix)
+        self.assertEqual(get_workday_binding(self.workspace)["mode"], "local")
+        self.connect()
+        self.assertTrue(agents.read_bytes().startswith(prefix))
+        self.assertTrue(agents.read_bytes().endswith(suffix))
+        self.assertNotIn(b"\n", agents.read_bytes().replace(b"\r\n", b""))
+        self.assertIn("今日收工", agents.read_text(encoding="utf-8"))
+        self.assertIn("通用 AI", (self.workspace / "WORKDAY.md").read_text(encoding="utf-8"))
+
+    def test_connect_requires_exactly_one_location_and_valid_cloud_settings(self):
+        self.assert_error(400, lambda: connect_workday(self.workspace, tool_root=self.tool))
+        self.assert_error(400, lambda: connect_workday(self.workspace, self.data,
+                                                       tool_root=self.tool, url="https://backend.example"))
+        for url in ("http://example.com", "https://user:pass@example.com", "https://example.com/prefix",
+                    "https://example.com?token=private", "https://example.com/#private"):
+            with self.subTest(url=url):
+                self.assert_error(400, lambda: connect_workday(self.workspace, url=url, tool_root=self.tool))
+        for name in ("", "123NAME", "NAME-WITH-DASH", "NAME=secret", "N" * 101):
+            self.assert_error(400, lambda: connect_workday(self.workspace, url="https://backend.example",
+                                                           tool_root=self.tool, password_env=name))
+        self.assertFalse(self.workspace.exists())
 
 
 if __name__ == "__main__":

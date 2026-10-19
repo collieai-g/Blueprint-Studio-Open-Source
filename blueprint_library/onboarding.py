@@ -1,0 +1,302 @@
+"""Prepare a private, reviewable setup plan without deploying or creating data.
+
+The installer AI follows the plan using tools it actually has. This module only
+writes company input and deployment guidance; it never creates credentials, an
+empty library, a remote account, or a pretend connected backend.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+
+from .company import _fields as _company_fields
+from .store import LibraryError
+
+
+_SOURCE_ROOT = Path(__file__).resolve().parents[1]
+_PROVIDERS = {"render", "railway", "server"}
+_REPOSITORY = "https://github.com/collieai-g/blueprint-folder-agent"
+_RENDER_LAUNCH = "https://render.com/deploy?repo=" + _REPOSITORY
+_WORKSPACE_NAME = "藍圖工作室 Blueprint Studio"
+
+
+def installation_instruction() -> str:
+    """Return a portable prompt usable by an equipped AI or a plain chat."""
+    return (
+        "請幫我安裝藍圖工作室（後台），公開工具：\n"
+        f"{_REPOSITORY}\n\n"
+        "先閱讀專案的 docs/INSTALL.md 及 AGENTS.md，檢查現有安裝，保留已有資料、"
+        "工作室及工具修改。先問我的公司名稱；行業、公司簡介及目標可以留空。"
+        "再問使用雲端（預設）或本機，以及是否已有雲端帳戶、偏好哪個平台。"
+        "雲端可選 Render、Railway 或自己的伺服器；未有偏好時介紹 Render，讓我選擇。\n\n"
+        "把公司資料及安裝計劃存到公開程式專案以外的私人目錄，先準備計劃，"
+        "再按我選擇的平台協助開戶／登入、持久儲存、HTTPS 及秘密設定。"
+        "涉及未授權的收費資源時先核對方案費用及預算；已有授權則沿用。密碼和金鑰只由我在平台秘密設定"
+        "或本機安全輸入，不要叫我貼到聊天。公司資料只用於首次設定，已有資料不可重設。\n\n"
+        "有實際指令及部署工具就完成可執行部分；普通聊天沒有工具時，提供逐步操作及"
+        "有效公司 JSON 讓我手動交接，不要假裝自動安裝。雲端必須取得真實 HTTPS 網址，"
+        "完成登入、核對公司設定、保存一筆每日工作並重啟後查回，才可以說安裝完成；"
+        "本機則用實際啟動地址做同樣驗證。未完成時清楚標記待辦，不要用示範網址冒充已連接。\n\n"
+        "完成後連結我的私人工作室。以後我說『今日收工』，請整理目前可見或我提供的"
+        "對話，只保存有用成果、已確認決定、參考及未完成待辦，去重及精煉，"
+        "沿用來源識別；修改使用版本檢查並保留可恢復歷史，不用隨機識別繞過衝突。"
+        "不保存秘密或整段原始聊天，不聲稱能讀取其他平台不可見對話。"
+        "目前沒有可用連線時，只輸出可匯入 JSON，不聲稱已儲存。"
+        "先做好公司設定、文件整理、收藏及每日工作，不增加未要求的公司模組。\n"
+    )
+
+
+def _safe_path(value, label: str) -> Path:
+    """Check supplied components before resolving, including dangling symlinks."""
+    try:
+        if isinstance(value, str) and not value.strip():
+            raise ValueError
+        path = Path(value).expanduser()
+        if any(ord(char) < 32 or ord(char) == 127 for char in str(path)):
+            raise ValueError
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        current = Path(path.anchor)
+        for component in path.parts[1:]:
+            current = current / component
+            if current.is_symlink():
+                raise LibraryError(f"{label}不能包含符號連結。")
+        return path.resolve()
+    except (TypeError, ValueError, OSError, RuntimeError) as exc:
+        if isinstance(exc, LibraryError):
+            raise
+        raise LibraryError(f"請提供有效的{label}。") from exc
+
+
+def _outside_source(path: Path, label: str):
+    if path == _SOURCE_ROOT or _SOURCE_ROOT in path.parents or path in _SOURCE_ROOT.parents:
+        raise LibraryError(f"{label}必須放在公開工具專案以外，兩者不能互相包含。")
+
+
+def _company(value) -> dict:
+    # Shared validation checks the exact four fields, lengths, types and NULs.
+    fields, _ = _company_fields(value, versioned=False)
+    return fields
+
+
+def load_company_file(path) -> dict:
+    """Load a private company JSON file without opening or creating a library."""
+    target = _safe_path(path, "公司資料檔案")
+    _outside_source(target, "公司資料檔案")
+    try:
+        if not target.is_file() or target.stat().st_size > 64 * 1024:
+            raise ValueError
+        payload = json.loads(target.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, UnicodeError) as exc:
+        raise LibraryError("無法讀取公司 JSON；請使用不超過 64 KiB 的正常 UTF-8 檔案。") from exc
+    return _company(payload)
+
+
+def _json_bytes(value) -> bytes:
+    return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def _command(*parts) -> str:
+    return " ".join(shlex.quote(str(part)) for part in parts)
+
+
+def _code(command: str) -> str:
+    # Keep legal backticks in a user-chosen path from ending a Markdown fence.
+    longest = max((len(run) for run in re.findall(r"`+", command)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}sh\n{command}\n{fence}\n"
+
+
+def _environment(company: dict, username: str) -> bytes:
+    values = {
+        "BLUEPRINT_DATA_DIR": "/data",
+        "BLUEPRINT_ADMIN_USERNAME": username,
+        "BLUEPRINT_COMPANY_NAME": company["name"],
+        "BLUEPRINT_COMPANY_INDUSTRY": company.get("industry", ""),
+        "BLUEPRINT_COMPANY_DESCRIPTION": company.get("description", ""),
+        "BLUEPRINT_COMPANY_GOALS": company.get("goals", ""),
+    }
+    lines = [
+        "# 私人部署範本，請勿提交 Git。此檔沒有密碼或 API 金鑰。",
+        "# 下列文字採 dotenv 的 JSON 引號表示；在平台表單填入實際值，不連引號貼上。",
+        "# 公司資料只供首次設定；更新工具或重啟不能覆寫既有公司設定。",
+        *(key + "=" + json.dumps(value, ensure_ascii=False) for key, value in values.items()),
+        "# 在平台秘密設定或主機安全環境中自行設定最少 12 字元的管理員密碼。",
+        "BLUEPRINT_ADMIN_PASSWORD=",
+        "",
+    ]
+    return "\n".join(lines).encode("utf-8")
+
+
+def _guide(plan: dict) -> bytes:
+    tool = str(_SOURCE_ROOT / "blueprint.py")
+    workspace = plan["workspace_path"]
+    common = (
+        "# 藍圖工作室（後台）｜安裝下一步\n\n"
+        "目前只準備好私人公司資料及安裝計劃，尚未部署、建立資料庫或設定登入。"
+        "company-profile.json 是你的公司資料；setup.json 是計劃，並非已連線證明。"
+        "保留這些檔案在私人位置，不要上傳公開 GitHub。完整說明見公開工具的 docs/INSTALL.md。\n\n"
+    )
+    if plan["mode"] == "local":
+        init = _command("python3", tool, "library-init", plan["data_path"], "--username", plan["username"], "--company-file", plan["company_file"])
+        connect = _command("python3", tool, "workday-connect", workspace, "--data", plan["data_path"])
+        start = _command("python3", tool, "library", "--data", plan["data_path"])
+        body = (
+            "## 本機安裝\n\n"
+            "1. 確認 Python 3.10+ 可用；以下用 python3，Windows 如需要可改用 py -3。"
+            "初始化時在終端機安全提示輸入管理員長密碼，不要把密碼貼到聊天。已有資料庫時"
+            "不要重新初始化；先核對資料路徑，按照 docs/INSTALL.md 接續使用。\n\n"
+            + _code(init)
+            + "\n2. 初始化成功後，把私人工作室連到這個資料庫：\n\n"
+            + _code(connect)
+            + "\n3. 啟動後台，保持這個終端機運行：\n\n"
+            + _code(start)
+            + "\n4. 開啟啟動輸出的實際地址，通常是 http://127.0.0.1:8787，登入並核對公司名稱、"
+            "行業、簡介和目標。此模式只供這部電腦使用，並未因此成為外出可用的雲端服務。\n\n"
+            "5. 在每日工作頁保存一筆真實而簡短的紀錄，停止後重新執行啟動指令，"
+            "查回同一筆紀錄及公司設定。確實保留才算本機驗證完成。\n"
+        )
+    else:
+        provider = plan["provider"]
+        if provider == "render":
+            platform = (
+                "1. 登入或建立 Render 帳戶，使用官方部署入口：\n\n"
+                f"{_RENDER_LAUNCH}\n\n"
+                "核對 repo 的 render.yaml，Dockerfile 為 company/Dockerfile，持久磁碟掛載 /data，"
+                "並啟用平台 HTTPS。在平台核對服務及磁碟費用，確認接受後才建立收費資源。\n\n"
+            )
+        elif provider == "railway":
+            platform = (
+                "1. 登入或建立 Railway 帳戶，在 https://railway.com/new 從 GitHub repo 部署：\n\n"
+                f"{_REPOSITORY}\n\n"
+                "在服務設定指定 company/Dockerfile；建立並掛載持久 Volume 到 /data。"
+                "服務跟隨平台 PORT，未指定時為 8787；設定對外網域和 HTTPS。"
+                "如非 root 的 Volume 權限有問題，按 Railway 官方說明設定 RAILWAY_RUN_UID=0。"
+                "先核對平台、運行資源及 Volume 費用，"
+                "確認接受後才建立收費資源。\n\n"
+            )
+        else:
+            build = _command("docker", "build", "-f", str(_SOURCE_ROOT / "company" / "Dockerfile"), "-t", "blueprint-studio", str(_SOURCE_ROOT))
+            run = _command(
+                "docker", "run", "-d", "--name", "blueprint-studio", "--restart", "unless-stopped",
+                "-p", "127.0.0.1:8787:8787", "--mount", "type=volume,source=company-data,target=/data",
+                "--env", "BLUEPRINT_ADMIN_USERNAME", "--env", "BLUEPRINT_ADMIN_PASSWORD",
+                "--env", "BLUEPRINT_COMPANY_NAME", "--env", "BLUEPRINT_COMPANY_INDUSTRY",
+                "--env", "BLUEPRINT_COMPANY_DESCRIPTION", "--env", "BLUEPRINT_COMPANY_GOALS", "blueprint-studio",
+            )
+            platform = (
+                "1. 登入自己的伺服器，確認 Docker、持久儲存及備份方案可用，先核對主機及磁碟費用。"
+                "將公開工具放到主機並按實際 checkout 位置調整以下路徑。先在主機安全環境設定第 2 步"
+                "的環境變數，再建置及啟動：\n\n"
+                + _code(build)
+                + "\n" + _code("docker volume create company-data")
+                + "\n" + _code(run)
+                + "\n沿用 company-data volume，不刪除已有容器或資料來避開名稱衝突；有現存服務時先核對它。"
+                "用 Caddy／Nginx 為真實網域設定有效 TLS，代理到 127.0.0.1:8787，保留原始 Host header。"
+                "登入資料不能透過公網明文 HTTP 傳送。\n\n"
+            )
+        connect = _command(
+            "python3", tool, "workday-connect", workspace, "--url", "https://actual",
+            "--username-env", "BLUEPRINT_BACKEND_USERNAME", "--password-env", "BLUEPRINT_BACKEND_PASSWORD",
+        )
+        body = (
+            "## 雲端部署\n\n" + platform
+            + "2. 按 deployment.env.example 在平台的環境變數表單設定管理員名稱、公司資料及"
+            "BLUEPRINT_DATA_DIR=/data。使用實際文字值；dotenv 引號及跳脫字元不要原樣貼入表單。"
+            "公司資料只在首次初始化使用，已有公司資料不應在重啟或更新時重設。"
+            "BLUEPRINT_ADMIN_PASSWORD 只在平台秘密設定輸入，最少 12 字元；不放入聊天或公開程式碼。\n\n"
+            "3. 部署完成後取得平台提供或自己設定的真實 HTTPS 網址。打開並登入，核對公司資料。"
+            "目前計劃沒有聲稱任何網址已連線。\n\n"
+            "4. 在每日工作頁保存一筆真實簡短紀錄，重新啟動服務後查回同一筆紀錄和公司設定，"
+            "確認持久磁碟正常；有資料丟失便先修復儲存，不能當作安裝完成。\n\n"
+            "5. 在你使用 AI 的裝置安全設定 BLUEPRINT_BACKEND_USERNAME 及 BLUEPRINT_BACKEND_PASSWORD"
+            "環境變數，再連結私人工作室。把下列 https://actual 換成第 3 步已驗證的真實地址；"
+            "這是待替換字樣，並不是已建立的服務。秘密值不要寫入指令、聊天或工作室設定檔。\n\n"
+            + _code(connect)
+            + "\n6. 讓你使用的 AI 讀取私人工作室的 WORKDAY.md，測試實際查詢及保存。AI 需要"
+            "具備相應工具與授權才能直接執行；普通聊天可輸出整理後的 JSON，讓你手動匯入。\n"
+        )
+    ending = (
+        "\n## 日後使用\n\n"
+        "說『今日收工』時，AI 只整理目前可見或你提供的對話，保存有用成果、決定、參考及待辦。"
+        "先去重、沿用穩定來源識別，再按版本檢查更新並保留可恢復歷史；不保存秘密或全部原始聊天。"
+        "它不會自動讀取其他 AI 平台的不可見對話。沒有實際儲存成功就不能聲稱已存檔。\n\n"
+        "更新公開工具時保留私人公司資料、同一個資料目錄／volume、工作室及既有工具修改。"
+        "此計劃只準備文件；完成與否以實際登入、保存及重啟後的結果為準。\n"
+    )
+    return (common + body + ending).encode("utf-8")
+
+
+def _existing_matches(path: Path, content: bytes) -> bool:
+    _safe_path(path, "安裝計劃檔案")
+    if not path.exists():
+        return False
+    try:
+        if not path.is_file() or path.stat().st_size != len(content) or path.read_bytes() != content:
+            raise LibraryError("已有自訂檔案或不同的安裝計劃，未有覆寫；請保留原有內容並選另一個私人目錄。", 409)
+    except OSError as exc:
+        raise LibraryError("無法核對已有安裝計劃，未有覆寫。", 409) from exc
+    return True
+
+
+def prepare_setup(output_dir, company, mode="cloud", provider="render", username="admin") -> dict:
+    """Create private input and guidance only; equal reruns leave files untouched."""
+    company = _company(company)
+    if not isinstance(mode, str) or mode not in {"cloud", "local"}:
+        raise LibraryError("安裝模式只可用 cloud 或 local。")
+    if mode == "cloud" and (not isinstance(provider, str) or provider not in _PROVIDERS):
+        raise LibraryError("雲端平台只可用 render、railway 或 server。")
+    if (not isinstance(username, str) or not username.strip() or len(username) > 80
+            or re.search(r"[:\x00-\x1f\x7f]", username)):
+        raise LibraryError("管理員名稱需為 1–80 字，不能包含冒號或控制字元。")
+    username = username.strip()
+    output = _safe_path(output_dir, "私人安裝目錄")
+    _outside_source(output, "私人安裝目錄")
+    if output.exists() and not output.is_dir():
+        raise LibraryError("私人安裝目錄必須是正常目錄。", 409)
+    profile = output / "company-profile.json"
+    plan = {
+        "schema": "blueprint-setup", "version": 1, "mode": mode,
+        "status": "awaiting_cloud_deployment" if mode == "cloud" else "awaiting_local_start",
+        "company_file": str(profile), "workspace_path": str(output / _WORKSPACE_NAME), "username": username,
+    }
+    if mode == "cloud":
+        plan["provider"] = provider
+    else:
+        plan["data_path"] = str(output / "data")
+    files = {
+        profile: _json_bytes(company), output / "setup.json": _json_bytes(plan),
+        output / "START_HERE.md": _guide(plan), output / "deployment.env.example": _environment(company, username),
+    }
+    # Check every generated target before writing any of them. A custom guide or
+    # conflicting plan cannot leave behind a partly replaced company profile.
+    pending = [(path, content) for path, content in files.items() if not _existing_matches(path, content)]
+    try:
+        output.mkdir(parents=True, exist_ok=True, mode=0o700)
+        _safe_path(output, "私人安裝目錄")
+        for path, content in pending:
+            _safe_path(path, "安裝計劃檔案")
+            try:
+                descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(descriptor, "wb") as handle:
+                    try:
+                        handle.write(content)
+                        handle.flush()
+                        os.fsync(handle.fileno())
+                    except BaseException:
+                        path.unlink(missing_ok=True)
+                        raise
+            except FileExistsError:
+                # Another identical preparation is safe; a differing one must
+                # not overwrite the file created between preflight and open.
+                _existing_matches(path, content)
+    except OSError as exc:
+        raise LibraryError("無法寫入私人安裝計劃；請檢查目錄權限及剩餘空間。") from exc
+    return {
+        **plan, "output_path": str(output), "setup_file": str(output / "setup.json"),
+        "start_here": str(output / "START_HERE.md"), "env_file": str(output / "deployment.env.example"),
+    }

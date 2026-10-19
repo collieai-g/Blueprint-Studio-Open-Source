@@ -2,10 +2,11 @@
 
 [返回首頁](../README.md)
 
-**Blueprint Studio Backend｜藍圖工作室（後台）** 是為創業者而設、可逐步擴充的工作後台。
+**Blueprint Studio Backend｜藍圖工作室（後台）** 是你公司的專屬後台，為管理公司大小事務而設。
 你可以為自己或公司部署獨立工作室。今版可整理公司的文件、收藏網站／UI 參考和 YouTube 知識連結，
 亦可保存每日工作成果及待辦。
 這是有登入及伺服器保存功能的後台，與舊版只保存在瀏覽器的資料包介面分開。
+首次安裝先收集公司資料，再選雲端（預設）或本機；見[通用 AI 安裝指引](INSTALL.md)。
 
 ## 可以做甚麼？
 
@@ -111,6 +112,7 @@ python3 blueprint.py library --data "../藍圖公司資料"
 更新前先處理本機程式修改，並備份私人資料。
 1.3 版會自動為舊資料庫加入星號欄位；原有資料、附件、帳號及修改紀錄保留。
 1.4 版加入每日工作及待辦資料表；現有資料保持原樣。匯出清單亦包含工作紀錄及待辦進度。
+1.5 版加入公司資料及工作紀錄版本；雜訊可從目前紀錄移除，原內容保留在歷史內。
 
 「匯出資料清單」包含筆記、標記、收藏夾、已抽取的可讀文字及修改紀錄，**不包含原始檔案附件**。
 完整備份需先停止服務，再備份整個私人資料目錄或 Docker volume，包括 SQLite 相關檔案及 `blobs/`。
@@ -132,6 +134,8 @@ python3 blueprint.py library --data "../藍圖公司資料"
 
 | 操作 | API |
 | --- | --- |
+| 公司資料 | `GET /api/company-profile`、`PATCH /api/company-profile` |
+| 通用 AI 安裝指令 | `GET /api/install-instructions` |
 | 列出／新增收藏夾 | `GET /api/collections`、`POST /api/collections` |
 | 搜尋／新增收藏 | `GET /api/items`、`POST /api/items` |
 | 讀取／修改資料 | `GET /api/items/{id}`、`PATCH /api/items/{id}` |
@@ -142,6 +146,7 @@ python3 blueprint.py library --data "../藍圖公司資料"
 | 取得每日整理指令及格式 | `GET /api/workday-instructions` |
 | 搜尋／儲存每日工作 | `GET /api/workdays`、`POST /api/workdays` |
 | 查看一份工作紀錄 | `GET /api/workdays/{id}` |
+| 修整／查看歷史 | `PATCH /api/workdays/{id}`、`GET /api/workdays/{id}/history` |
 | 搜尋／完成待辦 | `GET /api/todos`、`PATCH /api/todos/{id}` |
 | 匯出 metadata | `GET /api/export` |
 

@@ -35,6 +35,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sidebar-brand strong { display: block; font-size: 14px; font-weight: 720; letter-spacing: -.35px; }
 .sidebar-brand small { display: block; margin-top: 1px; color: #827e8b; font-size: 8px; font-weight: 650; letter-spacing: .19em; }
 .workspace-label { display: flex; align-items: center; gap: 9px; margin: 29px 7px 24px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.workspace-label > div { flex: 1; min-width: 0; }
+.workspace-label strong, .workspace-label small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-avatar { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border: 1px solid #e6e0f4; border-radius: 9px; background: #f2edf9; color: #796990; font-size: 13px; font-weight: 600; }
 .workspace-label strong { display: block; font-size: 12px; font-weight: 650; }
 .workspace-label small { display: block; margin-top: 2px; color: #817b89; font-size: 10px; }
@@ -239,6 +241,18 @@ input[type=file]::file-selector-button { margin-right: 13px; padding: 7px 11px; 
 .settings-export { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--line); }
 .settings-export h3, .help-section h3 { margin-bottom: 7px; color: #8b6a9d; font-size: 13px; font-weight: 550; }
 .settings-export .button { margin-top: 15px; }
+.settings-company { display: flex; align-items: center; gap: 16px; margin: 17px 0 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.settings-company > div { flex: 1; min-width: 0; }
+.settings-company h3 { margin-bottom: 5px; color: #554b61; font-size: 13px; font-weight: 550; }
+.settings-company p { overflow-wrap: anywhere; }
+.settings-company > .button { flex-shrink: 0; }
+.company-profile-dialog .dialog-heading > div { min-width: 0; }
+.company-profile-dialog .dialog-heading h2 { overflow-wrap: anywhere; }
+#reload-company-profile { margin-top: 16px; }
+.instruction-details { margin-top: 14px; }
+.instruction-details summary { color: #776584; font-size: 11px; cursor: pointer; }
+.instruction-details textarea { display: block; width: 100%; min-height: 160px; margin-top: 10px; padding: 11px 12px; resize: vertical; background: #faf8fc; color: #776584; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 1.8; }
+.import-limit { margin-top: 13px; }
 .help-section { padding: 20px 0; border-bottom: 1px solid #f0eaf5; }
 .help-section:last-child { padding-bottom: 5px; border-bottom: 0; }
 .help-section p { color: #a082b4; font-size: 12px; line-height: 1.9; }
@@ -399,6 +413,7 @@ input[type=file]::file-selector-button { margin-right: 13px; padding: 7px 11px; 
   dialog .muted { font-size: 11px; }
   .field { gap: 6px; margin-top: 16px; font-size: 11px; }
   .field input:not([type=file]), .field textarea, .field select { font-size: 16px; }
+  .instruction-details textarea { font-size: 16px; }
   .field input::placeholder, .field textarea::placeholder { font-size: 12px; }
   .field-row { grid-template-columns: 1fr; gap: 0; }
   .dialog-actions { gap: 7px; margin-top: 21px; padding-top: 16px; }
@@ -578,3 +593,10 @@ button.work-title:hover, button.work-title-button:hover { color: var(--accent-da
   .work-report-entry h4 { font-size: 12px; }
   .work-todo-error { padding: 9px; font-size: 10px; }
 }
+
+/* Saved report revisions remain readable without exposing raw snapshots. */
+.work-history-list { display: grid; gap: 10px; margin-top: 17px; }
+.work-history-entry { min-width: 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: 9px; background: #faf9fc; }
+.work-history-entry h3, .work-history-entry h4 { margin: 0 0 5px; font-size: 13px; }
+.work-history-entry p { margin-top: 4px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.work-history-entry .work-history-title { color: var(--ink); font-weight: 600; }

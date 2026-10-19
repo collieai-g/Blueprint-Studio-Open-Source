@@ -1,4 +1,4 @@
-"""Local AI tools save curated work without putting private records in Git."""
+"""AI tools save curated work to an explicit local or cloud company backend."""
 
 from __future__ import annotations
 
@@ -6,7 +6,8 @@ import json
 from pathlib import Path
 import sys
 
-from .integration import connect_workday, existing_workday_data, resolve_workday_data
+from .integration import connect_workday, existing_workday_data, get_workday_binding, resolve_workday_data
+from .remote import DEFAULT_PASSWORD_ENV, DEFAULT_USERNAME_ENV, WorkdayRemote
 from .store import LibraryError, Store
 
 
@@ -38,19 +39,44 @@ def _read_result(filename):
 
 def run_workday_command(args):
     if args.command == "workday-connect":
-        return connect_workday(args.path, args.data)
-    data_path = (existing_workday_data(args.data) if args.data
-                 else resolve_workday_data(args.workspace))
-    store = Store(data_path)
+        return connect_workday(args.path, getattr(args, "data", None),
+                               url=getattr(args, "url", None),
+                               username_env=getattr(args, "username_env", DEFAULT_USERNAME_ENV),
+                               password_env=getattr(args, "password_env", DEFAULT_PASSWORD_ENV))
+    if getattr(args, "data", None):
+        store = Store(existing_workday_data(args.data))
+        remote = None
+    else:
+        binding = get_workday_binding(args.workspace)
+        remote = WorkdayRemote(binding) if binding["mode"] == "cloud" else None
+        store = None if remote is not None else Store(resolve_workday_data(args.workspace))
     if args.command == "workday-save":
-        result = store.import_workday(_read_result(args.input), actor="local-ai")
-        workday = result["workday"]
-        # Logs should confirm a save without repeating private conversation text.
-        return {"id": workday["id"], "date": workday["date"], "title": workday["title"],
-                "entry_count": len(workday["entries"]), "created": result["created"],
-                "duplicate": result["duplicate"]}
+        payload = _read_result(args.input)
+        result = remote.save(payload) if remote else store.import_workday(payload, actor="local-ai")
+        return _save_summary(result)
+    if args.command == "workday-revise":
+        payload = _read_result(args.input)
+        result = remote.revise(args.id, payload) if remote else store.update_workday(args.id, payload, actor="local-ai")
+        return _save_summary(result, revision=True)
     if args.command == "workday-list":
-        return store.list_workdays(q=args.query, date=args.date)
+        return remote.list(q=args.query, date=args.date) if remote else store.list_workdays(q=args.query, date=args.date)
     if args.command == "workday-show":
-        return {"workday": store.get_workday(args.id)}
+        return remote.show(args.id) if remote else {"workday": store.get_workday(args.id)}
+    if args.command == "workday-history":
+        return remote.history(args.id) if remote else {"versions": store.item_workday_history(args.id)}
     raise LibraryError("不支援的每日工作指令。")
+
+
+def _save_summary(result, *, revision=False):
+    workday = result.get("workday")
+    if (not isinstance(workday, dict) or not isinstance(workday.get("entries"), list)
+            or any(not isinstance(workday.get(key), str) for key in ("id", "date", "title"))):
+        raise LibraryError("後台儲存回覆格式無效，請先查詢紀錄確認結果。", 502)
+    summary = {"id": workday["id"], "date": workday["date"], "title": workday["title"],
+               "entry_count": len(workday["entries"])}
+    keys = ("updated",) if revision else ("created", "duplicate")
+    for key in keys:
+        if not isinstance(result.get(key), bool):
+            raise LibraryError("後台儲存回覆格式無效，請先查詢紀錄確認結果。", 502)
+        summary[key] = result[key]
+    return summary

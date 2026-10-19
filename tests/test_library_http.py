@@ -483,6 +483,134 @@ class LibraryHTTPTests(unittest.TestCase):
         self.assertEqual(info["stats"]["todos_open"], 0)
         self.assertEqual(info["stats"]["todos_done"], 1)
 
+    def test_company_profile_versions_survive_restart_and_drive_company_info(self):
+        status, _, result = self.json_request("GET", "/api/company-profile")
+        self.assertEqual(status, 200, result)
+        profile = result["company_profile"]
+        self.assertEqual(profile["version"], 0)
+        self.assertIs(profile["configured"], False)
+        self.assertEqual(profile["name"], "")
+        status, _, result = self.json_request("PATCH", "/api/company-profile", data={
+            "expected_version": 0, "name": "藍圖設計有限公司", "industry": "金融科技",
+            "description": "公司私人簡介", "goals": "完成手機版介面研究"})
+        self.assertEqual(status, 200, result)
+        profile = result["company_profile"]
+        self.assertEqual(profile["version"], 1)
+        self.assertIs(profile["configured"], True)
+        status, _, result = self.json_request("PATCH", "/api/company-profile", data={
+            "expected_version": 1, "name": "藍圖研究有限公司"})
+        self.assertEqual(status, 200, result)
+        updated = result["company_profile"]
+        self.assertEqual(updated["version"], 2)
+        for field in ("industry", "description", "goals", "created_at"):
+            self.assertEqual(updated[field], profile[field])
+        status, _, result = self.json_request("PATCH", "/api/company-profile", data={
+            "expected_version": 1, "name": "過期設定不能生效"})
+        self.assertEqual(status, 409, result)
+        self.stop_server()
+        self.start_server()
+        status, _, info = self.json_request("GET", "/api/info")
+        self.assertEqual(status, 200, info)
+        self.assertEqual(info["company_name"], "藍圖研究有限公司")
+        self.assertEqual(info["company_profile"], updated)
+        status, _, result = self.json_request("GET", "/api/company-profile")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["company_profile"], updated)
+
+    def test_company_profile_is_private_and_requires_guarded_json_updates(self):
+        status, _, result = self.json_request("GET", "/api/company-profile", authenticated=False)
+        self.assertEqual(status, 401, result)
+        update = {"name": "不能由其他網站設定", "expected_version": 0}
+        for options, expected in (
+            ({"authenticated": False}, 401),
+            ({"write_header": False}, 403),
+            ({"origin": "https://other.example"}, 403),
+            ({"content_type": "text/plain"}, 415),
+        ):
+            with self.subTest(protection=options):
+                status, _, result = self.json_request("PATCH", "/api/company-profile", data=update, **options)
+                self.assertEqual(status, expected, result)
+        status, _, result = self.json_request("PATCH", "/api/company-profile", data={
+            **update, "configured": True})
+        self.assertEqual(status, 400, result)
+        status, _, result = self.json_request("GET", "/api/company-profile")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["company_profile"]["version"], 0)
+        self.assertIs(result["company_profile"]["configured"], False)
+
+    def test_universal_install_instructions_are_authenticated_and_do_not_expose_secrets(self):
+        status, _, result = self.json_request("GET", "/api/install-instructions", authenticated=False)
+        self.assertEqual(status, 401, result)
+        status, headers, result = self.json_request("GET", "/api/install-instructions")
+        self.assertEqual(status, 200, result)
+        self.assertIsInstance(result["instruction"], str)
+        self.assertTrue(result["instruction"].strip())
+        self.assertIn("https://github.com/collieai-g/blueprint-folder-agent", result["instruction"])
+        self.assertEqual(headers.get("Cache-Control"), "no-store")
+        self.assertNotIn(self.password, result["instruction"])
+        self.assertNotIn(str(self.data_dir), result["instruction"])
+
+    def test_workday_http_refinement_keeps_done_tasks_and_records_removed_noise(self):
+        unrelated = self.create_item(url="https://example.com/unrelated", notes="獨立收藏應保留")
+        status, _, result = self.json_request("POST", "/api/workdays", data=self.workday_payload())
+        self.assertEqual(status, 201, result)
+        report = result["workday"]
+        reference = next(entry for entry in report["entries"] if entry["type"] == "reference")
+        todo = next(entry for entry in report["entries"] if entry["type"] == "todo")
+        status, _, result = self.json_request("PATCH", "/api/todos/" + todo["id"], data={
+            "expected_version": todo["version"], "done": True})
+        self.assertEqual(status, 200, result)
+        completed = result["todo"]
+        path = "/api/workdays/" + report["id"]
+        status, _, result = self.json_request("GET", path)
+        self.assertEqual(status, 200, result)
+        before = result["workday"]
+        entries = []
+        for entry in before["entries"]:
+            if entry["type"] not in {"decision", "todo"}:
+                continue
+            editable = {key: entry[key] for key in ("id", "type", "title", "content", "url", "tags")}
+            if entry["type"] == "todo":
+                editable.update(title="驗證手機版導航", due_date=entry["due_date"])
+            entries.append(editable)
+        entries.append({"type": "outcome", "title": "已確認的實際成果", "content": "保存最終有用方向"})
+        update = {"expected_version": before["version"], "summary": "精簡後的工作成果", "entries": entries}
+        for options, expected in (
+            ({"authenticated": False}, 401),
+            ({"write_header": False}, 403),
+            ({"origin": "https://other.example"}, 403),
+            ({"content_type": "text/plain"}, 415),
+        ):
+            with self.subTest(protection=options):
+                status, _, result = self.json_request("PATCH", path, data=update, **options)
+                self.assertEqual(status, expected, result)
+        for forbidden in ({"date": "2026-10-20"}, {"source": "其他來源"}):
+            status, _, result = self.json_request("PATCH", path, data={**update, **forbidden})
+            self.assertEqual(status, 400, result)
+        status, _, result = self.json_request("PATCH", path, data=update)
+        self.assertEqual(status, 200, result)
+        self.assertIs(result["updated"], True)
+        refined = result["workday"]
+        self.assertEqual(refined["version"], before["version"] + 1)
+        saved_todo = next(entry for entry in refined["entries"] if entry["id"] == todo["id"])
+        self.assertTrue(saved_todo["done"])
+        self.assertEqual(saved_todo["completed_at"], completed["completed_at"])
+        self.assertEqual(saved_todo["version"], completed["version"] + 1)
+        self.assertNotIn(report["entries"][0]["id"], [entry["id"] for entry in refined["entries"]])
+        status, _, result = self.json_request("PATCH", path, data=update)
+        self.assertEqual(status, 409, result)
+        status, _, result = self.json_request("GET", path + "/history", authenticated=False)
+        self.assertEqual(status, 401, result)
+        status, _, history = self.json_request("GET", path + "/history")
+        self.assertEqual(status, 200, history)
+        self.assertEqual([version["version"] for version in history["versions"]], [1, 2, 3])
+        self.assertEqual(history["versions"][0]["snapshot"], report)
+        self.assertEqual(history["versions"][-1]["snapshot"], refined)
+        self.assertIn(reference["id"], [entry["id"] for entry in history["versions"][-2]["snapshot"]["entries"]])
+        for bookmark_id in (reference["library_item_id"], unrelated["id"]):
+            status, _, result = self.json_request("GET", "/api/items/" + bookmark_id)
+            self.assertEqual(status, 200, result)
+
 
 if __name__ == "__main__":
     unittest.main()

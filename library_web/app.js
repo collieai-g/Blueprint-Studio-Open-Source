@@ -8,7 +8,7 @@
   const MAX_FILE_SIZE = 20 * 1024 * 1024;
   const PAGE_SIZE = 100;
   const $ = (id) => document.getElementById(id);
-  const state = { view: 'dashboard', collectionId: '', newLinkPurpose: 'link', collections: [], items: [], selected: new Set(), contextIds: [], offset: 0, total: 0, detail: null, request: 0, commandRequest: 0, contextRequest: 0, detailRequest: 0, detailSaved: '', busy: false, layout: 'grid', sort: 'updated' };
+  const state = { view: 'dashboard', collectionId: '', newLinkPurpose: 'link', collections: [], items: [], selected: new Set(), contextIds: [], offset: 0, total: 0, detail: null, request: 0, commandRequest: 0, contextRequest: 0, detailRequest: 0, detailSaved: '', busy: false, profile: null, profileFormVersion: 0, profileRequest: 0, profileBusy: false, layout: 'grid', sort: 'updated' };
   let searchTimer;
   let commandTimer;
   let sidebarReturnFocus;
@@ -141,7 +141,7 @@
     list: ['M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01']
   };
   const VIEWS = {
-    dashboard: ['工作台', '最近文件、收藏與待整理資料，一眼掌握。', 'YOUR WORKSPACE'],
+    dashboard: ['工作台', '管理公司的日常工作，隨時接續下一步。', 'YOUR WORKSPACE'],
     workdays: ['每日工作', '留下每天的成果、決定、參考與下一步。', 'DAILY WORK'],
     todos: ['待辦事項', '從工作對話留下的下一步，逐項完成。', 'NEXT ACTIONS'],
     files: ['文件庫', '工作文件與程式碼，用清楚的圖案與標籤歸位。', 'FILE LIBRARY'],
@@ -191,6 +191,72 @@
     document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
     $('version').textContent = info.version ? `v${info.version}` : '';
     document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = Number(info.stats?.[node.dataset.count]) || 0; });
+    if (info.company_profile) applyCompanyProfile(info.company_profile);
+  }
+
+  function applyCompanyProfile(profile) {
+    if (state.profile && state.profile.version !== profile.version) workdaysUI?.invalidateInstructions?.();
+    state.profile = profile;
+    const name = typeof profile.name === 'string' && profile.name.trim() ? profile.name : '我的公司';
+    const industry = typeof profile.industry === 'string' && profile.industry.trim() ? profile.industry : '專屬管理後台';
+    $('company-name').textContent = name; $('company-name').title = name;
+    $('company-industry').textContent = industry; $('company-industry').title = industry;
+    $('company-avatar').textContent = [...name][0] || '企';
+    $('settings-company-summary').textContent = profile.configured ? `${name}${profile.industry ? ` · ${profile.industry}` : ''}` : '設定公司名稱、行業與目標。';
+  }
+  function fillCompanyProfile(profile) {
+    state.profileFormVersion = Number(profile.version) || 0;
+    $('profile-name').value = profile.name || ''; $('profile-industry').value = profile.industry || '';
+    $('profile-description').value = profile.description || ''; $('profile-goals').value = profile.goals || '';
+    $('company-profile-heading').textContent = profile.configured ? '公司資料' : '設定你公司的專屬後台';
+    $('reload-company-profile').hidden = true; setError('company-profile-error', null);
+  }
+  async function reloadCompanyProfile() {
+    const request = ++state.profileRequest;
+    const controls = [...$('company-profile-form').elements].filter((control) => !control.hasAttribute('data-close'));
+    controls.forEach((control) => { control.disabled = true; });
+    try {
+      const data = await api('/api/company-profile');
+      if (request !== state.profileRequest || !$('company-profile-dialog').open) return;
+      applyCompanyProfile(data.company_profile); fillCompanyProfile(data.company_profile);
+      controls.forEach((control) => { control.disabled = false; }); $('profile-name').focus();
+    } catch (error) {
+      if (request !== state.profileRequest || !$('company-profile-dialog').open) return;
+      setError('company-profile-error', error); $('reload-company-profile').hidden = false; $('reload-company-profile').disabled = false;
+    }
+  }
+  function openCompanyProfile() {
+    $('settings-dialog').close();
+    fillCompanyProfile(state.profile || { version: 0 }); openDialog('company-profile-dialog'); reloadCompanyProfile();
+  }
+  async function saveCompanyProfile(event) {
+    event.preventDefault(); if (state.profileBusy) return;
+    setError('company-profile-error', null);
+    const name = $('profile-name').value.trim();
+    if (!name) { setError('company-profile-error', new Error('請填寫公司名稱。')); $('profile-name').focus(); return; }
+    const body = { expected_version: state.profileFormVersion, name, industry: $('profile-industry').value.trim(), description: $('profile-description').value, goals: $('profile-goals').value };
+    const controls = [...$('company-profile-form').elements]; controls.forEach((control) => { control.disabled = true; }); state.profileBusy = true;
+    try {
+      const data = await api('/api/company-profile', { method: 'PATCH', body });
+      applyCompanyProfile(data.company_profile); $('company-profile-dialog').close(); notice('公司資料已保存，這是你公司的專屬後台。');
+    } catch (error) {
+      setError('company-profile-error', error);
+      if (error.status === 409) $('reload-company-profile').hidden = false;
+    } finally { state.profileBusy = false; controls.forEach((control) => { control.disabled = false; }); }
+  }
+  async function copyInstallInstruction() {
+    const control = $('copy-install-instruction'); control.disabled = true;
+    $('install-instruction-status').textContent = '正在準備安裝指令…';
+    try {
+      const data = await api('/api/install-instructions');
+      if (typeof data.instruction !== 'string' || !data.instruction.trim()) throw new Error('未能取得安裝指令，請稍後再試。');
+      const text = $('install-instruction-text'); text.value = data.instruction;
+      let copied = false;
+      try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(data.instruction); copied = true; } } catch { /* Visible manual copy is available below. */ }
+      if (!copied) { text.closest('details').open = true; text.focus(); text.select(); try { copied = document.execCommand('copy'); } catch { /* Browser can use native text selection. */ } }
+      $('install-instruction-status').textContent = copied ? '已複製，貼到具備工具執行能力的 AI 即可開始設定。' : '指令已展開及選取，請用瀏覽器的複製功能，貼到你使用的 AI。';
+    } catch (error) { $('install-instruction-status').textContent = error.message; }
+    finally { control.disabled = false; }
   }
 
   function makeCard(item) {
@@ -522,7 +588,7 @@
   async function searchCommands() {
     const request = ++state.commandRequest, query = $('command-search').value.trim();
     let matchingActions = 0;
-    $('command-actions').querySelectorAll('[data-action], [data-workday-action]').forEach((button) => { const terms = { upload: '加入檔案 上傳文件 upload file', link: '收藏連結 網站 youtube link', collection: '新增收藏集 collection', workday: '整理今日工作 每日 工作紀錄 待辦 daily work todo' }; const matches = !query || terms[button.dataset.action || 'workday'].toLowerCase().includes(query.toLowerCase()); button.hidden = !matches; if (matches) matchingActions += 1; });
+    $('command-actions').querySelectorAll('[data-action], [data-workday-action]').forEach((button) => { const terms = { upload: '加入檔案 上傳文件 upload file', link: '收藏連結 網站 youtube link', collection: '新增收藏集 collection', workday: '今日收工 整理工作 每日 工作紀錄 待辦 daily work todo' }; const matches = !query || terms[button.dataset.action || 'workday'].toLowerCase().includes(query.toLowerCase()); button.hidden = !matches; if (matches) matchingActions += 1; });
     $('command-actions').hidden = matchingActions === 0; $('command-results').replaceChildren();
     if (!query) { $('command-status').textContent = '搜尋全部未封存資料'; return; }
     $('command-status').textContent = '正在搜尋…';
@@ -578,10 +644,10 @@
     state.contextIds = [...state.selected]; $('context-markdown').value = ''; $('context-task').value = state.view === 'youtube' ? 'learning' : 'general'; openDialog('context-dialog'); generateContext();
   }
 
-  document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => { if (!state.busy && !workdaysUI?.isBusy?.()) button.closest('dialog').close(); }));
+  document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => { if (!state.busy && !state.profileBusy && !workdaysUI?.isBusy?.()) button.closest('dialog').close(); }));
   document.querySelectorAll('dialog').forEach((dialog) => {
-    dialog.addEventListener('cancel', (event) => { if (state.busy || workdaysUI?.isBusy?.()) event.preventDefault(); });
-    dialog.addEventListener('click', (event) => { if (event.target !== dialog || state.busy || workdaysUI?.isBusy?.()) return; const box = dialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close(); });
+    dialog.addEventListener('cancel', (event) => { if (state.busy || state.profileBusy || workdaysUI?.isBusy?.()) event.preventDefault(); });
+    dialog.addEventListener('click', (event) => { if (event.target !== dialog || state.busy || state.profileBusy || workdaysUI?.isBusy?.()) return; const box = dialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close(); });
   });
   document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
   document.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => { if ($('command-dialog').open) $('command-dialog').close(); openAdd(button.dataset.action); }));
@@ -602,6 +668,10 @@
   });
   window.addEventListener('resize', () => { if (window.innerWidth > 900) closeSidebar(); });
   $('help-button').addEventListener('click', () => openDialog('help-dialog')); $('footer-help').addEventListener('click', () => openDialog('help-dialog')); $('settings-button').addEventListener('click', () => openDialog('settings-dialog'));
+  $('company-profile-form').addEventListener('submit', saveCompanyProfile);
+  $('edit-company-profile').addEventListener('click', openCompanyProfile); $('reload-company-profile').addEventListener('click', reloadCompanyProfile);
+  $('company-profile-dialog').addEventListener('close', () => { ++state.profileRequest; });
+  $('copy-install-instruction').addEventListener('click', copyInstallInstruction);
   $('grid-view').addEventListener('click', () => setLayout('grid')); $('list-view').addEventListener('click', () => setLayout('list')); $('settings-layout').addEventListener('change', () => setLayout($('settings-layout').value));
   $('sort-order').addEventListener('change', () => setSort($('sort-order').value)); $('settings-sort').addEventListener('change', () => setSort($('settings-sort').value));
   $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => refresh(), 250); });
@@ -620,7 +690,7 @@
     renderStaticIcons(); populateCategories('category-filter', false, true); populateCategories('link-category', true); populateCategories('detail-category'); populateCategories('collection-icon');
     try { const preferences = JSON.parse(localStorage.getItem('blueprint-backend-display-v1') || '{}'); if (preferences.layout === 'list') state.layout = 'list'; if (['updated', 'created', 'title'].includes(preferences.sort)) state.sort = preferences.sort; } catch { /* Display preference only; company data remains on server. */ }
     applyDisplayPreferences(); $('library-toolbar').hidden = true; $('sort-order').hidden = true; $('page-date').textContent = new Date().toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' });
-    try { await Promise.all([loadInfo(), loadCollections()]); await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]); }
+    try { await Promise.all([loadInfo(), loadCollections()]); await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]); if (state.profile && !state.profile.configured && !document.querySelector('dialog[open]')) openCompanyProfile(); }
     catch (error) { $('item-grid').setAttribute('aria-busy', 'false'); $('result-count').textContent = '未能連接資料庫'; notice(error.message, true); }
   }
   init();

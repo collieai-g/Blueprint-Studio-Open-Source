@@ -21,12 +21,13 @@ from pathlib import Path
 from blueprint_folders.core import CATEGORIES
 
 from .classify import classify_item, normalize_url
+from .company import CompanyMixin
 from .workdays import WorkdayMixin
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
 MAX_TEXT_SIZE = 200 * 1024
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 _SOURCE_ROOT = Path(__file__).resolve().parent.parent
 _SOURCE_TYPES = {"website", "youtube", "code", "document", "image", "video", "other"}
 _SORT_ORDERS = {
@@ -103,7 +104,7 @@ def _identifier(value, label: str = "編號") -> str:
     return _text(value, label, 100, empty=False)
 
 
-class Store(WorkdayMixin):
+class Store(CompanyMixin, WorkdayMixin):
     """A SQLite-backed private library. Open connections per operation/thread."""
 
     def __init__(self, data_dir):
@@ -199,7 +200,8 @@ class Store(WorkdayMixin):
             ):
                 conn.execute(statement)
             self._initialize_workdays(conn)
-            conn.execute("PRAGMA user_version = 3")
+            self._initialize_company(conn)
+            conn.execute("PRAGMA user_version = 4")
 
     def _collection_id(self, conn, value):
         if value is None or value == "":
@@ -519,4 +521,5 @@ class Store(WorkdayMixin):
                     "includes_file_bytes": False,
                     "backup_note": "此檔只包含資料索引、文字及修改紀錄。完整備份亦需保存私人資料目錄內的原始檔案。",
                     "items": items, "collections": collections, "history": history,
-                    "workdays": self._export_workdays(conn)}
+                    "workdays": self._export_workdays(conn),
+                    "company_profile": self._company_profile(conn)}

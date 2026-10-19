@@ -66,7 +66,10 @@ class WorkdayTests(unittest.TestCase):
         self.assertEqual(summary["open_todos"], 1)
         self.assertNotIn("entries", summary)
         exported = reopened.export_metadata()
-        self.assertEqual(exported["workdays"], [report])
+        exported_report = dict(exported["workdays"][0])
+        revisions = exported_report.pop("revisions")
+        self.assertEqual(exported_report, report)
+        self.assertEqual(revisions[0]["snapshot"], report)
         self.assertNotIn("payload_hash", json.dumps(exported))
         self.assertFalse(exported["includes_file_bytes"])
 

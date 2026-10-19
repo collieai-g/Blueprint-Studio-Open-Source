@@ -7,7 +7,7 @@ Keep existing CLI/module identifiers, localStorage keys, markers, databases and
 Docker volume names compatible. Preserve existing user-chosen workspace paths.
 
 This repository includes a local-first folder tool and a separately stored company
-library. Keep the initial folder purpose optional and blank; Codex supplies the
+library. Keep the initial folder purpose optional and blank; the connected AI supplies the
 reasoning when the user asks. The user's expanded scope authorizes a persistent
 company backend. Its core scope is file organization and website/YouTube
 collections. The user now authorizes a minimal workspace UI with practical
@@ -16,6 +16,15 @@ The user also authorizes daily work records and checkable todos. The current AI
 curates its visible conversation into useful outcomes, decisions, references and
 unfinished tasks; the backend stores the curated result. Keep this distinct from
 automatic access to other AI platforms or an unconfigured summarization model.
+The user now authorizes a universal AI installation flow: ask company name and
+basic profile, offer cloud (default) or local mode, then guide provider login,
+persistent storage, HTTPS and verification. Follow `docs/INSTALL.md`. Tool-capable
+AI agents can install and connect; chat-only tools guide users without claiming
+to execute commands. Store the private setup plan outside this public checkout.
+Company profiles and versioned daily-work refinements are in scope. Preserve
+completed todo state and retain history when useful records are edited or noise
+is removed. Cloud bindings must use the authenticated remote API, not another
+local SQLite database. Preparing a plan never means a service is deployed.
 Do not add unrelated company features, simulated AI connections or OS icon hooks.
 
 - `blueprint_folders/`: Python 3.10+ standard-library CLI for actual folders.
@@ -30,7 +39,7 @@ Do not add unrelated company features, simulated AI connections or OS icon hooks
   Describe these truthfully; there is no connected language model or silent AI
   access to conversations, YouTube transcripts or external page contents.
 - `workday-connect` links a private workspace to an existing company library;
-  its `WORKDAY.md` tells Codex how to save a day through `workday-save`. Follow
+  its `WORKDAY.md` tells the connected AI how to save a day through `workday-save`. Follow
   that private binding for daily-save requests. Do not save company records in
   this public source checkout or silently create a library at a guessed path.
 - Folder identity lives in `.blueprint/folder.json`; preserve unknown fields.

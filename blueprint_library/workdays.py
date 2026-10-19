@@ -17,6 +17,7 @@ from .classify import normalize_url
 
 _ENTRY_TYPES = {"outcome", "decision", "reference", "todo"}
 _MAX_REPORT_CHARS = 200_000
+_ENTRY_FIELDS = ("type", "title", "content", "url", "tags", "due_date")
 
 
 def _date(value, *, label="日期", optional=False):
@@ -33,21 +34,15 @@ def _date(value, *, label="日期", optional=False):
     return value
 
 
-def _report(payload):
-    from .store import LibraryError, _payload, _tags, _text
+def _entries(entries, *, allow_ids=False):
+    from .store import LibraryError, _identifier, _payload, _tags, _text
 
-    payload = _payload(payload, {"date", "source", "source_key", "title", "summary", "entries"})
-    day = _date(payload.get("date"))
-    source = _text(payload.get("source", "Codex"), "工作來源", 80, empty=False)
-    source_key = _text(payload.get("source_key", ""), "來源識別碼", 200, empty=False)
-    title = _text(payload.get("title", ""), "工作紀錄標題", 240) or f"{day} 工作紀錄"
-    summary = _text(payload.get("summary", ""), "工作摘要", 8000)
-    entries = payload.get("entries")
     if not isinstance(entries, list) or not 1 <= len(entries) <= 80:
         raise LibraryError("每份工作紀錄需要 1 至 80 項內容。")
     validated = []
+    seen_ids = set()
     for entry in entries:
-        entry = _payload(entry, {"type", "title", "content", "url", "tags", "due_date"})
+        entry = _payload(entry, set(_ENTRY_FIELDS) | ({"id"} if allow_ids else set()))
         kind = entry.get("type")
         if not isinstance(kind, str) or kind not in _ENTRY_TYPES:
             raise LibraryError("內容類型只接受 outcome、decision、reference 或 todo。")
@@ -65,14 +60,46 @@ def _report(payload):
         if "due_date" in entry and kind != "todo":
             raise LibraryError("只有待辦事項可以設定到期日期。")
         due_date = _date(entry.get("due_date"), label="到期日期", optional=True)
-        validated.append({"type": kind, "title": item_title, "content": content,
-                          "url": url, "tags": tags, "due_date": due_date})
-    result = {"date": day, "source": source, "source_key": source_key, "title": title,
-              "summary": summary, "entries": validated}
-    canonical = json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        normalized = {"type": kind, "title": item_title, "content": content,
+                      "url": url, "tags": tags, "due_date": due_date}
+        if "id" in entry:
+            entry_id = _identifier(entry["id"], "內容編號")
+            if entry_id in seen_ids:
+                raise LibraryError("同一份工作紀錄不能重複使用內容編號。")
+            seen_ids.add(entry_id)
+            normalized["id"] = entry_id
+        validated.append(normalized)
+    return validated
+
+
+def _report_hash(report):
+    from .store import LibraryError
+
+    canonical = json.dumps(report, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     if len(canonical) > _MAX_REPORT_CHARS:
         raise LibraryError("每份工作紀錄最多 200,000 字元。", 413)
-    return result, hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _report(payload):
+    from .store import _payload, _text
+
+    payload = _payload(payload, {"date", "source", "source_key", "title", "summary", "entries"})
+    day = _date(payload.get("date"))
+    source = _text(payload.get("source", "Codex"), "工作來源", 80, empty=False)
+    source_key = _text(payload.get("source_key", ""), "來源識別碼", 200, empty=False)
+    title = _text(payload.get("title", ""), "工作紀錄標題", 240) or f"{day} 工作紀錄"
+    summary = _text(payload.get("summary", ""), "工作摘要", 8000)
+    result = {"date": day, "source": source, "source_key": source_key, "title": title,
+              "summary": summary, "entries": _entries(payload.get("entries"))}
+    return result, _report_hash(result)
+
+
+def _report_text(report):
+    context = "\n".join(report[name] for name in ("date", "source", "source_key", "title", "summary"))
+    search = "\n".join([context, *("\n".join([entry["title"], entry["content"], entry["url"], " ".join(entry["tags"])])
+                                  for entry in report["entries"])])
+    return context.casefold(), search.casefold()
 
 
 def _query(q, day, limit, offset, maximum):
@@ -115,6 +142,7 @@ class WorkdayMixin:
                 payload_hash TEXT NOT NULL, search_text TEXT NOT NULL,
                 context_text TEXT NOT NULL, created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL, created_by TEXT NOT NULL, updated_by TEXT NOT NULL,
+                version INTEGER NOT NULL DEFAULT 1,
                 UNIQUE(date, source, source_key)
             )""", """
             CREATE TABLE IF NOT EXISTS workday_entries (
@@ -135,6 +163,14 @@ class WorkdayMixin:
             "CREATE INDEX IF NOT EXISTS items_active_url ON items(url,kind,archived)",
         ):
             conn.execute(sql)
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(workdays)")}
+        if "version" not in columns:
+            conn.execute("ALTER TABLE workdays ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+        conn.execute("""CREATE TABLE IF NOT EXISTS workday_revisions (
+            workday_id TEXT NOT NULL REFERENCES workdays(id), version INTEGER NOT NULL,
+            action TEXT NOT NULL, actor TEXT NOT NULL, recorded_at TEXT NOT NULL,
+            snapshot TEXT NOT NULL, PRIMARY KEY(workday_id,version)
+        )""")
 
     @staticmethod
     def _workday_row(conn, workday_id):
@@ -154,13 +190,73 @@ class WorkdayMixin:
             "SELECT * FROM workday_entries WHERE workday_id=? ORDER BY position", (workday_id,))]
         return result
 
+    def _workday_revision(self, conn, workday_id, action, actor, recorded_at):
+        from .store import _json
+
+        snapshot = self._workday_full(conn, workday_id)
+        conn.execute("""INSERT OR IGNORE INTO workday_revisions
+            (workday_id,version,action,actor,recorded_at,snapshot) VALUES(?,?,?,?,?,?)""",
+                     (workday_id, snapshot["version"], action, actor, recorded_at, _json(snapshot)))
+
+    def _ensure_workday_revision(self, conn, workday):
+        # Old databases have no historical snapshots. Preserve their exact
+        # current state before the first versioned edit, without changing rows
+        # during migration or assigning a fictional creation history.
+        self._workday_revision(conn, workday["id"], "legacy", workday["updated_by"], workday["updated_at"])
+
+    @staticmethod
+    def _workday_history(conn, workday_id):
+        result = []
+        for row in conn.execute("""SELECT version,action,actor,recorded_at,snapshot
+                FROM workday_revisions WHERE workday_id=? ORDER BY version""", (workday_id,)):
+            entry = dict(row)
+            entry["snapshot"] = json.loads(entry["snapshot"])
+            result.append(entry)
+        return result
+
+    def item_workday_history(self, workday_id):
+        with self._connection() as conn:
+            conn.execute("BEGIN")
+            self._workday_row(conn, workday_id)
+            return self._workday_history(conn, workday_id)
+
+    def _workday_reference(self, conn, entry, actor):
+        if entry["type"] != "reference" or not entry["url"]:
+            return None
+        existing = conn.execute("""SELECT id FROM items WHERE kind='link' AND url=? AND archived=0
+                                   ORDER BY created_at,id LIMIT 1""", (entry["url"],)).fetchone()
+        if existing is not None:
+            return existing["id"]
+        item = self._base_item("link", entry["title"], entry["content"], entry["url"], None)
+        if entry["tags"]:
+            item["tags"] = entry["tags"]
+        self._classify(item, False, bool(entry["tags"]))
+        return self._insert(conn, item, actor)["id"]
+
+    @staticmethod
+    def _entry_row(workday_id, position, entry, actor, now, library_item_id):
+        return {"id": uuid.uuid4().hex, "workday_id": workday_id, "position": position,
+                **{key: entry[key] for key in _ENTRY_FIELDS}, "done": 0, "version": 1,
+                "library_item_id": library_item_id,
+                "search_text": "\n".join([entry["title"], entry["content"], entry["url"], " ".join(entry["tags"])]).casefold(),
+                "created_at": now, "updated_at": now, "completed_at": None,
+                "created_by": actor, "updated_by": actor}
+
+    @staticmethod
+    def _insert_workday_entry(conn, entry):
+        from .store import _json
+
+        columns = tuple(entry)
+        values = [_json(entry[key]) if key == "tags" else entry[key] for key in columns]
+        conn.execute("INSERT INTO workday_entries(" + ",".join(columns) + ") VALUES("
+                     + ",".join("?" for _ in columns) + ")", values)
+
     def import_workday(self, payload, actor="owner") -> dict:
-        from .store import LibraryError, _json, _now, _text
+        from .store import LibraryError, _now, _text
 
         report, payload_hash = _report(payload)
         actor = _text(actor, "操作人", 120, empty=False)
-        context = "\n".join(report[name] for name in ("date", "source", "source_key", "title", "summary"))
-        search_text = "\n".join([context, *("\n".join([entry["title"], entry["content"], entry["url"], " ".join(entry["tags"])]) for entry in report["entries"])])
+        context, search_text = _report_text(report)
         with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             existing = conn.execute("SELECT id,payload_hash FROM workdays WHERE date=? AND source=? AND source_key=?",
@@ -175,28 +271,90 @@ class WorkdayMixin:
                 search_text,context_text,created_at,updated_at,created_by,updated_by)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                          (workday_id, report["date"], report["source"], report["source_key"], report["title"],
-                          report["summary"], payload_hash, search_text.casefold(), context.casefold(), now, now, actor, actor))
+                          report["summary"], payload_hash, search_text, context, now, now, actor, actor))
             for position, entry in enumerate(report["entries"]):
-                library_item_id = None
-                if entry["type"] == "reference" and entry["url"]:
-                    existing_item = conn.execute("""SELECT id FROM items
-                        WHERE kind='link' AND url=? AND archived=0 ORDER BY created_at,id LIMIT 1""", (entry["url"],)).fetchone()
-                    if existing_item is not None:
-                        library_item_id = existing_item["id"]
-                    else:
-                        item = self._base_item("link", entry["title"], entry["content"], entry["url"], None)
-                        if entry["tags"]:
-                            item["tags"] = entry["tags"]
-                        self._classify(item, False, bool(entry["tags"]))
-                        library_item_id = self._insert(conn, item, actor)["id"]
-                entry_search = "\n".join([entry["title"], entry["content"], entry["url"], " ".join(entry["tags"])]).casefold()
-                conn.execute("""INSERT INTO workday_entries(id,workday_id,position,type,title,content,url,tags,
-                    due_date,done,version,library_item_id,search_text,created_at,updated_at,completed_at,created_by,updated_by)
-                    VALUES(?,?,?,?,?,?,?,?,?,0,1,?,?,?,?,NULL,?,?)""",
-                             (uuid.uuid4().hex, workday_id, position, entry["type"], entry["title"], entry["content"],
-                              entry["url"], _json(entry["tags"]), entry["due_date"], library_item_id,
-                              entry_search, now, now, actor, actor))
+                library_item_id = self._workday_reference(conn, entry, actor)
+                self._insert_workday_entry(conn, self._entry_row(workday_id, position, entry, actor, now, library_item_id))
+            self._workday_revision(conn, workday_id, "create", actor, now)
             return {"workday": self._workday_full(conn, workday_id), "created": True, "duplicate": False}
+
+    def update_workday(self, workday_id, payload, actor="owner") -> dict:
+        from .store import LibraryError, _identifier, _json, _now, _payload, _text
+
+        workday_id = _identifier(workday_id, "工作紀錄編號")
+        payload = _payload(payload, {"expected_version", "title", "summary", "entries"})
+        expected = payload.get("expected_version")
+        if type(expected) is not int or expected < 1:
+            raise LibraryError("更新必須提供正確嘅 expected_version。")
+        entries = _entries(payload.get("entries"), allow_ids=True)
+        actor = _text(actor, "操作人", 120, empty=False)
+        title = _text(payload["title"], "工作紀錄標題", 240) if "title" in payload else None
+        summary = _text(payload["summary"], "工作摘要", 8000) if "summary" in payload else None
+        with self._connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            current = self._workday_full(conn, workday_id)
+            if current["version"] != expected:
+                raise LibraryError("工作紀錄已被其他操作更新，請重新讀取後再整理。", 409)
+            existing = {entry["id"]: entry for entry in current["entries"]}
+            if any(entry.get("id") not in existing for entry in entries if "id" in entry):
+                raise LibraryError("內容編號不屬於此工作紀錄，未有修改任何內容。")
+            report = {name: current[name] for name in ("date", "source", "source_key", "title", "summary")}
+            if title is not None:
+                report["title"] = title or f"{current['date']} 工作紀錄"
+            if summary is not None:
+                report["summary"] = summary
+            report["entries"] = [{name: entry[name] for name in _ENTRY_FIELDS} for entry in entries]
+            payload_hash = _report_hash(report)
+            unchanged = (
+                report["title"] == current["title"] and report["summary"] == current["summary"]
+                and len(entries) == len(current["entries"])
+                and all(entry.get("id") == saved["id"]
+                        and all(entry[name] == saved[name] for name in _ENTRY_FIELDS)
+                        for entry, saved in zip(entries, current["entries"]))
+            )
+            if unchanged:
+                return {"workday": current, "updated": False}
+
+            # Validate all entries and ownership before taking a snapshot or
+            # creating bookmarks. Every subsequent write shares this transaction.
+            self._ensure_workday_revision(conn, current)
+            now = _now()
+            context, search_text = _report_text(report)
+            desired_rows = []
+            for position, entry in enumerate(entries):
+                library_item_id = self._workday_reference(conn, entry, actor)
+                old = existing.get(entry.get("id"))
+                row = self._entry_row(workday_id, position, entry, actor, now, library_item_id)
+                if old is not None:
+                    changed = any(entry[name] != old[name] for name in _ENTRY_FIELDS)
+                    changed = changed or library_item_id != old["library_item_id"]
+                    row.update(id=old["id"], created_at=old["created_at"], created_by=old["created_by"],
+                               version=old["version"] + int(changed),
+                               updated_at=now if changed else old["updated_at"],
+                               updated_by=actor if changed else old["updated_by"])
+                    if old["type"] == "todo" and entry["type"] == "todo":
+                        row.update(done=int(old["done"]), completed_at=old["completed_at"])
+                desired_rows.append(row)
+            desired_ids = {row["id"] for row in desired_rows}
+            # Temporary negative positions avoid UNIQUE(workday_id, position)
+            # collisions when retained entries move; their IDs remain stable.
+            conn.execute("UPDATE workday_entries SET position=-position-1 WHERE workday_id=?", (workday_id,))
+            for entry_id in existing:
+                if entry_id not in desired_ids:
+                    conn.execute("DELETE FROM workday_entries WHERE id=? AND workday_id=?", (entry_id, workday_id))
+            for row in desired_rows:
+                if row["id"] not in existing:
+                    self._insert_workday_entry(conn, row)
+                else:
+                    columns = tuple(key for key in row if key not in {"id", "workday_id", "created_at", "created_by"})
+                    values = [_json(row[key]) if key == "tags" else row[key] for key in columns]
+                    conn.execute("UPDATE workday_entries SET " + ",".join(key + "=?" for key in columns)
+                                 + " WHERE id=? AND workday_id=?", [*values, row["id"], workday_id])
+            conn.execute("""UPDATE workdays SET title=?,summary=?,payload_hash=?,search_text=?,context_text=?,
+                         updated_at=?,updated_by=?,version=version+1 WHERE id=?""",
+                         (report["title"], report["summary"], payload_hash, search_text, context, now, actor, workday_id))
+            self._workday_revision(conn, workday_id, "update", actor, now)
+            return {"workday": self._workday_full(conn, workday_id), "updated": True}
 
     def get_workday(self, workday_id) -> dict:
         with self._connection() as conn:
@@ -216,7 +374,7 @@ class WorkdayMixin:
         with self._connection() as conn:
             conn.execute("BEGIN")
             total = conn.execute("SELECT COUNT(*) FROM workdays w WHERE " + clause, args).fetchone()[0]
-            rows = conn.execute("""SELECT w.id,w.date,w.source,w.source_key,w.title,w.summary,w.created_at,w.updated_at,
+            rows = conn.execute("""SELECT w.id,w.date,w.source,w.source_key,w.title,w.summary,w.created_at,w.updated_at,w.version,
                 w.created_by,w.updated_by,COUNT(e.id) AS entry_count,
                 COALESCE(SUM(e.type='outcome'),0) AS count_outcome,
                 COALESCE(SUM(e.type='decision'),0) AS count_decision,
@@ -274,11 +432,13 @@ class WorkdayMixin:
                 raise LibraryError("只有待辦事項可以更新完成狀態。")
             if row["version"] != expected:
                 raise LibraryError("待辦已被其他操作更新，請重新讀取後再修改。", 409)
+            self._ensure_workday_revision(conn, self._workday_full(conn, row["workday_id"]))
             now = _now()
             completed_at = (row["completed_at"] or now) if done else None
             conn.execute("UPDATE workday_entries SET done=?,version=version+1,updated_at=?,completed_at=?,updated_by=? WHERE id=?",
                          (int(done), now, completed_at, actor, entry_id))
-            conn.execute("UPDATE workdays SET updated_at=?,updated_by=? WHERE id=?", (now, actor, row["workday_id"]))
+            conn.execute("UPDATE workdays SET updated_at=?,updated_by=?,version=version+1 WHERE id=?", (now, actor, row["workday_id"]))
+            self._workday_revision(conn, row["workday_id"], "todo", actor, now)
             result = conn.execute("""SELECT e.*,w.title AS workday_title,w.date,w.source
                 FROM workday_entries e JOIN workdays w ON w.id=e.workday_id WHERE e.id=?""", (entry_id,)).fetchone()
             return _entry_public(result, context=True)
@@ -296,4 +456,9 @@ class WorkdayMixin:
             return self._workday_stats(conn)
 
     def _export_workdays(self, conn):
-        return [self._workday_full(conn, row["id"]) for row in conn.execute("SELECT id FROM workdays ORDER BY date,created_at,id")]
+        reports = []
+        for row in conn.execute("SELECT id FROM workdays ORDER BY date,created_at,id"):
+            report = self._workday_full(conn, row["id"])
+            report["revisions"] = self._workday_history(conn, row["id"])
+            reports.append(report)
+        return reports

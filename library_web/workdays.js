@@ -4,10 +4,13 @@
   const TYPES = { outcome: '成果', decision: '決定', reference: '參考', todo: '待辦' };
   const TOP_FIELDS = new Set(['date', 'source', 'source_key', 'title', 'summary', 'entries']);
   const ENTRY_FIELDS = new Set(['type', 'title', 'content', 'url', 'tags', 'due_date']);
+  const REVISION_ENTRY_FIELDS = new Set([...ENTRY_FIELDS, 'id']);
+  const REVISION_CONFLICT = '這份紀錄已有更新，沒有覆寫，草稿仍然保留。按「重新讀取最新紀錄」會以伺服器最新內容取代目前草稿，請重新檢查後再保存。';
   const state = {
     view: '', offset: 0, total: 0, request: 0, dashboardRequest: 0, reportRequest: 0,
     items: [], dashboardTodos: [], report: null, draft: null, draftReady: false,
-    saving: false, pending: new Set(), instructions: null, instructionsDate: '', fileRequest: 0
+    saving: false, reloading: false, pending: new Set(), instructions: null, instructionsDate: '', fileRequest: 0,
+    mode: 'import', revision: null, importBackup: null, historyRequest: 0, instructionsGeneration: 0, skipCloseCapture: false
   };
   let deps;
   let searchTimer;
@@ -56,11 +59,14 @@
     if (value.length > max) throw new Error(`${label}最多可填寫 ${max} 個字元。`);
     return value;
   }
-  function validateDraft(value) {
+  function checkPayloadSize(payload) {
+    if (new Blob([JSON.stringify(payload)]).size > 512 * 1024) throw new Error('這份紀錄的 JSON 超過 512 KiB，請刪減內容或分開保存；中文等文字會佔用較多儲存空間。');
+  }
+  function validateDraft(value, revision = false) {
     if (!isObject(value)) throw new Error('請貼上包含日期、標題及項目的 JSON 物件。');
     unknownFields(value, TOP_FIELDS, '工作紀錄');
     if (!validDate(value.date)) throw new Error('日期需要使用有效的 YYYY-MM-DD 格式。');
-    const source = textValue(value.source === undefined ? 'Codex' : value.source, '來源', 80, true).trim();
+    const source = textValue(value.source === undefined ? 'AI' : value.source, '來源', 80, true).trim();
     const sourceKey = textValue(value.source_key, '來源識別碼', 200, true).trim();
     const title = textValue(value.title, '工作紀錄標題', 240).trim();
     const summary = textValue(value.summary, '摘要', 8000);
@@ -69,7 +75,7 @@
     const entries = value.entries.map((entry, index) => {
       const label = `第 ${index + 1} 項`;
       if (!isObject(entry)) throw new Error(`${label}需要是一個 JSON 物件。`);
-      unknownFields(entry, ENTRY_FIELDS, label);
+      unknownFields(entry, revision ? REVISION_ENTRY_FIELDS : ENTRY_FIELDS, label);
       if (!Object.hasOwn(TYPES, entry.type)) throw new Error(`${label}的類型需要是 outcome、decision、reference 或 todo。`);
       const entryTitle = textValue(entry.title, `${label}標題`, 240, true).trim();
       const content = textValue(entry.content, `${label}內容`, 8000);
@@ -80,6 +86,7 @@
         throw new Error(`${label}的標籤需要是文字陣列，最多 16 個，每個最多 100 字元，不能留空。`);
       }
       const result = { type: entry.type, title: entryTitle, content, url, tags: [...new Set(tags.map((tag) => tag.trim()))] };
+      if (revision && entry.id !== undefined) result.id = textValue(entry.id, `${label}識別碼`, 200, true);
       if (entry.due_date !== undefined && entry.due_date !== null && entry.due_date !== '') {
         if (entry.type !== 'todo') throw new Error(`${label}只有待辦可以填寫到期日。`);
         if (!validDate(entry.due_date)) throw new Error(`${label}的到期日需要使用有效的 YYYY-MM-DD 格式。`);
@@ -88,9 +95,9 @@
       return result;
     });
     const payload = { date: value.date, source, source_key: sourceKey, title, summary, entries };
-    const normalized = { ...payload, title: title || `${value.date} 工作紀錄`, entries: entries.map((entry) => ({ ...entry, due_date: entry.due_date || null })) };
+    const normalized = { ...payload, title: title || `${value.date} 工作紀錄`, entries: entries.map(({ id, ...entry }) => ({ ...entry, due_date: entry.due_date || null })) };
     if ([...JSON.stringify(normalized)].length > 200000) throw new Error('每份工作紀錄最多 200,000 字元，請刪減內容或分開保存。');
-    if (new Blob([JSON.stringify(payload)]).size > 512 * 1024) throw new Error('這份紀錄的 JSON 超過 512 KiB，請刪減內容或分開保存；中文等文字會佔用較多儲存空間。');
+    if (!revision) checkPayloadSize(payload);
     return payload;
   }
   function parseDraft(text) {
@@ -105,7 +112,7 @@
   function freshDraft() {
     const date = localDate();
     const suffix = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    return { date, source: 'Codex', source_key: `manual-${date}-${suffix}`, title: '', summary: '', entries: [{ type: 'outcome', title: '', content: '', url: '', tags: [] }] };
+    return { date, source: '自行整理', source_key: `manual-${date}-${suffix}`, title: '', summary: '', entries: [{ type: 'outcome', title: '', content: '', url: '', tags: [] }] };
   }
   function field(label, control) {
     const wrapper = node('label', 'work-entry-field');
@@ -126,6 +133,7 @@
     state.draft.entries.forEach((entry, index) => {
       const card = node('fieldset', 'work-draft-entry');
       card.dataset.entryIndex = String(index);
+      if (state.mode === 'revision' && entry.id) card.dataset.entryId = entry.id;
       card.append(node('legend', '', `項目 ${index + 1}`));
       const type = node('select'); type.dataset.draftField = 'type';
       Object.entries(TYPES).forEach(([value, label]) => { const choice = node('option', '', label); choice.value = value; type.append(choice); });
@@ -157,48 +165,147 @@
       entries: [...$('draft-entries').querySelectorAll('[data-entry-index]')].map((card) => {
         const get = (key) => card.querySelector(`[data-draft-field="${key}"]`).value;
         const entry = { type: get('type'), title: get('title'), content: get('content'), url: get('url'), tags: get('tags').split(/\r?\n/).map((value) => value.trim()).filter(Boolean) };
+        if (state.mode === 'revision' && card.dataset.entryId) entry.id = card.dataset.entryId;
         if (entry.type === 'todo' && get('due_date')) entry.due_date = get('due_date');
         return entry;
       })
     };
     return state.draft;
   }
+  function editorChrome() {
+    const revision = state.mode === 'revision';
+    $('work-import-heading').textContent = revision ? '修整工作紀錄' : '今日收工';
+    $('draft-date').readOnly = revision;
+    $('draft-source').readOnly = revision;
+    $('draft-source-key').readOnly = revision;
+    $('draft-back').textContent = revision ? '取消修整' : '返回 JSON';
+    $('draft-save').textContent = revision ? '保存修整' : '確認保存';
+    $('draft-reload').hidden = true;
+  }
   function showDraft(draft) {
     state.draft = draft;
     state.draftReady = true;
     $('draft-date').value = draft.date;
-    $('draft-source').value = draft.source; $('draft-source').readOnly = false;
+    $('draft-source').value = draft.source;
     $('draft-source-key').value = draft.source_key;
     $('draft-title').value = draft.title;
     $('draft-summary').value = draft.summary;
     $('work-import-start').hidden = true;
     $('work-preview-panel').hidden = false;
+    editorChrome();
     renderDraftEntries();
     errorAt('work-import-error', null);
-    $('work-import-status').textContent = '請檢查內容，儲存後才會加入公司工作紀錄。';
+    $('work-import-status').textContent = state.mode === 'revision' ? '日期、來源及識別碼保持原樣。保存後會建立修整版本，原有待辦狀態會保留。' : '請檢查內容，儲存後才會加入公司工作紀錄。';
+    if (state.mode === 'revision' && state.revision?.conflict) {
+      errorAt('work-import-error', new Error(REVISION_CONFLICT));
+      $('draft-reload').hidden = false;
+    }
     $('draft-title').focus();
   }
   function openImport() {
+    if ($('work-import-dialog').open && state.draftReady) captureDraft();
     errorAt('work-import-error', null);
     deps.openDialog('work-import-dialog');
     if (state.draftReady) {
-      $('work-import-start').hidden = true; $('work-preview-panel').hidden = false;
-      $('draft-title').focus();
+      showDraft(state.draft);
     } else {
       $('work-import-start').hidden = false; $('work-preview-panel').hidden = true;
       $('work-json-input').focus();
     }
-    instructions().catch((error) => errorAt('work-import-error', error));
+    if (state.mode === 'import') instructions().catch((error) => errorAt('work-import-error', error));
+  }
+  function reportDraft(report) {
+    return {
+      date: report.date, source: report.source, source_key: report.source_key, title: report.title || '', summary: report.summary || '',
+      entries: report.entries.map((entry) => {
+        const result = { id: entry.id, type: entry.type, title: entry.title, content: entry.content || '', url: entry.url || '', tags: [...(entry.tags || [])] };
+        if (entry.type === 'todo' && entry.due_date) result.due_date = entry.due_date;
+        return result;
+      })
+    };
+  }
+  function restoreImport() {
+    const backup = state.importBackup;
+    state.mode = 'import'; state.revision = null; state.importBackup = null;
+    state.draft = backup?.draft || null; state.draftReady = !!backup?.ready;
+    $('work-json-input').value = backup?.json || '';
+    editorChrome();
+  }
+  function beginRevision() {
+    if (state.saving || state.reloading || !state.report) return;
+    if (state.mode === 'revision') {
+      if ($('work-report-dialog').open) $('work-report-dialog').close();
+      deps.openDialog('work-import-dialog');
+      showDraft(state.draft);
+      if (state.revision.id !== state.report.id) $('work-import-status').textContent = '已恢復另一份未儲存的修整，請先完成或取消。';
+      return;
+    }
+    if (!Number.isInteger(state.report.version) || state.report.version < 1) {
+      errorAt('work-report-error', new Error('請重新讀取最新紀錄，再開始修整。'));
+      $('work-report-reload').hidden = false;
+      return;
+    }
+    state.importBackup = { draft: state.draft, ready: state.draftReady, json: $('work-json-input').value };
+    state.mode = 'revision';
+    state.revision = { id: state.report.id, version: state.report.version };
+    if ($('work-report-dialog').open) $('work-report-dialog').close();
+    deps.openDialog('work-import-dialog');
+    showDraft(reportDraft(state.report));
+  }
+  async function cancelRevision() {
+    if (state.saving || state.reloading) return;
+    const id = state.revision?.id;
+    restoreImport();
+    state.skipCloseCapture = true;
+    $('work-import-dialog').close();
+    if (id) await openReport(id);
+  }
+  async function reloadRevision() {
+    if (state.saving || state.reloading || !state.revision) return;
+    captureDraft();
+    const revision = state.revision;
+    state.reloading = true;
+    const controls = [...$('work-preview-form').elements];
+    const disabled = controls.map((control) => control.disabled);
+    controls.forEach((control) => { control.disabled = true; });
+    errorAt('work-import-error', null);
+    $('work-import-status').textContent = '正在重新讀取最新紀錄…';
+    try {
+      const data = await deps.api(`/api/workdays/${encodeURIComponent(revision.id)}`);
+      if (!data.workday || !Array.isArray(data.workday.entries) || !Number.isInteger(data.workday.version)) throw new Error('未能取得可修整的最新紀錄，草稿仍然保留。');
+      state.revision = { id: data.workday.id, version: data.workday.version };
+      state.report = data.workday; resetHistory(); renderReport();
+      showDraft(reportDraft(data.workday));
+      $('work-import-status').textContent = '已讀取最新版本，取代先前草稿。請重新檢查後保存。';
+    } catch (error) {
+      errorAt('work-import-error', error);
+      $('draft-reload').hidden = false;
+      $('work-import-status').textContent = '未能重新讀取，原有草稿仍然保留。';
+    } finally {
+      state.reloading = false;
+      controls.forEach((control, index) => { control.disabled = disabled[index]; });
+      $('draft-add').disabled = state.draft.entries.length >= 80;
+      $('draft-title').focus();
+    }
   }
   async function instructions() {
     const date = localDate();
-    if (state.instructionsDate !== date) { state.instructions = null; state.instructionsDate = date; }
-    if (!state.instructions) state.instructions = deps.api(`/api/workday-instructions?date=${date}`).then((data) => {
-      if (typeof data.instruction !== 'string' || !isObject(data.format)) throw new Error('未能取得匯入指引，請重新載入後再試。');
-      $('work-instruction-text').value = data.instruction;
-      return data;
-    }).catch((error) => { state.instructions = null; throw error; });
+    if (state.instructionsDate !== date) { invalidateInstructions(); state.instructionsDate = date; }
+    if (!state.instructions) {
+      const generation = state.instructionsGeneration;
+      const pending = deps.api(`/api/workday-instructions?date=${date}`).then((data) => {
+        if (generation !== state.instructionsGeneration) throw new Error('公司資料或日期已有更新，請重新取得整理指令。');
+        if (typeof data.instruction !== 'string' || !isObject(data.format)) throw new Error('未能取得匯入指引，請重新載入後再試。');
+        $('work-instruction-text').value = data.instruction;
+        return data;
+      }).catch((error) => { if (state.instructions === pending) state.instructions = null; throw error; });
+      state.instructions = pending;
+    }
     return state.instructions;
+  }
+  function invalidateInstructions() {
+    state.instructions = null; state.instructionsDate = ''; ++state.instructionsGeneration;
+    if ($('work-instruction-text')) $('work-instruction-text').value = '';
   }
   async function copyInstruction() {
     const control = $('copy-work-instruction');
@@ -254,10 +361,15 @@
   }
   async function saveDraft(event) {
     event.preventDefault();
-    if (state.saving) return;
+    if (state.saving || state.reloading) return;
     errorAt('work-import-error', null);
+    const revision = state.mode === 'revision' ? { ...state.revision } : null;
     let payload;
-    try { payload = validateDraft(captureDraft()); }
+    try {
+      const draft = validateDraft(captureDraft(), !!revision);
+      payload = revision ? { expected_version: revision.version, title: draft.title, summary: draft.summary, entries: draft.entries } : draft;
+      checkPayloadSize(payload);
+    }
     catch (error) { errorAt('work-import-error', error); return; }
     state.saving = true;
     const controls = [...$('work-preview-form').elements];
@@ -265,20 +377,27 @@
     controls.forEach((control) => { control.disabled = true; });
     $('work-import-status').textContent = '正在儲存工作紀錄…';
     try {
-      const data = await deps.api('/api/workdays', { method: 'POST', body: payload });
-      state.draft = null; state.draftReady = false;
-      $('work-json-input').value = '';
+      const data = await deps.api(revision ? `/api/workdays/${encodeURIComponent(revision.id)}` : '/api/workdays', { method: revision ? 'PATCH' : 'POST', body: payload });
+      if (!data.workday?.id || !Array.isArray(data.workday.entries)) throw new Error('未能確認儲存結果，草稿仍然保留。請重新讀取紀錄後再試。');
+      if (revision) restoreImport();
+      else {
+        state.draft = null; state.draftReady = false;
+        $('work-json-input').value = '';
+      }
+      state.skipCloseCapture = true;
       $('work-import-dialog').close();
-      deps.notice(data.duplicate ? '這份工作紀錄已存在，沒有重複加入。' : '已儲存工作紀錄。');
+      deps.notice(revision ? (data.updated === false ? '內容沒有改動，已保留目前版本。' : '已保存修整，版本紀錄已更新。') : data.duplicate ? '這份工作紀錄已存在，沒有重複加入。' : '已儲存工作紀錄。');
       await refreshRelated();
       if (data.workday?.id) await openReport(data.workday.id);
     } catch (error) {
-      errorAt('work-import-error', error.status === 409 ? new Error('這個來源識別碼已有另一份內容。草稿已保留；請先查看原有工作紀錄，確認是另一份工作後才使用新的識別碼。') : error);
+      errorAt('work-import-error', error.status === 409 ? new Error(revision ? REVISION_CONFLICT : '這個來源識別碼已有另一份內容。草稿已保留；請先查看原有工作紀錄，確認是另一份工作後才使用新的識別碼。') : error);
+      if (revision && error.status === 409) { state.revision.conflict = true; $('draft-reload').hidden = false; }
       $('work-import-status').textContent = '尚未儲存，草稿仍然保留。';
     } finally {
       state.saving = false;
       controls.forEach((control, index) => { control.disabled = disabled[index]; });
       $('draft-add').disabled = !!state.draft && state.draft.entries.length >= 80;
+      if ($('work-report-dialog').open && state.report) $('work-report-edit').disabled = !Number.isInteger(state.report.version) || state.pending.size > 0 || state.reloading;
     }
   }
   function statsLine(workday) {
@@ -288,7 +407,7 @@
   function workdayCard(workday, compact = false) {
     const card = node('article', compact ? 'work-card compact' : 'work-card');
     const open = button(workday.title || '工作紀錄', () => openReport(workday.id), 'work-title-button');
-    card.append(node('p', 'work-meta', `${workday.date || ''} · ${workday.source || 'Codex'}`), open);
+    card.append(node('p', 'work-meta', `${workday.date || ''} · ${workday.source || 'AI'}`), open);
     if (workday.summary && !compact) card.append(node('p', 'work-summary', workday.summary));
     card.append(node('p', 'work-meta', statsLine(workday)));
     if (Number(workday.open_todos) > 0) card.append(node('span', 'work-open-count', `${workday.open_todos} 項待辦未完成`));
@@ -327,8 +446,10 @@
       const data = await deps.api(`/api/todos/${encodeURIComponent(todo.id)}`, { method: 'PATCH', body: { expected_version: todo.version, done } });
       if (!data.todo) throw new Error('未能確認待辦更新，請重新載入。');
       replaceTodo(data.todo);
-      if (state.report?.entries.some((entry) => entry.id === todo.id)) renderReport();
+      const reportId = state.report?.entries.some((entry) => entry.id === todo.id) ? state.report.id : null;
+      if (reportId) renderReport();
       await refreshRelated();
+      if (reportId && state.report?.id === reportId && $('work-report-dialog').open) await openReport(reportId, true);
       changed = true;
     } catch (error) {
       checkbox.checked = !!todo.done;
@@ -346,6 +467,7 @@
       if (!row.isConnected) deps.notice(error.status === 409 ? '這項待辦已有更新，請重新載入後再修改。' : message(error), true);
     } finally {
       state.pending.delete(todo.id); checkbox.disabled = false;
+      if (state.report) $('work-report-edit').disabled = !Number.isInteger(state.report.version) || state.pending.size > 0 || state.saving || state.reloading;
       document.querySelectorAll('input[type="checkbox"]').forEach((control) => { if ([todoKey(todo, 'list'), todoKey(todo, 'dashboard'), todoKey(todo, 'report')].includes(control.id)) control.disabled = false; });
       const sameContext = context === 'list' ? state.view === 'todos' : context === 'dashboard' ? state.view === 'dashboard' : $('work-report-dialog').open && state.report?.entries.some((entry) => entry.id === todo.id);
       if (changed && focused && sameContext && (document.activeElement === checkbox || document.activeElement === document.body || !document.activeElement?.isConnected)) {
@@ -432,7 +554,9 @@
     const report = state.report;
     if (!report) return;
     $('work-report-title').textContent = report.title || '工作紀錄';
-    $('work-report-meta').textContent = `${report.date || ''} · ${report.source || 'Codex'}`;
+    $('work-report-meta').textContent = [report.date, report.source || 'AI', Number.isInteger(report.version) ? `版本 ${report.version}` : ''].filter(Boolean).join(' · ');
+    $('work-report-edit').disabled = !Number.isInteger(report.version) || state.pending.size > 0 || state.saving || state.reloading;
+    $('work-report-history').disabled = false;
     $('work-report-summary').textContent = report.summary || '';
     $('work-report-summary').hidden = !report.summary;
     const container = $('work-report-entries'); container.replaceChildren();
@@ -457,9 +581,55 @@
       container.append(section);
     });
   }
+  function resetHistory() {
+    ++state.historyRequest;
+    $('work-report-history-list').hidden = true;
+    $('work-report-history-list').replaceChildren();
+    $('work-report-history').setAttribute('aria-expanded', 'false');
+  }
+  function historyTime(value) {
+    if (typeof value !== 'string' || !value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('zh-HK', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+  async function toggleHistory() {
+    if (!state.report) return;
+    const target = $('work-report-history-list');
+    if (!target.hidden) { resetHistory(); return; }
+    const request = ++state.historyRequest;
+    const reportId = state.report.id;
+    target.hidden = false;
+    $('work-report-history').setAttribute('aria-expanded', 'true');
+    target.replaceChildren(node('p', 'muted', '正在讀取版本紀錄…'));
+    try {
+      const data = await deps.api(`/api/workdays/${encodeURIComponent(reportId)}/history`);
+      if (request !== state.historyRequest || state.report?.id !== reportId || !$('work-report-dialog').open) return;
+      if (!Array.isArray(data.versions)) throw new Error('未能讀取版本紀錄，請重新載入。');
+      const actions = { create: '首次保存', update: '修整內容', todo: '更新待辦', legacy: '原有紀錄' };
+      const cards = data.versions.map((version) => {
+        const snapshot = isObject(version.snapshot) ? version.snapshot : {};
+        const card = node('article', 'work-history-entry');
+        card.append(node('h4', '', `版本 ${version.version}`));
+        const date = historyTime(version.recorded_at);
+        card.append(node('p', 'work-meta', [actions[version.action] || '內容更新', date, version.actor].filter((value) => typeof value === 'string' && value).join(' · ')));
+        if (snapshot.title) card.append(node('p', 'work-history-title', snapshot.title));
+        if (snapshot.summary) card.append(node('p', 'work-summary', snapshot.summary));
+        const counts = Object.fromEntries(Object.keys(TYPES).map((type) => [type, (Array.isArray(snapshot.entries) ? snapshot.entries : []).filter((entry) => entry.type === type).length]));
+        card.append(node('p', 'work-meta', statsLine({ counts })));
+        return card;
+      });
+      target.replaceChildren(...cards);
+      if (!cards.length) target.append(node('p', 'muted', '目前沒有版本紀錄。'));
+    } catch (error) {
+      if (request !== state.historyRequest || state.report?.id !== reportId) return;
+      target.replaceChildren(node('p', 'error-text', message(error)), button('重新載入', () => { target.hidden = true; toggleHistory(); }));
+    }
+  }
   async function openReport(id, reload = false) {
     const request = ++state.reportRequest;
     const previous = state.report;
+    resetHistory();
+    $('work-report-edit').disabled = true; $('work-report-history').disabled = true;
     if (!reload) {
       state.report = null; $('work-report-title').textContent = '正在載入工作紀錄…';
       $('work-report-meta').textContent = ''; $('work-report-summary').textContent = ''; $('work-report-entries').replaceChildren();
@@ -503,12 +673,16 @@
       renderDraftEntries(); $('draft-entries').lastElementChild.querySelector('select').focus();
     });
     $('draft-back').addEventListener('click', () => {
+      if (state.mode === 'revision') { cancelRevision(); return; }
       captureDraft(); state.draftReady = false;
       $('work-json-input').value = JSON.stringify(state.draft, null, 2);
       $('work-import-start').hidden = false; $('work-preview-panel').hidden = true;
       errorAt('work-import-error', null); $('work-import-status').textContent = '內容已放回文字欄，可修改後重新預覽。'; $('work-json-input').focus();
     });
     $('work-preview-form').addEventListener('submit', saveDraft);
+    $('draft-reload').addEventListener('click', reloadRevision);
+    $('work-report-edit').addEventListener('click', beginRevision);
+    $('work-report-history').addEventListener('click', toggleHistory);
     $('work-search').addEventListener('input', () => {
       clearTimeout(searchTimer); ++state.request; state.offset = 0;
       searchTimer = setTimeout(loadList, 220);
@@ -522,9 +696,13 @@
       const id = $('work-report-reload').dataset.workdayId || state.report?.id;
       if (id) openReport(id, true);
     });
-    $('work-report-dialog').addEventListener('close', () => { ++state.reportRequest; });
-    $('work-import-dialog').addEventListener('cancel', (event) => { if (state.saving) event.preventDefault(); });
+    $('work-report-dialog').addEventListener('close', () => { ++state.reportRequest; ++state.historyRequest; });
+    $('work-import-dialog').addEventListener('cancel', (event) => { if (state.saving || state.reloading) event.preventDefault(); });
+    $('work-import-dialog').addEventListener('close', () => {
+      if (state.skipCloseCapture) { state.skipCloseCapture = false; return; }
+      if (!state.saving && !state.reloading && state.draftReady) captureDraft();
+    });
   }
 
-  window.BlueprintWorkdays = { init, setView, refreshDashboard, refreshCurrent: loadList, openImport, openReport, isBusy: () => state.saving };
+  window.BlueprintWorkdays = { init, setView, refreshDashboard, refreshCurrent: loadList, openImport, openReport, invalidateInstructions, isBusy: () => state.saving || state.reloading };
 })();

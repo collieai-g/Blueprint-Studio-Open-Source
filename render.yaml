@@ -1,0 +1,27 @@
+# A private, single-instance backend. Confirm Render's compute/disk price before creating it.
+services:
+  - type: web
+    name: blueprint-studio-backend
+    runtime: docker
+    plan: 0.5c-512mb
+    region: singapore
+    dockerfilePath: ./company/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    numInstances: 1
+    autoDeployTrigger: off
+    disk:
+      name: company-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: BLUEPRINT_DATA_DIR
+        value: /data
+      - key: PORT
+        value: "8787"
+      - key: BLUEPRINT_COMPANY_NAME
+        sync: false
+      - key: BLUEPRINT_ADMIN_USERNAME
+        sync: false
+      - key: BLUEPRINT_ADMIN_PASSWORD
+        sync: false
