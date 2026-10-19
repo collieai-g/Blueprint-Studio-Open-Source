@@ -194,7 +194,9 @@ class LibraryHandler(BaseHTTPRequestHandler):
         store = self.server.store
         actor = self.server.credential["username"]
         if method == "GET" and path == "/api/info":
-            return self._json({"version": __version__, "company_name": "藍圖專員工作室",
+            return self._json({"version": __version__, "company_name": "藍圖工作室 Blueprint Studio",
+                               "product_name": "Blueprint Studio Backend",
+                               "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
                                "classification": "rules", "stats": store.stats()})
         if path == "/api/collections":
             if method == "GET":
@@ -299,7 +301,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
 def serve_library(data_dir, host="127.0.0.1", port=8787, open_browser=True):
     server = make_server(data_dir, host=host, port=port)
     url = f"http://{'127.0.0.1' if host in {'0.0.0.0', '::'} else host}:{server.server_port}/"
-    print("藍圖公司資料庫：" + url, flush=True)
+    print("Blueprint Studio Backend｜藍圖工作室（後台）：" + url, flush=True)
     print("使用 library-init 設定的管理員帳號登入。雲端部署請使用 HTTPS 反向代理。", flush=True)
     if open_browser:
         webbrowser.open(url)

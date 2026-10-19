@@ -4,8 +4,9 @@
 
 一個普通文件夾，一張 AI 可讀身份卡，一套統一圖示。
 
-Blueprint Folder Agent is a local-first folder marker and portable workspace
-for use with Codex. Start with an empty folder and develop its purpose over time.
+Blueprint Studio Backend is an extensible work backend for entrepreneurs.
+This guide covers its local folder tools; the [company library](LIBRARY.md)
+provides persistent file organization and reference collections.
 
 文件夾可以完全空白起步，無需預先設定工作目的。你與 Codex 溝通後，
 再逐步加入內容、用途及標籤。這個小程式負責保存及展示資料，推理和開發由 Codex 提供；
@@ -13,7 +14,7 @@ for use with Codex. Start with an empty folder and develop its purpose over time
 
 ![桌面介面示例：文件夾卡片、統一圖示及可編輯身份標記](../artifacts/desktop.png)
 
-上圖為示範資料；首次開啟的工作區是空白的。
+上圖為文件夾工具的示範資料；首次開啟的工作區是空白的。
 
 ## 公開工具與自己的工作室一齊更新
 
@@ -24,7 +25,7 @@ for use with Codex. Start with an empty folder and develop its purpose over time
 ```text
 你的電腦/
 ├── blueprint-folder-agent/       # 公開工具，通用功能在這裏更新
-└── 藍圖專員工作室/               # 自己的專案、標記、工作指引
+└── 藍圖工作室 Blueprint Studio/               # 自己的專案、標記、工作指引
     ├── blueprint-studio.py       # 連結共用工具的啟動檔
     ├── AGENTS.md                 # 可自行補充的 Codex 工作指引
     ├── .blueprint/tool.json      # 本機工具位置
@@ -35,12 +36,12 @@ for use with Codex. Start with an empty folder and develop its purpose over time
 
 ```sh
 git clone https://github.com/collieai-g/blueprint-folder-agent.git
-python3 blueprint-folder-agent/blueprint.py link "藍圖專員工作室"
-python3 "藍圖專員工作室/blueprint-studio.py" create "第一個專員"
-python3 "藍圖專員工作室/blueprint-studio.py" --version
+python3 blueprint-folder-agent/blueprint.py link "藍圖工作室 Blueprint Studio"
+python3 "藍圖工作室 Blueprint Studio/blueprint-studio.py" create "第一個專員"
+python3 "藍圖工作室 Blueprint Studio/blueprint-studio.py" --version
 ```
 
-在 Codex 開啟「藍圖專員工作室」作為自己的工作專案。之後可直接說：
+在 Codex 開啟「藍圖工作室 Blueprint Studio」作為自己的工作專案。之後可直接說：
 
 > 請先讀 AGENTS.md、.blueprint/tool.json 及工作室清單，使用 blueprint-studio.py
 > 管理這個工作室。按我們的對話更新專案身份標記；通用工具功能到連結的工具專案
@@ -65,7 +66,7 @@ python3 blueprint-studio.py reindex
 
 ```sh
 git -C blueprint-folder-agent pull --ff-only
-python3 "藍圖專員工作室/blueprint-studio.py" --version
+python3 "藍圖工作室 Blueprint Studio/blueprint-studio.py" --version
 ```
 
 工具在同一路徑更新後，啟動檔會使用更新的程式；已啟動的本機服務請重新啟動。
@@ -107,16 +108,16 @@ python3 "藍圖專員工作室/blueprint-studio.py" --version
 在本專案目錄執行（你的環境可能用 `python` 或 `python3`）：
 
 ```sh
-python3 blueprint.py init "/你的路徑/藍圖專員工作室"
-python3 blueprint.py create "/你的路徑/藍圖專員工作室" "第一個文件夾"
+python3 blueprint.py init "/你的路徑/藍圖工作室 Blueprint Studio"
+python3 blueprint.py create "/你的路徑/藍圖工作室 Blueprint Studio" "第一個文件夾"
 ```
 
 第二行可以不填用途。之後再逐步補充：
 
 ```sh
-python3 blueprint.py mark "/你的路徑/藍圖專員工作室/第一個文件夾" --description "協助整理客服回覆" --category chat --tag WhatsApp --tag 客服
-python3 blueprint.py search "/你的路徑/藍圖專員工作室" "客服"
-python3 blueprint.py inspect "/你的路徑/藍圖專員工作室/第一個文件夾"
+python3 blueprint.py mark "/你的路徑/藍圖工作室 Blueprint Studio/第一個文件夾" --description "協助整理客服回覆" --category chat --tag WhatsApp --tag 客服
+python3 blueprint.py search "/你的路徑/藍圖工作室 Blueprint Studio" "客服"
+python3 blueprint.py inspect "/你的路徑/藍圖工作室 Blueprint Studio/第一個文件夾"
 ```
 
 可用圖案：`general`、`chat`、`web`、`finance`、`document`、`calendar`、`automation`、`research`。
@@ -145,7 +146,7 @@ python3 blueprint.py inspect "/你的路徑/藍圖專員工作室/第一個文�
 ## 把 Codex 更新帶回介面
 
 ```sh
-python3 blueprint.py pack "/你的路徑/藍圖專員工作室/第一個文件夾" --output "/另一個路徑/第一個文件夾.zip"
+python3 blueprint.py pack "/你的路徑/藍圖工作室 Blueprint Studio/第一個文件夾" --output "/另一個路徑/第一個文件夾.zip"
 ```
 
 然後在瀏覽器版匯入 ZIP。會保留標記、文字、二進位檔案及既有 `AGENTS.md`。

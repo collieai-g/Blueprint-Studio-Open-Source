@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from blueprint_folders.core import FolderError, create_folder
-from blueprint_folders.workspaces import LAUNCHER_NAME, link_workspace
+from blueprint_folders.workspaces import LAUNCHER_NAME, _LEGACY_LAUNCHER_SOURCE, link_workspace
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -128,6 +128,39 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(updated["tool_path"], str(self.tool))
         self.assertEqual(updated["schema_version"], 1)
         self.assertEqual(launcher.read_bytes(), original_launcher)
+
+    def test_official_legacy_launcher_upgrades_without_changing_private_contents(self):
+        self.workspace.mkdir()
+        guidance = self.workspace / "AGENTS.md"
+        guidance.write_text("# 私人工作指引\n保留原有名稱與內容。\n", encoding="utf-8")
+        source = self.workspace / "private.py"
+        source.write_bytes(b"private code\x00")
+        project = Path(create_folder(self.workspace, "既有專員", tags=["私人"])["path"])
+        marker = project / ".blueprint" / "folder.json"
+        metadata = json.loads(marker.read_text(encoding="utf-8"))
+        metadata["private_extension"] = {"owner": "自己"}
+        marker.write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
+        preserved = {path: path.read_bytes() for path in (guidance, source, marker, project / "AGENTS.md")}
+        launcher = self.workspace / LAUNCHER_NAME
+        launcher.write_text(_LEGACY_LAUNCHER_SOURCE, encoding="utf-8")
+        config_path = self.workspace / ".blueprint" / "tool.json"
+        config_path.write_text(json.dumps({
+            "schema_version": 1, "tool_path": "/old/location", "linked_version": "1.2.0",
+            "personal": {"display_name": "原有工作室", "theme": "blue"},
+        }, ensure_ascii=False), encoding="utf-8")
+
+        self.link()
+
+        self.assertTrue(self.workspace.is_dir())
+        self.assertEqual({path: path.read_bytes() for path in preserved}, preserved)
+        updated = json.loads(config_path.read_text(encoding="utf-8"))
+        self.assertEqual(updated["personal"], {"display_name": "原有工作室", "theme": "blue"})
+        self.assertEqual(updated["tool_path"], str(self.tool))
+        self.assertIn("Blueprint Studio Backend private studio launcher.", launcher.read_text(encoding="utf-8"))
+        self.assertIn("藍圖工作室 Blueprint Studio：", self.run_launcher().stdout)
+        process = self.run_launcher("search", "私人")
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(json.loads(process.stdout)["args"], ["search", str(self.workspace), "私人"])
 
     def test_stale_or_malformed_binding_gives_relink_instruction(self):
         self.link()

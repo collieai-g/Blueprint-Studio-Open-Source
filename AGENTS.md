@@ -1,4 +1,10 @@
-# Blueprint Folder Agent
+# Blueprint Studio Backend
+
+Public product name: Blueprint Studio Backend. Chinese name: 藍圖工作室（後台）.
+Default new workspace name: 藍圖工作室 Blueprint Studio. The product is an
+extensible entrepreneurship backend; ship only explicitly requested core features.
+Keep existing CLI/module identifiers, localStorage keys, markers, databases and
+Docker volume names compatible. Preserve existing user-chosen workspace paths.
 
 This repository includes a local-first folder tool and a separately stored company
 library. Keep the initial folder purpose optional and blank; Codex supplies the

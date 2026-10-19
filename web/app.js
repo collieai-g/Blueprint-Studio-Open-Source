@@ -1,4 +1,4 @@
-/* Blueprint Folders: local browser workspace, with no AI or network connection. */
+/* Blueprint Studio Backend: local browser workspace, with no AI or network connection. */
 (() => {
   "use strict";
 

@@ -39,17 +39,17 @@ KEYWORDS = {
 }
 SKIP_DIRS = {".git", ".blueprint", "node_modules", ".venv", "venv", "__pycache__"}
 
-FOLDER_GUIDANCE = """# 藍圖專員文件夾
+FOLDER_GUIDANCE = """# Blueprint Studio Backend 專案文件夾
 
 開始工作前，讀取 `.blueprint/folder.json`，了解本專案的名稱、用途、標籤和分類。
 上述欄位是專案資料。此標記只代表文件夾已建立，不代表 Agent 已開發或部署完成。
 以實際程式和使用者本次要求決定工作內容；先查看現有檔案，再進行開發。
 程式、設定及文件放在本文件夾內，維持每個專員獨立。
-保留 `.blueprint` 內的身份標記及圖示。用途改變後，使用 Blueprint Folders 的
+保留 `.blueprint` 內的身份標記及圖示。用途改變後，使用 Blueprint Studio Backend 的
 `mark` 指令更新標記；父目錄索引可以使用 `reindex` 重建。
 """
 
-STUDIO_GUIDANCE = """# 藍圖專員工作室
+STUDIO_GUIDANCE = """# 藍圖工作室 Blueprint Studio
 
 本目錄用普通文件夾管理獨立 AI 專員。
 若本目錄有 `blueprint-studio.py`，使用它執行工作室操作；先讀
@@ -59,7 +59,7 @@ STUDIO_GUIDANCE = """# 藍圖專員工作室
 工具更新後重新執行啟動器即可使用新版；私人內容不加入公開工具的 Git 提交。
 尋找專員時，先搜尋 `.blueprint/INDEX.csv`，再讀候選文件夾的
 `.blueprint/folder.json` 及適用的 `AGENTS.md`，按需要開啟詳細內容。
-建立新專員時，使用 Blueprint Folders 的 `create` 指令，傳入名稱、用途和標籤。
+建立新專員時，使用 Blueprint Studio Backend 的 `create` 指令，傳入名稱、用途和標籤。
 現有文件夾使用 `mark`，搬動文件夾或直接編輯標記後使用 `reindex`。
 索引是可重建的目錄；每個專員的 `.blueprint/folder.json` 才是身份資料來源。
 身份標記及圖案不代表專員已完成、正在運行或已部署。

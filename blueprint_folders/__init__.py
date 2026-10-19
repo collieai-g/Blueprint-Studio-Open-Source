@@ -1,3 +1,3 @@
-"""Blueprint Folders: ordinary folders with portable AI-readable identity."""
+"""Blueprint Studio Backend: company library and portable folder identity."""
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"

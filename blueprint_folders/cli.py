@@ -13,7 +13,7 @@ from .core import CATEGORIES, FolderError, create_folder, init_studio, mark_fold
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="藍圖文件夾：建立有圖案、AI 可辨認嘅普通文件夾。")
+    parser = argparse.ArgumentParser(description="Blueprint Studio Backend｜藍圖工作室（後台）：文件整理、資料收藏及專案標記。")
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("gui", help="開啟跨裝置瀏覽器介面（預設）")
@@ -82,7 +82,7 @@ def main(argv=None) -> int:
             handler = partial(SimpleHTTPRequestHandler, directory=str(page))
             server = ThreadingHTTPServer((args.host, args.port), handler)
             url = f"http://{'127.0.0.1' if args.host == '0.0.0.0' else args.host}:{server.server_port}/"
-            print("文件夾 Agent：" + url, flush=True)
+            print("Blueprint Studio Backend：" + url, flush=True)
             if not args.no_open:
                 webbrowser.open(url)
             try:

@@ -438,9 +438,9 @@
     populateCategories('collection-icon');
     try {
       const info = await api('/api/info');
-      $('company-name').textContent = info.company_name || '藍圖專員工作室';
-      document.title = `${info.company_name || '藍圖專員工作室'} · 公司資料庫`;
-      $('version').textContent = info.version ? `Blueprint Folder Agent ${info.version}` : '';
+      $('company-name').textContent = info.product_name || 'Blueprint Studio Backend';
+      document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
+      $('version').textContent = info.version ? `Blueprint Studio Backend ${info.version}` : '';
       await loadCollections();
       await loadItems();
     } catch (error) {

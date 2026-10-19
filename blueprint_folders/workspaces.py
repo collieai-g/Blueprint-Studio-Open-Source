@@ -12,7 +12,9 @@ LAUNCHER_NAME = "blueprint-studio.py"
 
 # Keep this independent of the engine and its location. Updating the checkout
 # changes the code used by this launcher without copying code into the studio.
-_LAUNCHER_SOURCE = '''#!/usr/bin/env python3
+# Exact template shipped in 1.1 and 1.2. Keep unchanged so official launchers can
+# be upgraded without treating users' own scripts as generated files.
+_LEGACY_LAUNCHER_SOURCE = '''#!/usr/bin/env python3
 """Blueprint Folder Agent private studio launcher. Configuration: .blueprint/tool.json."""
 
 import json
@@ -67,6 +69,11 @@ if __name__ == "__main__":
     raise SystemExit(main())
 '''
 
+_LAUNCHER_SOURCE = _LEGACY_LAUNCHER_SOURCE.replace(
+    "Blueprint Folder Agent private studio launcher.",
+    "Blueprint Studio Backend private studio launcher.",
+).replace('print("藍圖專員工作室："', 'print("藍圖工作室 Blueprint Studio："')
+
 
 def _tool_root() -> Path:
     return Path(__file__).resolve().parents[1]
@@ -98,18 +105,20 @@ def link_workspace(path) -> dict:
         raise FolderError("現有 tool.json 格式不正確，未有修改。")
     if launcher.is_symlink():
         raise FolderError("工作室啟動器不能係符號連結。")
+    write_launcher = not launcher.exists()
     if launcher.exists():
         try:
             existing = launcher.read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
             raise FolderError("現有 blueprint-studio.py 不能讀取，未有覆寫。") from exc
-        if existing != _LAUNCHER_SOURCE:
+        if existing not in {_LAUNCHER_SOURCE, _LEGACY_LAUNCHER_SOURCE}:
             raise FolderError("已有其他 blueprint-studio.py，請先重新命名；程式唔會覆寫。")
+        write_launcher = existing == _LEGACY_LAUNCHER_SOURCE
 
     init_studio(workspace)
     config = dict(config)
     config.update({"schema_version": 1, "tool_path": str(tool_root), "linked_version": __version__})
     _atomic_json(config_path, config)
-    if not launcher.exists():
+    if write_launcher:
         _atomic_text(launcher, _LAUNCHER_SOURCE)
     return {"path": str(workspace), "tool_path": str(tool_root), "launcher": str(launcher), "version": __version__}

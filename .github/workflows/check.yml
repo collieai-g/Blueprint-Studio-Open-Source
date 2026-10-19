@@ -1,4 +1,4 @@
-name: Check folder agent
+name: Check Blueprint Studio Backend
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
