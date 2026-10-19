@@ -9,8 +9,10 @@ Docker volume names compatible. Preserve existing user-chosen workspace paths.
 This repository includes a local-first folder tool and a separately stored company
 library. Keep the initial folder purpose optional and blank; Codex supplies the
 reasoning when the user asks. The user's expanded scope authorizes a persistent
-company backend. Its current scope is file organization and website/YouTube
-collections only. Do not add unrelated company features or OS icon hooks.
+company backend. Its core scope is file organization and website/YouTube
+collections. The user now authorizes a minimal workspace UI with practical
+navigation, favourites, unfiled items, and explicit selected-source AI handoff.
+Do not add unrelated company features, simulated AI connections or OS icon hooks.
 
 - `blueprint_folders/`: Python 3.10+ standard-library CLI for actual folders.
 - `web/`: dependency-free browser UI, including phone layouts.
@@ -18,8 +20,8 @@ collections only. Do not add unrelated company features or OS icon hooks.
 - `assets/icons/`: consistent portable SVG/PNG artwork.
 - `blueprint_library/`: authenticated HTTP API, external SQLite data and immutable
   uploaded files. Never save company databases, credentials or uploads in Git.
-- `library_web/`: functional company-library interface. The user will provide a
-  visual design direction separately; keep this distinct from the legacy UI.
+- `library_web/`: minimalist company workspace UI, informed by Shape of AI's
+  interaction patterns. Keep this distinct from the legacy offline UI.
 - Automatic categories currently use explicit local metadata/keyword rules.
   Describe these truthfully; there is no connected language model or silent AI
   access to conversations, YouTube transcripts or external page contents.

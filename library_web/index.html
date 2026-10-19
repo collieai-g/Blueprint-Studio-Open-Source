@@ -3,52 +3,60 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#153a59">
+  <meta name="theme-color" content="#f6f5f2">
   <title>Blueprint Studio Backend｜藍圖工作室（後台）</title>
   <link rel="icon" href="/icons/general.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">跳至資料清單</a>
-  <div class="shell">
+  <a class="skip-link" href="#main">跳至工作內容</a>
+  <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="關閉導覽" hidden></button>
+  <aside id="sidebar" class="sidebar" aria-label="主要導覽">
+    <a class="sidebar-brand" href="/" aria-label="Blueprint Studio 工作台"><span class="brand-symbol" aria-hidden="true">B</span><span><strong>Blueprint Studio</strong><small>BACKEND</small></span></a>
+    <div class="workspace-label"><span class="workspace-avatar" aria-hidden="true">藍</span><div><strong>藍圖工作室</strong><small>你的公司工作空間</small></div></div>
+    <p class="nav-label">工作空間</p>
+    <nav class="main-nav" aria-label="資料檢視">
+      <button class="nav-item active" type="button" data-view="dashboard" aria-current="page"><span data-icon="dashboard"></span><span>工作台</span></button>
+      <button class="nav-item" type="button" data-view="files"><span data-icon="folder"></span><span>文件庫</span><span class="nav-count" data-count="files">0</span></button>
+      <button class="nav-item" type="button" data-view="links"><span data-icon="bookmark"></span><span>資料收藏</span><span class="nav-count" data-count="links">0</span></button>
+      <button class="nav-item" type="button" data-view="youtube"><span data-icon="play"></span><span>YouTube 學習</span><span class="nav-count" data-count="youtube">0</span></button>
+      <button class="nav-item" type="button" data-view="pinned"><span data-icon="star"></span><span>星號收藏</span><span class="nav-count" data-count="pinned">0</span></button>
+      <button class="nav-item" type="button" data-view="unfiled"><span data-icon="inbox"></span><span>待整理</span><span class="nav-count" data-count="unfiled">0</span></button>
+      <button class="nav-item" type="button" data-view="archived"><span data-icon="archive"></span><span>已封存</span></button>
+    </nav>
+    <div class="nav-label collection-label"><span>收藏集</span><button id="new-collection" class="icon-button" type="button" title="新增收藏集" aria-label="新增收藏集"><span data-icon="plus"></span></button></div>
+    <nav id="collection-nav" class="collection-nav" aria-label="收藏集"></nav>
+    <p id="no-collections" class="sidebar-hint">為參考資料留一個位置。</p>
+    <div class="sidebar-bottom"><button id="help-button" class="nav-item" type="button"><span data-icon="help"></span><span>使用說明</span></button><button id="settings-button" class="nav-item" type="button"><span data-icon="settings"></span><span>偏好設定</span></button><p id="version">Blueprint Studio Backend</p></div>
+  </aside>
+
+  <div class="app-main">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">藍</span><div><h1 id="company-name">Blueprint Studio Backend</h1><p>藍圖工作室（後台）</p></div></div>
-      <a class="button secondary" href="/api/export" download>匯出資料清單</a>
+      <div class="topbar-start"><button id="mobile-menu" class="icon-button mobile-menu" type="button" aria-label="開啟導覽" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button><p class="breadcrumb">工作空間 <span aria-hidden="true">/</span> <strong id="breadcrumb-current">工作台</strong></p></div>
+      <div class="top-actions"><button id="command-button" class="command-button" type="button" aria-label="搜尋全部資料，快捷鍵 Control 或 Command 加 K"><span data-icon="search"></span><span>搜尋工作空間</span><kbd>⌘ K</kbd></button><div class="add-wrapper"><button id="add-item" class="button primary" type="button" aria-expanded="false" aria-controls="add-menu"><span data-icon="plus"></span>新增<span data-icon="chevron"></span></button><div id="add-menu" class="add-menu" hidden><button type="button" data-action="upload"><span data-icon="upload"></span>加入檔案</button><button type="button" data-action="link"><span data-icon="link"></span>收藏連結</button><button type="button" data-action="collection"><span data-icon="folder-plus"></span>新增收藏集</button></div></div></div>
     </header>
-
-    <main id="main">
-      <section class="intro" aria-label="工作室簡介"><h2>你的創業工作後台。</h2><p>由整理文件、收藏有用資料開始，逐步累積你的工作成果。</p></section>
+    <main id="main" tabindex="-1">
+      <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">YOUR WORKSPACE</p><h1 id="page-title">工作台<span class="title-dot" aria-hidden="true">.</span></h1><p id="page-description">最近文件、收藏與待整理資料，一眼掌握。</p></div><div class="page-date" id="page-date"></div></div>
       <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-
-      <section class="panel" aria-label="公司資料">
-        <div class="library-top">
-          <div class="tabs" role="tablist" aria-label="資料種類">
-            <button id="files-tab" class="tab active" type="button" role="tab" aria-controls="library-content" aria-selected="true" data-kind="file">文件整理</button>
-            <button id="links-tab" class="tab" type="button" role="tab" aria-controls="library-content" aria-selected="false" tabindex="-1" data-kind="link">資料收藏</button>
-          </div>
-          <div class="actions"><button id="new-collection" class="button secondary" type="button">新增收藏集</button><button id="add-item" class="button primary" type="button">加入檔案</button></div>
-        </div>
-
-        <div class="filters">
-          <label class="search"><span class="sr-only">搜尋名稱、筆記或標籤</span><input id="search" type="search" placeholder="搜尋名稱、筆記或標籤" autocomplete="off"></label>
-          <label><span>分類</span><select id="category-filter"><option value="">所有分類</option></select></label>
-          <label><span>收藏集</span><select id="collection-filter"><option value="">所有收藏集</option></select></label>
-          <label id="source-filter-label" hidden><span>來源</span><select id="source-filter"><option value="">所有來源</option><option value="youtube">YouTube</option></select></label>
-          <label class="checkbox"><input id="archived-filter" type="checkbox"> 查看已封存</label>
-        </div>
-
-        <div id="library-content" role="tabpanel" aria-labelledby="files-tab" tabindex="0">
-          <div class="list-summary"><p id="result-count" role="status" aria-live="polite">正在讀取…</p><p class="muted">自動分類（規則） · 可隨時修改</p></div>
-          <div id="item-grid" class="item-grid" aria-busy="true"></div>
-          <div id="empty-state" class="empty-state" hidden><img src="/icons/general.svg" alt="" width="72" height="72"><h3 id="empty-title">加入第一份文件</h3><p id="empty-copy">上傳文件後，系統會按檔名及文字內容加入分類與標籤。</p><button id="empty-add" class="button primary" type="button">加入檔案</button></div>
-          <div class="pagination"><button id="previous-page" class="button secondary" type="button" hidden>上一頁</button><span id="page-label" class="muted"></span><button id="next-page" class="button secondary" type="button" hidden>下一頁</button></div>
-        </div>
+      <section id="dashboard-panel" class="dashboard-panel" aria-label="工作台概覽">
+        <div class="welcome-card"><div><span class="subtle-label">STUDIO OVERVIEW</span><h2>文件與靈感，集中整理。</h2><p>快速加入資料，或接續最近的工作。</p></div><div class="welcome-art" aria-hidden="true"><span class="art-orbit"></span><img src="/icons/web.svg" alt=""><img src="/icons/research.svg" alt=""><img src="/icons/document.svg" alt=""></div></div>
+        <div class="stats-grid"><button class="stat-card" type="button" data-view="files"><span><span data-icon="folder"></span>文件庫</span><strong data-count="files">0</strong><small>查看文件<span data-icon="arrow"></span></small></button><button class="stat-card" type="button" data-view="links"><span><span data-icon="bookmark"></span>資料收藏</span><strong data-count="links">0</strong><small>查看收藏<span data-icon="arrow"></span></small></button><button class="stat-card" type="button" data-view="youtube"><span><span data-icon="play"></span>YouTube 學習</span><strong data-count="youtube">0</strong><small>查看學習影片<span data-icon="arrow"></span></small></button><button class="stat-card" type="button" data-view="unfiled"><span><span data-icon="inbox"></span>待整理</span><strong data-count="unfiled">0</strong><small>整理收藏集<span data-icon="arrow"></span></small></button></div>
+        <div class="section-title"><h2>從這裏開始</h2></div>
+        <div class="quick-actions"><button class="quick-action" type="button" data-action="upload"><span class="quick-icon violet"><span data-icon="upload"></span></span><span><strong>加入工作文件</strong><small>上傳檔案，自動分類及標記</small></span><span data-icon="arrow"></span></button><button class="quick-action" type="button" data-action="design"><span class="quick-icon peach"><span data-icon="layout"></span></span><span><strong>收藏網站／UI</strong><small>保存參考，寫下值得借鏡的地方</small></span><span data-icon="arrow"></span></button><button class="quick-action" type="button" data-action="youtube"><span class="quick-icon sage"><span data-icon="play"></span></span><span><strong>保存學習影片</strong><small>YouTube 連結與自己的學習筆記</small></span><span data-icon="arrow"></span></button></div>
       </section>
-      <footer><p>資料保存在你設定的伺服器資料目錄。匯出資料清單只包含文字及標記；檔案可在詳情內下載。</p><p id="version"></p></footer>
+
+      <section class="library-panel" aria-labelledby="library-heading">
+        <div class="section-title library-heading"><div><h2 id="library-heading">最近更新</h2><p id="result-count" role="status" aria-live="polite">正在讀取…</p></div><div class="display-controls"><label class="sr-only" for="sort-order">排序方式</label><select id="sort-order"><option value="updated">最近更新</option><option value="created">最近加入</option><option value="title">名稱排序</option></select><div class="view-switch" role="group" aria-label="顯示方式"><button id="grid-view" class="icon-button active" type="button" aria-label="卡片顯示" aria-pressed="true" title="卡片顯示"><span data-icon="grid"></span></button><button id="list-view" class="icon-button" type="button" aria-label="清單顯示" aria-pressed="false" title="清單顯示"><span data-icon="list"></span></button></div></div></div>
+        <div id="library-toolbar" class="library-toolbar"><label class="search-field"><span data-icon="search"></span><span class="sr-only">搜尋目前資料</span><input id="search" type="search" placeholder="搜尋目前資料…" autocomplete="off"></label><label><span class="sr-only">篩選分類</span><select id="category-filter"><option value="">所有分類</option></select></label><label><span class="sr-only">篩選收藏集</span><select id="collection-filter"><option value="">所有收藏集</option></select></label><button id="clear-filters" class="button quiet small" type="button" hidden>清除篩選</button></div>
+        <div id="selection-bar" class="selection-bar" hidden><label class="checkbox"><input id="select-all" type="checkbox"> <span id="selection-count">已選取 0 項</span></label><div class="actions"><button id="clear-selection" class="button quiet small" type="button">取消</button><button id="handoff-button" class="button primary small" type="button"><span data-icon="arrow-up-right"></span>交給 AI</button></div></div>
+        <div id="item-grid" class="item-grid" aria-busy="true"></div>
+        <div id="empty-state" class="empty-state" hidden><div class="empty-art"><img src="/icons/general.svg" alt="" width="72" height="72"></div><h3 id="empty-title">這裏準備好，等你的第一份資料。</h3><p id="empty-copy">加入文件或參考連結，逐步建立公司的資料庫。</p><button id="empty-add" class="button primary" type="button">加入資料<span data-icon="plus"></span></button></div>
+        <div class="pagination"><button id="previous-page" class="button secondary small" type="button" hidden>上一頁</button><span id="page-label" class="muted"></span><button id="next-page" class="button secondary small" type="button" hidden>下一頁</button></div>
+      </section>
+      <footer class="main-footer"><button id="footer-help" type="button">分類方式<span data-icon="help"></span></button></footer>
     </main>
   </div>
-
   <dialog id="collection-dialog" aria-labelledby="collection-heading">
     <form id="collection-form">
       <div class="dialog-heading"><h2 id="collection-heading">新增收藏集</h2><button class="icon-button" type="button" data-close aria-label="關閉新增收藏集">×</button></div>
@@ -104,5 +112,10 @@
       <div class="dialog-actions spread"><button id="archive-item" class="button secondary" type="button">封存資料</button><div class="actions"><button class="button secondary" type="button" data-close>關閉</button><button class="button primary" type="submit">儲存修改</button></div></div>
     </form>
   </dialog>
+
+  <dialog id="command-dialog" class="command-dialog" aria-labelledby="command-heading"><div class="command-header"><span data-icon="search"></span><label class="sr-only" id="command-heading" for="command-search">搜尋工作空間</label><input id="command-search" type="search" placeholder="搜尋資料，或開始一個動作…" autocomplete="off"><button class="key-button" type="button" data-close aria-label="關閉搜尋">Esc</button></div><p id="command-status" class="command-status" role="status" aria-live="polite">搜尋全部未封存資料</p><div id="command-results" class="command-results"></div><div id="command-actions" class="command-actions"><p class="nav-label">快速動作</p><button type="button" data-action="upload"><span data-icon="upload"></span>加入檔案<span>↵</span></button><button type="button" data-action="link"><span data-icon="link"></span>收藏連結<span>↵</span></button><button type="button" data-action="collection"><span data-icon="folder-plus"></span>新增收藏集<span>↵</span></button></div></dialog>
+  <dialog id="context-dialog" class="context-dialog" aria-labelledby="context-heading"><div class="dialog-heading"><div><p class="eyebrow">NEXT STEP</p><h2 id="context-heading">把資料交給 AI</h2></div><button class="icon-button" type="button" data-close aria-label="關閉交給 AI">×</button></div><p class="muted">整理成可交給 Codex、Gemini 或 Claude 的資料；不會自動傳送。</p><label class="field">今次想做甚麼？<select id="context-task"><option value="general">綜合整理</option><option value="design">網站／UI 設計參考</option><option value="learning">學習整理與應用</option><option value="planning">規劃下一步工作</option></select></label><p id="context-summary" class="muted"></p><label class="field">交接內容<textarea id="context-markdown" rows="13" readonly spellcheck="false"></textarea></label><p id="context-error" class="form-error" role="alert" hidden></p><div class="dialog-actions"><button id="context-generate" class="button secondary" type="button">重新整理</button><button id="context-download" class="button secondary" type="button" disabled>下載 Markdown</button><button id="context-copy" class="button primary" type="button" disabled>複製內容</button></div></dialog>
+  <dialog id="settings-dialog" aria-labelledby="settings-heading"><div class="dialog-heading"><h2 id="settings-heading">偏好設定</h2><button class="icon-button" type="button" data-close aria-label="關閉偏好設定">×</button></div><p class="muted">顯示偏好只保存在目前瀏覽器。</p><label class="field">資料顯示<select id="settings-layout"><option value="grid">卡片顯示</option><option value="list">清單顯示</option></select></label><label class="field">預設排序<select id="settings-sort"><option value="updated">最近更新</option><option value="created">最近加入</option><option value="title">名稱排序</option></select></label><div class="settings-export"><h3>匯出資料清單</h3><p class="muted">包含文字、分類及標記；原始檔案需另外下載，不是完整檔案備份。</p><a class="button secondary" href="/api/export" download><span data-icon="download"></span>匯出 JSON</a></div></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-heading"><div class="dialog-heading"><h2 id="help-heading">讓工作室更好用</h2><button class="icon-button" type="button" data-close aria-label="關閉使用說明">×</button></div><div class="help-section"><h3>先收藏，再慢慢整理</h3><p>文件庫保存原始檔案；資料收藏保存網站、UI 參考與 YouTube 連結。未分配收藏集的資料會出現在「待整理」。</p></div><div class="help-section"><h3>分類可以隨時修改</h3><p>圖案與標籤由檔名、格式及你提供的文字按規則分類，並非 AI 模型分析。詳情內可以修改分類，或重新按規則整理。</p></div><div class="help-section"><h3>把選定資料交給 AI</h3><p>勾選最多 20 項資料，再按「交給 AI」，即可取得有來源的 Markdown 內容。你決定交給哪個 AI，不會自動上傳。</p></div><div class="help-section"><h3>資料與快捷鍵</h3><p>資料保存在你設定的伺服器資料目錄。用 <kbd>Ctrl / ⌘ K</kbd> 搜尋全部資料；用 <kbd>Esc</kbd> 關閉視窗。</p></div></dialog>
 </body>
 </html>

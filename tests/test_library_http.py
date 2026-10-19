@@ -209,6 +209,113 @@ class LibraryHTTPTests(unittest.TestCase):
         self.assertFalse(self.data_dir.resolve().is_relative_to(
             Path(__file__).resolve().parents[1]))
 
+    def test_context_handoff_contains_only_selected_sources_without_mutation(self):
+        selected = self.create_item(title="選取的介面研究", notes="SELECTED-NOTE：比較導航")
+        unselected = self.create_item(title="未選取的私人工作", notes="UNSELECTED-SECRET-DO-NOT-INCLUDE")
+        status, _, before = self.json_request("GET", "/api/export")
+        self.assertEqual(status, 200)
+        status, headers, result = self.json_request("POST", "/api/context", data={
+            "item_ids": [selected["id"]], "task": "design"},
+            origin=f"http://{self.host}:{self.port}")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["task"], "design")
+        self.assertIs(result["truncated"], False)
+        self.assertEqual(headers.get("Cache-Control"), "no-store")
+        markdown = result["markdown"]
+        self.assertIn(selected["id"], markdown)
+        self.assertIn(selected["url"], markdown)
+        self.assertIn("SELECTED-NOTE", markdown)
+        self.assertNotIn(unselected["id"], markdown)
+        self.assertNotIn("UNSELECTED-SECRET", markdown)
+        status, _, after = self.json_request("GET", "/api/export")
+        self.assertEqual(status, 200)
+        before.pop("exported_at")
+        after.pop("exported_at")
+        self.assertEqual(after, before, "Preparing context must not change records or history")
+
+    def test_context_handoff_enforces_request_protection_and_explicit_selection(self):
+        selected = self.create_item(notes="PRIVATE-CONTEXT-SOURCE")
+        valid = {"item_ids": [selected["id"]], "task": "general"}
+        for options, expected in (
+            ({"authenticated": False}, 401),
+            ({"write_header": False}, 403),
+            ({"origin": "https://other.example"}, 403),
+            ({"content_type": "text/plain"}, 415),
+        ):
+            with self.subTest(protection=options):
+                status, _, result = self.json_request("POST", "/api/context", data=valid, **options)
+                self.assertEqual(status, expected, result)
+                self.assertNotIn("PRIVATE-CONTEXT-SOURCE", json.dumps(result))
+        for invalid in (
+            {**valid, "include_all": True},
+            {"item_ids": [], "task": "general"},
+            {"item_ids": [selected["id"]], "task": "unsupported"},
+        ):
+            with self.subTest(payload=invalid):
+                status, _, result = self.json_request("POST", "/api/context", data=invalid)
+                self.assertEqual(status, 400, result)
+                self.assertNotIn("PRIVATE-CONTEXT-SOURCE", json.dumps(result))
+        status, _, result = self.json_request("POST", "/api/context", data={
+            "item_ids": [selected["id"], "missing-item"], "task": "learning"})
+        self.assertEqual(status, 404, result)
+        self.assertNotIn("PRIVATE-CONTEXT-SOURCE", json.dumps(result))
+
+    def test_workspace_filters_sorting_and_active_counts_reach_the_store(self):
+        status, _, collection = self.json_request("POST", "/api/collections", data={
+            "name": "設計參考", "icon": "web"})
+        self.assertEqual(status, 201, collection)
+        loose = self.create_item(title="Beta 未整理資料", notes="待加入收藏夾")
+        filed = self.create_item(title="Alpha 設計參考", notes="已整理",
+                                 collection_id=collection["collection"]["id"])
+        archived = self.create_item(title="Archived 過往資料")
+        for item, changes in (
+            (filed, {"pinned": True}),
+            (loose, {"notes": "最近更新的待整理資料"}),
+            (archived, {"pinned": True, "archived": True}),
+        ):
+            status, _, result = self.json_request("PATCH", "/api/items/" + item["id"], data={
+                **changes, "expected_version": item["version"]})
+            self.assertEqual(status, 200, result)
+        for query, expected_ids in (
+            ("pinned=1", [filed["id"]]),
+            ("pinned=0", [loose["id"]]),
+            ("unfiled=1", [loose["id"]]),
+            ("unfiled=0&sort=title", [filed["id"], loose["id"]]),
+            ("unfiled=1&pinned=1", []),
+            ("sort=created", [filed["id"], loose["id"]]),
+            ("sort=updated", [loose["id"], filed["id"]]),
+        ):
+            with self.subTest(query=query):
+                status, _, result = self.json_request("GET", "/api/items?" + query)
+                self.assertEqual(status, 200, result)
+                self.assertEqual(result["total"], len(expected_ids))
+                self.assertEqual([item["id"] for item in result["items"]], expected_ids)
+        status, _, info = self.json_request("GET", "/api/info")
+        self.assertEqual(status, 200)
+        self.assertEqual(info["stats"]["pinned"], 1)
+        self.assertEqual(info["stats"]["unfiled"], 1)
+        for query in ("pinned=true", "pinned=", "unfiled=2", "unfiled=",
+                      "sort=random", "sort="):
+            with self.subTest(invalid_query=query):
+                status, _, result = self.json_request("GET", "/api/items?" + query)
+                self.assertEqual(status, 400, result)
+
+    def test_stale_pin_request_cannot_reverse_a_newer_favourite(self):
+        item = self.create_item()
+        path = "/api/items/" + item["id"]
+        status, _, updated = self.json_request("PATCH", path, data={
+            "pinned": True, "expected_version": item["version"]})
+        self.assertEqual(status, 200, updated)
+        self.assertIs(updated["item"]["pinned"], True)
+        status, _, result = self.json_request("PATCH", path, data={
+            "pinned": False, "expected_version": item["version"]})
+        self.assertEqual(status, 409, result)
+        status, _, current = self.json_request("GET", path)
+        self.assertEqual(status, 200)
+        self.assertIs(current["item"]["pinned"], True)
+        self.assertEqual(current["item"]["version"], updated["item"]["version"])
+
 
 if __name__ == "__main__":
     unittest.main()

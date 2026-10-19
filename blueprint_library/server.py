@@ -21,6 +21,7 @@ import webbrowser
 from blueprint_folders import __version__
 from blueprint_folders.core import CATEGORIES, _atomic_json
 from .classify import classify_item
+from .context import build_context
 from .store import LibraryError, Store
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -205,11 +206,20 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 return self._json({"collection": store.create_collection(self._body())}, 201)
         if path == "/api/items":
             if method == "GET":
-                query = parse_qs(parsed.query)
+                query = parse_qs(parsed.query, keep_blank_values=True)
                 options = {key: query.get(key, [""])[0] for key in ("q", "kind", "category", "collection_id", "source_type")}
                 options.update(archived=query.get("archived", ["0"])[0] == "1",
                                limit=int(query.get("limit", ["100"])[0]),
                                offset=int(query.get("offset", ["0"])[0]))
+                if "pinned" in query:
+                    if query["pinned"][0] not in {"0", "1"}:
+                        raise LibraryError("星號篩選需要 0 或 1。")
+                    options["pinned"] = query["pinned"][0] == "1"
+                if "unfiled" in query:
+                    if query["unfiled"][0] not in {"0", "1"}:
+                        raise LibraryError("待整理篩選需要 0 或 1。")
+                    options["unfiled"] = query["unfiled"][0] == "1"
+                options["sort"] = query.get("sort", ["updated"])[0]
                 return self._json(store.list_items(**options))
             if method == "POST":
                 return self._json({"item": store.create_item(self._body(), actor=actor)}, 201)
@@ -252,6 +262,11 @@ class LibraryHandler(BaseHTTPRequestHandler):
             if any(not isinstance(value, str) for value in fields.values()):
                 raise LibraryError("分類資料必須是文字。")
             return self._json({"classification": classify_item(**fields)})
+        if path == "/api/context" and method == "POST":
+            data = self._body()
+            if set(data) - {"item_ids", "task"}:
+                raise LibraryError("交接只接受資料編號及用途。")
+            return self._json(build_context(store, data.get("item_ids"), data.get("task", "general")))
         if path == "/api/export" and method == "GET":
             return self._json(store.export_metadata(), extra={"Content-Disposition": 'attachment; filename="blueprint-library-metadata.json"'})
         if method == "GET":

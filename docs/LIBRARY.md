@@ -5,7 +5,6 @@
 **Blueprint Studio Backend｜藍圖工作室（後台）** 是為創業者而設、可逐步擴充的工作後台。
 你可以為自己或公司部署獨立工作室。今版集中兩個功能：整理公司的文件，以及收藏網站／UI 參考和 YouTube 知識連結。
 這是有登入及伺服器保存功能的後台，與舊版只保存在瀏覽器的資料包介面分開。
-介面先提供可操作結構，視覺設計會按之後提供的方向調整。
 
 ## 可以做甚麼？
 
@@ -14,6 +13,33 @@
 - 整理與搜尋：用名稱、筆記、標籤、網址或可讀文字搜尋，按分類及收藏夾篩選。
 - 隨時修正：手動修改標記、重新分類、封存及恢復資料；修改紀錄可透過 API 或匯出清單查閱。
 - 持久保存：重啟服務後資料仍在。資料目錄與公開程式分開，更新工具不會重建資料庫。
+
+## 介面怎樣使用？
+
+| 入口 | 用途 |
+| --- | --- |
+| 工作台 | 查看最近資料，快速上傳或新增設計／YouTube 參考 |
+| 文件庫／資料收藏／YouTube 學習 | 按資料類型瀏覽 |
+| 星號收藏 | 找回自己標星的重要資料 |
+| 待整理 | 查看尚未放進收藏集的資料 |
+| 收藏集 | 自訂主題，把文件和連結放在一起 |
+| 已封存 | 查看及恢復封存資料 |
+
+用頂部搜尋或 `⌘K`／`Ctrl+K` 找資料。清單支援分類篩選、排序及卡片／清單切換。
+手機可用左上角開啟導覽。顯示偏好只保存在目前瀏覽器；公司資料保存在伺服器。
+
+介面以 [Shape of AI](https://www.shapeof.ai/#tuners) 的篩選、範本及圖示識別等互動原則作參考，
+採用原創版面及本專案自製圖示。
+
+## 將資料交給不同 AI
+
+1. 勾選需要的資料，最多 20 項。
+2. 按「交給 AI」，選擇整理、設計、學習或行動規劃用途。
+3. 複製內容，或下載 Markdown，交給你使用的 Codex、Gemini 或 Claude。
+
+交接只包含選取資料的標題、來源、版本、筆記、標籤及可讀文字節錄，最多 60,000 字元。
+長內容會顯示節錄提示，原始附件另行提供。產生交接不會修改原資料，亦不會自動傳送到 AI 平台。
+這個功能未有接通各家 AI 帳號；收藏網址仍不會自動讀取網頁全文或影片字幕。
 
 自動分類目前使用本機規則，沒有接入語言模型或傳送文件給 AI 公司。
 每項資料保留分類依據；手動修改後，一般編輯會保留你的標記。
@@ -79,6 +105,7 @@ python3 blueprint.py library --data "../藍圖公司資料"
 
 使用 Docker 則更新程式後重新執行 `docker compose up -d --build`，保留同一個 volume。
 更新前先處理本機程式修改，並備份私人資料。
+1.3 版會自動為舊資料庫加入星號欄位；原有資料、附件、帳號及修改紀錄保留。
 
 「匯出資料清單」包含筆記、標記、收藏夾、已抽取的可讀文字及修改紀錄，**不包含原始檔案附件**。
 完整備份需先停止服務，再備份整個私人資料目錄或 Docker volume，包括 SQLite 相關檔案及 `blobs/`。
@@ -106,12 +133,17 @@ python3 blueprint.py library --data "../藍圖公司資料"
 | 查看修改紀錄 | `GET /api/items/{id}/history` |
 | 上傳／下載文件 | `POST /api/files`、`GET /api/files/{id}` |
 | 預覽規則分類 | `POST /api/classify` |
+| 產生選取資料的 AI 交接 | `POST /api/context` |
 | 匯出 metadata | `GET /api/export` |
 
 API 需要管理員 HTTP Basic 登入。寫入另外需要 `Content-Type: application/json`
 及 `X-Blueprint-Request: 1`，跨來源寫入會被拒絕。
 上傳使用 JSON `name`、`mime`、`content_base64`，可加 `notes`、`tags`、`collection_id`。
 修改需要最新的 `expected_version`；版本不一致時回傳 409，避免覆蓋較新的內容。
-搜尋支援 `q`、`kind`、`category`、`collection_id`、`source_type`、`archived`、`limit`、`offset`。
+搜尋支援 `q`、`kind`、`category`、`collection_id`、`source_type`、`archived`、`pinned`、`unfiled`、`sort`、`limit`、`offset`。
+`pinned`、`unfiled` 使用 `0`／`1`，排序使用 `updated`／`created`／`title`。
+修改星號使用 `PATCH /api/items/{id}`，包含 `pinned: true/false` 及 `expected_version`。
+交接請求使用 `{"item_ids":["資料編號"],"task":"general"}`，用途可選 `general`、`design`、`learning`、`planning`。
+回應包含 `markdown`、`count`、`task` 及 `truncated`，需要與其他寫入請求相同的登入及來源保護。
 
 這些 API 是擴充基礎；接入外部 Agent 前應先加入專用的授權及資料範圍設計。

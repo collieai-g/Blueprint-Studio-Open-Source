@@ -25,8 +25,14 @@ from .classify import classify_item, normalize_url
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
 MAX_TEXT_SIZE = 200 * 1024
+SCHEMA_VERSION = 2
 _SOURCE_ROOT = Path(__file__).resolve().parent.parent
 _SOURCE_TYPES = {"website", "youtube", "code", "document", "image", "video", "other"}
+_SORT_ORDERS = {
+    "updated": "updated_at DESC,id",
+    "created": "created_at DESC,id",
+    "title": "title COLLATE NOCASE ASC,id",
+}
 _TEXT_SUFFIXES = {
     ".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".jsonl", ".yaml", ".yml",
     ".toml", ".ini", ".cfg", ".xml", ".html", ".htm", ".css", ".scss", ".js",
@@ -147,14 +153,19 @@ class Store:
 
     def _initialize(self):
         with self._connection() as conn:
-            if conn.execute("PRAGMA user_version").fetchone()[0] > 1:
+            if conn.execute("PRAGMA user_version").fetchone()[0] > SCHEMA_VERSION:
                 raise LibraryError("此資料庫由較新版本建立，請先更新工具。", 500)
             conn.execute("PRAGMA journal_mode = WAL")
-            conn.executescript("""
+            # Serialize concurrent startup migrations and commit schema/version
+            # together. Existing files, records and historical snapshots stay put.
+            conn.execute("BEGIN IMMEDIATE")
+            if conn.execute("PRAGMA user_version").fetchone()[0] > SCHEMA_VERSION:
+                raise LibraryError("此資料庫由較新版本建立，請先更新工具。", 500)
+            statements = ("""
                 CREATE TABLE IF NOT EXISTS collections (
                     id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
                     icon TEXT NOT NULL, created_at TEXT NOT NULL
-                );
+                )""", """
                 CREATE TABLE IF NOT EXISTS items (
                     id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('file','link')),
                     title TEXT NOT NULL, notes TEXT NOT NULL, url TEXT NOT NULL,
@@ -164,20 +175,29 @@ class Store:
                     file_name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL,
                     sha256 TEXT NOT NULL, blob_name TEXT NOT NULL, extracted_text TEXT NOT NULL,
                     search_text TEXT NOT NULL, version INTEGER NOT NULL,
-                    archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
+                    archived INTEGER NOT NULL DEFAULT 0, pinned INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS items_collection ON items(collection_id, archived);
-                CREATE INDEX IF NOT EXISTS items_category ON items(category, archived);
-                CREATE INDEX IF NOT EXISTS items_updated ON items(updated_at DESC, id);
+                )""", """
                 CREATE TABLE IF NOT EXISTS history (
                     id TEXT PRIMARY KEY, item_id TEXT NOT NULL REFERENCES items(id),
                     version INTEGER NOT NULL, action TEXT NOT NULL, actor TEXT NOT NULL,
                     recorded_at TEXT NOT NULL, snapshot TEXT NOT NULL,
                     UNIQUE(item_id, version)
-                );
-                PRAGMA user_version = 1;
-            """)
+                )""")
+            for statement in statements:
+                conn.execute(statement)
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(items)")}
+            if "pinned" not in columns:
+                conn.execute("ALTER TABLE items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+            for statement in (
+                "CREATE INDEX IF NOT EXISTS items_collection ON items(collection_id, archived)",
+                "CREATE INDEX IF NOT EXISTS items_category ON items(category, archived)",
+                "CREATE INDEX IF NOT EXISTS items_updated ON items(updated_at DESC, id)",
+                "CREATE INDEX IF NOT EXISTS items_pinned ON items(pinned, archived)",
+            ):
+                conn.execute(statement)
+            conn.execute("PRAGMA user_version = 2")
 
     def _collection_id(self, conn, value):
         if value is None or value == "":
@@ -233,6 +253,7 @@ class Store:
             if isinstance(result[key], str):
                 result[key] = json.loads(result[key])
         result["archived"] = bool(result["archived"])
+        result["pinned"] = bool(result.get("pinned", False))
         result["icon"] = result["category"]
         for key in ("blob_name", "search_text", "category_override", "tags_override"):
             result.pop(key, None)
@@ -266,7 +287,7 @@ class Store:
                     collection_id=collection_id, category="general", tags=[], source_type="other",
                     classification={}, category_override=0, tags_override=0, file_name="", mime="",
                     size=0, sha256="", blob_name="", extracted_text="", version=1,
-                    archived=0, created_at=now, updated_at=now)
+                    archived=0, pinned=0, created_at=now, updated_at=now)
 
     def create_item(self, payload, actor="owner") -> dict:
         payload = _payload(payload, {"kind", "title", "notes", "url", "collection_id", "category", "tags"})
@@ -301,9 +322,15 @@ class Store:
             return self._public(self._get_row(conn, item_id))
 
     def list_items(self, q="", kind="", category="", collection_id="", source_type="",
-                   archived=False, limit=100, offset=0) -> dict:
+                   archived=False, limit=100, offset=0, pinned=None, unfiled=False,
+                   sort="updated") -> dict:
         q = _text(q, "搜尋內容", 2000)
         archived = _boolean(archived, "封存狀態")
+        unfiled = _boolean(unfiled, "未分類收藏夾篩選")
+        if pinned is not None:
+            pinned = _boolean(pinned, "常用狀態")
+        if not isinstance(sort, str) or sort not in _SORT_ORDERS:
+            raise LibraryError("排序只接受 updated、created 或 title。")
         if type(limit) is not int or not 1 <= limit <= 200 or type(offset) is not int or not 0 <= offset <= 1000000:
             raise LibraryError("每頁數量必須為 1 至 200，起始位置必須為非負整數。")
         for value, label in ((kind, "資料類型"), (category, "分類"), (source_type, "來源類型"), (collection_id, "收藏夾編號")):
@@ -319,6 +346,11 @@ class Store:
             raise LibraryError("每次搜尋最多 32 個關鍵字。")
         where = ["archived=?"]
         args = [int(archived)]
+        if pinned is not None:
+            where.append("pinned=?")
+            args.append(int(pinned))
+        if unfiled:
+            where.append("collection_id IS NULL")
         for column, value in (("kind", kind), ("category", category), ("collection_id", collection_id), ("source_type", source_type)):
             if value:
                 where.append(column + "=?")
@@ -330,11 +362,11 @@ class Store:
         with self._connection() as conn:
             total = conn.execute("SELECT COUNT(*) FROM items WHERE " + clause, args).fetchone()[0]
             # SQLite performs filtering and pagination, including Unicode casefold text.
-            rows = conn.execute("SELECT * FROM items WHERE " + clause + " ORDER BY updated_at DESC,id LIMIT ? OFFSET ?", [*args, limit, offset])
+            rows = conn.execute("SELECT * FROM items WHERE " + clause + " ORDER BY " + _SORT_ORDERS[sort] + " LIMIT ? OFFSET ?", [*args, limit, offset])
             return {"items": [self._public(row, full=False) for row in rows], "total": total}
 
     def update_item(self, item_id, payload, actor="owner") -> dict:
-        payload = _payload(payload, {"title", "notes", "url", "collection_id", "category", "tags", "archived", "reclassify", "expected_version"})
+        payload = _payload(payload, {"title", "notes", "url", "collection_id", "category", "tags", "archived", "pinned", "reclassify", "expected_version"})
         expected = payload.get("expected_version")
         if type(expected) is not int or expected < 1:
             raise LibraryError("更新必須提供正確嘅 expected_version。")
@@ -361,6 +393,8 @@ class Store:
                 item["collection_id"] = self._collection_id(conn, payload["collection_id"])
             if "archived" in payload:
                 item["archived"] = int(_boolean(payload["archived"], "封存狀態"))
+            if "pinned" in payload:
+                item["pinned"] = int(_boolean(payload["pinned"], "常用狀態"))
             category_override = bool(item["category_override"]) and not reclassify
             tags_override = bool(item["tags_override"]) and not reclassify
             if "category" in payload:
@@ -386,6 +420,7 @@ class Store:
             for row in conn.execute("SELECT * FROM history WHERE item_id=? ORDER BY version", (item_id,)):
                 entry = dict(row)
                 entry["snapshot"] = json.loads(entry["snapshot"])
+                entry["snapshot"]["pinned"] = bool(entry["snapshot"].get("pinned", False))
                 result.append(entry)
             return result
 
@@ -458,6 +493,8 @@ class Store:
                 COALESCE(SUM(archived=0 AND kind='file'),0) AS files,
                 COALESCE(SUM(archived=0 AND kind='link'),0) AS links,
                 COALESCE(SUM(archived=0 AND source_type='youtube'),0) AS youtube,
+                COALESCE(SUM(archived=0 AND pinned=1),0) AS pinned,
+                COALESCE(SUM(archived=0 AND collection_id IS NULL),0) AS unfiled,
                 COALESCE(SUM(archived=1),0) AS archived FROM items""").fetchone()
             result = dict(row)
             result["collections"] = conn.execute("SELECT COUNT(*) FROM collections").fetchone()[0]
@@ -471,6 +508,7 @@ class Store:
             for row in conn.execute("SELECT * FROM history ORDER BY recorded_at,id"):
                 entry = dict(row)
                 entry["snapshot"] = json.loads(entry["snapshot"])
+                entry["snapshot"]["pinned"] = bool(entry["snapshot"].get("pinned", False))
                 history.append(entry)
             return {"format": "blueprint-library-metadata", "version": 1, "exported_at": _now(),
                     "includes_file_bytes": False,
