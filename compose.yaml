@@ -1,0 +1,15 @@
+services:
+  library:
+    build:
+      context: .
+      dockerfile: company/Dockerfile
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      BLUEPRINT_ADMIN_USERNAME: ${BLUEPRINT_ADMIN_USERNAME:-admin}
+      BLUEPRINT_ADMIN_PASSWORD: ${BLUEPRINT_ADMIN_PASSWORD:?請先在本機 .env 設定管理員密碼}
+    volumes:
+      - company-data:/data
+    restart: unless-stopped
+volumes:
+  company-data:

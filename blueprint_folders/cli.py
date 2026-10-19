@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
+import os
 import sys
 import webbrowser
 from pathlib import Path
@@ -23,6 +25,14 @@ def main(argv=None) -> int:
     setup.add_argument("path")
     link = commands.add_parser("link", help="建立獨立工作室，連結共用工具以使用功能更新")
     link.add_argument("path", help="工具目錄以外嘅私人工作室路徑")
+    library_init = commands.add_parser("library-init", help="初始化私人公司資料庫及管理員登入")
+    library_init.add_argument("path", help="公開工具目錄以外嘅私人資料路徑")
+    library_init.add_argument("--username", default="admin")
+    library = commands.add_parser("library", help="啟動文件整理與網站／YouTube 收藏後台")
+    library.add_argument("--data", required=True, help="已初始化嘅私人資料目錄")
+    library.add_argument("--host", default="127.0.0.1")
+    library.add_argument("--port", type=int, default=8787)
+    library.add_argument("--no-open", action="store_true")
     for action in ("create", "mark"):
         command = commands.add_parser(action, help="建立新文件夾" if action == "create" else "標記現有文件夾")
         command.add_argument("path", help="父目錄" if action == "create" else "現有文件夾")
@@ -44,6 +54,20 @@ def main(argv=None) -> int:
     package.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "library-init":
+            from blueprint_library.server import initialize_library
+            password = os.environ.get("BLUEPRINT_ADMIN_PASSWORD")
+            if password is None:
+                password = getpass.getpass("設定管理員密碼（最少 12 字元）：")
+                if password != getpass.getpass("再次輸入密碼："):
+                    raise FolderError("兩次密碼不一致，未有初始化。")
+            result = initialize_library(args.path, args.username, password)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "library":
+            from blueprint_library.server import serve_library
+            serve_library(args.data, host=args.host, port=args.port, open_browser=not args.no_open)
+            return 0
         if args.command in (None, "gui"):
             page = Path(__file__).resolve().parents[1] / "dist" / "index.html"
             if not page.exists():
@@ -94,7 +118,7 @@ def main(argv=None) -> int:
             parser.error("未知指令")
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
-    except (FolderError, OSError) as exc:
+    except (ValueError, OSError, EOFError) as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 2
 

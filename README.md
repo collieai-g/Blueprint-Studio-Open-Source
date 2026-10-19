@@ -8,7 +8,28 @@ Codex 負責理解及開發，這個工具負責保存標記，無需 API 金鑰
 
 [下載工具](https://github.com/collieai-g/blueprint-folder-agent/archive/refs/heads/main.zip) · [詳細用法](docs/USAGE.md) · [更新紀錄](CHANGELOG.md)
 
-## 安裝：交給 Codex 處理
+## 公司文件與資料收藏
+
+新增有登入及資料庫保存的公司後台，先做好兩個功能：
+
+1. **文件整理**：上傳原檔，自動建議分類、標籤及統一圖示，之後可以手動修正。
+2. **資料收藏**：保存網站設計、UI 參考及 YouTube 連結，加上筆記並隨時搜尋。
+
+需要 Python 3.10+，無需額外套件。在下載後的工具目錄執行：
+
+```sh
+python3 blueprint.py library-init "../藍圖公司資料" --username admin
+python3 blueprint.py library --data "../藍圖公司資料"
+```
+
+第一行會讓你設定密碼；第二行開啟本機後台，用剛設定的帳號登入。
+公司資料獨立保存，重啟服務後仍可使用。自動分類目前使用本機規則，未連接 AI 模型。
+收藏網址會保留你填寫的內容，未有自動讀取網頁全文或影片字幕。
+
+[公司後台使用及雲端部署說明](docs/LIBRARY.md)。目前提供可操作介面，視覺設計會繼續調整。
+外出使用需要將服務部署到自己的雲端主機；下載工具不會自動產生雲端網址。
+
+## 文件夾工具：交給 Codex 安裝
 
 在你電腦上的 Codex 開啟一個可存放專案的位置，貼上以下整段文字：
 
@@ -67,7 +88,7 @@ git pull --ff-only
 
 ## 開源與參與
 
-目前功能版本：**1.1.0**。每次更新可查看 [更新紀錄](CHANGELOG.md)。
+目前功能版本：**1.2.0**。每次更新可查看 [更新紀錄](CHANGELOG.md)。
 
 程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)。可以使用、修改及分享，請保留授權及版權聲明。
 歡迎透過 [Issues](https://github.com/collieai-g/blueprint-folder-agent/issues) 提出建議，或提交 Pull Request 改善工具。

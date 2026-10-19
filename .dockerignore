@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+__pycache__
+**/__pycache__
+*.pyc
+*.sqlite3*
+access.json
+*.zip
+artifacts
+tests
+.sites-runtime

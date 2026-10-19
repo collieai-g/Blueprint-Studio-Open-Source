@@ -5,3 +5,10 @@ Thumbs.db
 .pytest_cache/
 test-results/
 *.zip
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+access.json
+.env
+.env.*
+!.env.example
