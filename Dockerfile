@@ -17,6 +17,7 @@ WORKDIR /build
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
+COPY docs/CODEX-WORKSPACE.md ./docs/CODEX-WORKSPACE.md
 RUN --mount=type=secret,id=proxy_ca \
     --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target \

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-20T11:34:20.167153+00:00",
+  "client": {
+    "name": "Codex CLI app-server",
+    "version": "codex-cli 0.159.2",
+    "configuration": "Temporary per-invocation -c overrides; no saved or global Codex configuration changed"
+  },
+  "workspace_version": "2.0.0-alpha.1",
+  "binary_sha256": "87ebeb3e0aa4639f7966e8584abd5d4a24af9ab1fbbf2f9980babac7fec9eaeb",
+  "environment": "Isolated disposable design-preview company, existing PostgreSQL-backed Rust server and worker",
+  "transport": "Real Codex stdio MCP client -> Rust mcp-stdio bridge -> authenticated HTTP /api/v1/mcp",
+  "authentication": {
+    "bridge_http": "Scoped bearer token read from a temporary private 0600 file",
+    "scopes": [
+      "content:read",
+      "business:read"
+    ],
+    "token_in_cli_arguments_or_codex_configuration": false,
+    "temporary_token_revoked": true,
+    "temporary_token_file_removed": true
+  },
+  "checks": {
+    "codex_app_server_initialized": true,
+    "native_mcp_server_discovery_succeeded": true,
+    "stdio_stdout_contained_valid_rpc_only": true,
+    "server_advertised_tool_capabilities": {
+      "tools": {
+        "listChanged": false
+      }
+    },
+    "discovered_tool_count": 10
+  },
+  "tool_names": [
+    "blueprint_agent_dispatch",
+    "blueprint_context",
+    "blueprint_create",
+    "blueprint_get",
+    "blueprint_job_status",
+    "blueprint_run_status",
+    "blueprint_search",
+    "blueprint_update",
+    "blueprint_workflow_run",
+    "blueprint_workspace_info"
+  ],
+  "limitations": [
+    "This verifies native Codex MCP initialization and discovery through the actual Rust bridge. It does not claim that a model chose or executed the tools.",
+    "The Codex model-inference probes earlier in this task were blocked by the execution environment egress proxy with CONNECT 403 for chatgpt.com. No alternate endpoint or credential was used and no model probe was repeated for this check.",
+    "The host Docker wrappers and environment-isolation behavior are covered by separate script acceptance cases; this check starts the compiled Rust bridge directly.",
+    "The credential was read-only. No external AI worker was dispatched and no generated AI output was fabricated."
+  ]
+}

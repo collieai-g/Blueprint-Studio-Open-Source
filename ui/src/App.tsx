@@ -11,6 +11,7 @@ const WorkflowPage = lazy(() => import('./pages/Workflow').then(module => ({ def
 const EditorPage = lazy(() => import('./pages/Editors').then(module => ({ default: module.EditorPage })));
 const EnterprisePage = lazy(() => import('./pages/Enterprise').then(module => ({ default: module.EnterprisePage })));
 const OverviewPage = lazy(() => import('./pages/Overview').then(module => ({ default: module.OverviewPage })));
+const CodexPage = lazy(() => import('./pages/Codex').then(module => ({ default: module.CodexPage })));
 
 type ToastMessage = { id: number; text: string; tone: 'success' | 'error' };
 type Status = { initialized: boolean; company_name: string; version: string; setup_available?: boolean; sso_available?: boolean };
@@ -104,7 +105,7 @@ function Workspace() {
   useEffect(() => { const changed = () => { void refreshNavigation(); }; window.addEventListener('blueprint:changed', changed); return () => window.removeEventListener('blueprint:changed', changed); }, [refreshNavigation]);
   function navigate(value: string) { location.hash = value; setSidebar(false); }
   function moduleEnabled(key: string) {
-    const map: Record<string, string> = { files: 'files', favorites: 'collections', recent: 'files', links: 'files', trash: 'files', collections: 'collections', tables: 'databases', tasks: 'tasks', workdays: 'workdays', calendar: 'calendar', forms: 'forms', workflows: 'workflows', agents: 'integrations', connectors: 'integrations', notes: 'notes', canvas: 'canvas', hubs: 'knowledge', sign: 'sign', docgen: 'documents', security: 'security', retention: 'governance', archives: 'governance', reports: 'governance', runs: 'workflows' };
+    const map: Record<string, string> = { files: 'files', favorites: 'collections', recent: 'files', links: 'files', trash: 'files', collections: 'collections', tables: 'databases', tasks: 'tasks', workdays: 'workdays', calendar: 'calendar', forms: 'forms', workflows: 'workflows', agents: 'integrations', codex: 'integrations', connectors: 'integrations', notes: 'notes', canvas: 'canvas', hubs: 'knowledge', sign: 'sign', docgen: 'documents', security: 'security', retention: 'governance', archives: 'governance', reports: 'governance', runs: 'workflows' };
     return settings?.modules?.[map[key] ?? key] !== false;
   }
   async function logout() {
@@ -129,13 +130,14 @@ function Workspace() {
   if (error && !status) return <div className="boot-screen"><span className="brand-mark">b</span><h2>暫時未能連接工作空間</h2><ErrorNotice error={error} onRetry={() => { void init(); }} /></div>;
   if (!actor) return <AuthScreen status={status} onAuthenticated={async user => { setActor(user); setStatus(old => ({ initialized: true, company_name: old?.company_name ?? '藍圖工作室', version: old?.version ?? '2.0.0' })); }} />;
   const navGroups = [
-    [{ key: 'overview', label: '工作總覽', icon: LayoutDashboard }, { key: 'files', label: '文件', icon: Files }, { key: 'favorites', label: '星號收藏', icon: Star }],
+    [{ key: 'overview', label: '工作總覽', icon: LayoutDashboard }, { key: 'codex', label: 'Codex 協作', icon: Network }, { key: 'files', label: '文件', icon: Files }, { key: 'favorites', label: '星號收藏', icon: Star }],
     [{ key: 'hubs', label: '知識入口', icon: BookOpen }, { key: 'notes', label: '筆記', icon: StickyNote }, { key: 'canvas', label: '白板', icon: PenLine }],
     [{ key: 'tables', label: '業務資料庫', icon: LayoutDashboard }, { key: 'tasks', label: '待辦事項', icon: ListTodo }, { key: 'calendar', label: '日程', icon: CalendarDays }, { key: 'workdays', label: '每日工作', icon: FileClock }],
     [{ key: 'forms', label: '表單', icon: Blocks }, { key: 'workflows', label: '工作流程', icon: Workflow }, { key: 'sign', label: '電子簽署', icon: PenLine }, { key: 'agents', label: 'AI 員工接入', icon: Network }],
   ];
   let page: ReactNode;
   if (!moduleEnabled(section) && !adminSections.includes(section)) page = <div className="page-content"><EmptyState icon={<Blocks size={36} />} title="這個模組已停用" description="現有資料仍然保留。管理員可以在模組設定中重新啟用。">{isAdmin && <button className="button primary" onClick={() => navigate('settings')}>前往模組設定</button>}</EmptyState></div>;
+  else if (section === 'codex') page = <CodexPage actor={actor} />;
   else if (section === 'overview') page = <OverviewPage actor={actor} companyName={companyName} moduleEnabled={moduleEnabled} />;
   else if (businessSections.includes(section)) page = <BusinessPage key={section} section={section} />;
   else if (workflowSections.includes(section)) page = <WorkflowPage key={section} section={section} />;

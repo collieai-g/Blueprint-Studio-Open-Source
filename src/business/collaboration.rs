@@ -1,5 +1,5 @@
 use super::modification;
-use crate::{Actor, ApiError, ApiResult, AppState, Resource};
+use crate::{Actor, ApiError, ApiResult, AppState, Resource, UpdateResource};
 use axum::{
     Extension,
     extract::{
@@ -136,6 +136,90 @@ fn merged(resource: &Resource, update: &[u8]) -> ApiResult<Value> {
         ));
     }
     Ok(data)
+}
+
+/// Apply an explicit, version-bound note replacement through its real Yjs state.
+/// Generic JSON changes cannot supply or replace server-managed CRDT state.
+pub(crate) async fn update_note_from_mcp(
+    state: &AppState,
+    actor: &Actor,
+    id: Uuid,
+    mut input: UpdateResource,
+) -> ApiResult<Resource> {
+    let resource = super::get_resource(state, actor, id).await?;
+    if resource.kind != "note" {
+        return Err(ApiError::bad_request(
+            "Only notes support this text update.",
+        ));
+    }
+    crate::content::authorize_action(state, actor, &resource, "update").await?;
+    if !actor.can_edit(&resource) {
+        return Err(ApiError::forbidden("This note is read-only."));
+    }
+    if input.expected_version != resource.version || input.expected_version < 1 {
+        return Err(ApiError::conflict(
+            "Resource changed; reload the latest version",
+        ));
+    }
+    let proposed = input
+        .data
+        .take()
+        .ok_or_else(|| ApiError::bad_request("Note data is required."))?;
+    let proposed = proposed
+        .as_object()
+        .ok_or_else(|| ApiError::bad_request("Note data must be an object."))?;
+    let content = proposed
+        .get("content")
+        .and_then(Value::as_str)
+        .ok_or_else(|| ApiError::bad_request("Note content must be text."))?;
+    if content.len() > 1_000_000 {
+        return Err(ApiError::bad_request(
+            "Collaborative notes are limited to 1 MB of text.",
+        ));
+    }
+    // A text-only MCP edit must retain the note's grouping and source metadata.
+    let mut data = resource.data.clone();
+    data.as_object_mut()
+        .ok_or_else(|| ApiError::internal("Note data is damaged."))?
+        .extend(proposed.clone());
+    // Validate client-managed data before producing a trusted CRDT replacement.
+    super::prepare_data(state, actor, "note", &mut data, Some(&resource)).await?;
+    crate::workflows::prepare_data(state, "note", &mut data, Some(&resource)).await?;
+    crate::workflows::validate(state, actor, "note", &data, Some(&resource)).await?;
+    crate::content::validate(state, actor, "note", &data, Some(&resource)).await?;
+    let (update, saved_state) = replace_note_content(&resource, content)?;
+    data["crdt_state"] = json!(saved_state);
+    super::validate(state, actor, "note", &data, Some(&resource)).await?;
+    input.data = Some(data);
+    // One CAS only: a concurrent human edit must produce 409, not be overwritten.
+    let saved = super::update_resource(state, actor, id, input).await?;
+    if let Some(sender) = channels().lock().await.get(&id) {
+        let event = json!({"type":"update","update":encode(&update),"version":saved.version,"actor_id":actor.id}).to_string();
+        let _ = sender.send(event);
+    }
+    if let Err(error) = crate::content::after_write(state, actor, &saved).await {
+        tracing::warn!(code=%error.code,"MCP note content follow-up requires attention");
+    }
+    if let Err(error) = super::after_change(state, actor, &saved).await {
+        tracing::warn!(code=%error.code,"MCP note business follow-up requires attention");
+    }
+    Ok(saved)
+}
+
+fn replace_note_content(resource: &Resource, content: &str) -> ApiResult<(Vec<u8>, String)> {
+    let doc = document(resource)?;
+    let vector = doc.transact().state_vector();
+    let text = doc.get_or_insert_text("content");
+    {
+        let mut txn = doc.transact_mut();
+        let length = text.len(&txn);
+        if length != 0 {
+            text.remove_range(&mut txn, 0, length);
+        }
+        text.insert(&mut txn, 0, content);
+    }
+    let update = doc.transact().encode_state_as_update_v1(&vector);
+    Ok((update, encode(&state_bytes(&doc))))
 }
 
 async fn initialize(

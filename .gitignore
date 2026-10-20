@@ -23,3 +23,4 @@ access.json
 *.p12
 *.pem
 master.key
+codex-token

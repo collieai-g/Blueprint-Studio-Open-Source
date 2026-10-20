@@ -20,6 +20,9 @@ Fresh Rust rewrite with a TypeScript web interface, informed by public Box produ
 
 ## Product and repository boundaries
 
+- The first conversational mode uses the user's existing Codex as intelligence through MCP. Chat stays in Codex; Blueprint stores company context, questions/answers, work and verified agent outcomes. No embedded LLM or second chat UI is required for this mode.
+- The product is a reusable company operating hub. Personal/company/project facts and workflows are installation data, not hardcoded example content. Read `docs/CODEX-WORKSPACE.md` when operating company data and `INSTALL.md` when installing/connecting a new instance.
+
 - Public product name: Blueprint Studio Backend; Chinese name: 藍圖工作室（後台）. Keep original Blueprint branding.
 - Preserve `LICENSE` and reusable artwork in `assets/icons/`; do not reintroduce a Python runtime or compatibility layer.
 - New installations and disposable test data only. Never migrate, overwrite, delete or inspect private company content as a rewrite side effect.

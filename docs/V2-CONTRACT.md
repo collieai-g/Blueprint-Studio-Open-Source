@@ -27,6 +27,14 @@ PAT 另受 namespace scope、可選資源 ID、期限及撤銷限制；資源範
 
 列表一次最多返回 5,000 個有權資源；搜尋最多 500 個結果，trash 最多 1,000 個。限制前先按候選 ACL 篩選，再檢查父層，避免其他部門新資料擠走可讀內容。大型資料匯出應使用完整備份，不將這些列表當作無限量匯出接口。
 
+## Codex 作為公司智能入口
+
+第一個對話模式留在使用者已有嘅 Codex，藍圖透過 MCP 提供資料及動作，網頁顯示持久結果。`blueprint_workspace_info` 返回公司時區、當地時間、可讀模組及操作 playbook；`blueprint_context` 返回來源 UUID／版本、遮罩資料及資料表真實關聯嘅雙向一層展開。同名候選不自動合併，總證據最多 50、關聯候選最多 200；單筆 data 超過 64 KiB 明確標記省略，由 `blueprint_get` 讀取，context 不攜帶 CRDT 傳輸狀態。
+
+Codex 按來源提問，使用現有 CRUD 保存回答、筆記、任務、日程及每日工作，以共同 activity ID 連結。每次寫入分開提交，部分失敗需分開回報。MCP 更新筆記正文會保留真正 Yjs 狀態及版本衝突檢查。`blueprint_agent_dispatch` 共用原有持久派工路徑，返回 run／job 真實回執；後續讀取仍隔離 token 身份。
+
+`mcp-stdio` CLI 不載入資料庫配置，將標準輸入／輸出 JSON-RPC 轉送至已運行後台；日誌只用 stderr。Codex 設定引用本機 wrapper 同私人目錄，憑證由私人 `codex-token` 讀取。新連接需在實際客戶端刷新／發現工具；目前對話無法熱載入時，Codex 亦可用既有終端機呼叫同一 MCP bridge。完整操作見 [Codex playbook](CODEX-WORKSPACE.md)。
+
 ## 持久化與外部動作
 
 Resource 及其歷史／audit 在交易中保存；資料異動事件使用同一交易的持久 outbox。工作以 PostgreSQL 排隊、租約、heartbeat 及重啟恢復運作。工作流程使用發布時的固定版本，人工批准、條件及外部回報不依賴單一 HTTP 請求持續在線。

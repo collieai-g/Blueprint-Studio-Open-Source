@@ -20,4 +20,5 @@ library_web
 web
 dist
 company
+**/codex-token
 *.zip

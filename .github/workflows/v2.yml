@@ -41,7 +41,10 @@ jobs:
       - name: Rust tests
         run: cargo test --locked --all-targets -- --include-ignored --test-threads=1
       - name: Deployment configuration and secrets
-        run: node scripts/v2/check-deploy.mjs
+        run: |
+          node scripts/v2/check-deploy.mjs
+          node scripts/v2/check-install.mjs
+          python3 tests/v2/codex_connection_acceptance.py
       - name: Compile release
         run: cargo build --release --locked
 

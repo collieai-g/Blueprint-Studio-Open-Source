@@ -180,7 +180,7 @@ async fn health(State(state): State<AppState>) -> ApiResult<Json<Value>> {
 struct SearchQuery {
     q: Option<String>,
 }
-fn redact(mut r: Resource) -> Resource {
+pub(crate) fn redact(mut r: Resource) -> Resource {
     workflows::redact_resource(&mut r);
     business::redact_resource(&mut r);
     redact_values(&mut r.data);
@@ -635,7 +635,7 @@ async fn jobs(
             .collect(),
     ))
 }
-async fn job(
+pub(crate) async fn job(
     State(state): State<AppState>,
     Extension(actor): Extension<Actor>,
     Path(id): Path<Uuid>,

@@ -6,10 +6,13 @@
 
 | 驗證 | 實際結果 |
 | --- | --- |
-| Rust | 71 項測試通過，包括真實 PostgreSQL HTTP、WOPI、工作流程、權限、SCIM、OIDC 及 adapter 協定測試；沒有略過需要資料庫嘅案例 |
+| Rust | 80 項測試通過，包括真實 PostgreSQL HTTP、WOPI、工作流程、權限、SCIM、OIDC、公司背景、MCP 協作筆記及 bridge 測試；沒有略過需要資料庫嘅案例 |
 | 發行建置 | `cargo build --release --locked` 通過；TypeScript strict 及 Vite production build 通過 |
-| 真實瀏覽器 | 8 個 Playwright 案例通過，直接操作 Rust 後台；桌面／手機、成員／啟用／token、檔案／分享／收藏、17 MiB 中斷續傳、業務資料表、任務、表單、Yjs 協作、批准流程、DOCX、治理及個人工作台版面 |
-| 白色格線工作台 | 真實資料摘要、逐張調整大小、滑鼠吸附、鍵盤、取消拖曳、重載保存、平板保留桌面欄寬、次序／隱藏／還原、損壞 localStorage 復原及手機無橫向溢出通過；完整 8 案例用時 34.9 秒，瀏覽器錯誤為零 |
+| 真實瀏覽器 | 9 個 Playwright 案例通過，直接操作 Rust 後台；桌面／手機、成員／啟用／token、檔案／分享／收藏、17 MiB 中斷續傳、業務資料表、任務、表單、Yjs 協作、批准流程、DOCX、治理、個人工作台及 Codex 連接憑證 |
+| 白色格線工作台／Codex | 真實資料摘要、卡片大小／排列／保存／復原、手機無橫向溢出，以及 Codex 憑證建立／正確檔名下載／私隱／最近使用／撤銷通過；完整 9 案例用時 43.7 秒，瀏覽器錯誤為零 |
+| 公司中樞 | 同名候選、雙向真實關聯、ACL／scope／DLP／停用模組、真 CLI worker 呼叫受控 HTTP worker、token 隔離，以及已開啟 Notes 嘅 MCP／Yjs 更新通過 |
+| 真 Codex 客戶端 | Codex CLI 0.159.2 app-server 以臨時設定經 HTTP／Rust stdio 發現工具；最新版 stdio 發現全部 10 項，測試 token 已撤銷，沒有改全域設定 |
+| 安裝入口 | Bash 13 項安裝案例通過，另 4 項連接腳本案例通過；PowerShell runtime 本機未提供而跳過，CI 有 pwsh 時會自動執行相應案例 |
 | 本機原檔／S3 | 完整 HTTP 流程、不可變版本、ranges、匿名分享 DLP、write-only PAT、Object Lock／hold／retention、引用保護及真正清理原檔通過 |
 | 備份還原 | 真實 `pg_dump`／`pg_restore` 9 組檢查通過；原檔、版本、歷史、身份、ACL、MFA 加密資料恢復，拒絕壞 checksum、覆寫備份及還原到已有公司 |
 | 部署配置 | 隨機秘密、私人檔案權限、拒絕重設、簽署憑證、三個 Compose 組合檢查通過 |
@@ -21,6 +24,9 @@
 - [備份／還原實測](../deploy/research/backup-restore-2026-10-20.json)
 - [PGroonga、Gotenberg、Seaweed 引擎實測](../deploy/research/engine-smoke-2026-10-20.json)
 - [容量方法及原始彙總](V2-PERFORMANCE.md)
+- [真正 Codex MCP 發現工具證據](../deploy/research/codex-mcp-2026-10-20.json)
+- [本對話 Codex 經終端機 MCP 完成背景→問題→驗收回饋→四類保存／讀回](../deploy/research/codex-workflow-example-2026-10-20.json)；公司資料及回饋均為明確測試樣例，不是真實客戶訪談
+- Codex 協作頁：[桌面](screenshots/codex-collaboration.png)／[手機](screenshots/codex-collaboration-mobile.png)
 - 白色格線工作台：[桌面](screenshots/workspace-grid-desktop.png)／[手機](screenshots/workspace-grid-mobile.png)／[編輯版面](screenshots/workspace-grid-editing.png)；使用獨立測試公司嘅可刪除設計預覽資料
 
 ## 重跑
@@ -58,6 +64,8 @@ GitHub Actions 的 `container` job 實際建置完整 Dockerfile，再載入映�
 [本次 PR 的最新 CI 結果](https://github.com/collieai-g/blueprint-folder-agent/pull/1/checks) 是容器檢查的權威結果；基本 app 容器通過並不代表所有可選企業服務已完成配置及驗收。
 
 ## 實測界線
+
+本對話嘅 Codex 已透過終端機 MCP 寫入並讀回測試筆記、日程、待辦及每日工作；真正 Codex 客戶端亦驗證 MCP 工具發現。另行啟動嘅 Codex CLI 模型請求被此雲端環境嘅 `chatgpt.com` CONNECT 403 網絡限制阻擋，沒有宣稱該獨立模型回合成功。兩種驗證分開記錄。使用者嘅第一間真實公司會在另一個雲端項目安裝；本工作區只包含隔離測試資料，沒有宣稱已完成該正式部署。
 
 Google／Documenso adapter 及 OIDC 使用可控 HTTP provider，驗證真實請求、簽章、狀態、重送、衝突及失敗處理；沒有連接使用者嘅真實 Google／Microsoft、Documenso 或 Keycloak 帳戶。Collabora WOPI 協定及資料庫鎖定測試通過，沒有宣稱完成真正 Collabora 多人 Office 編輯。
 

@@ -14,6 +14,8 @@ Rust 核心、TypeScript 網頁、PostgreSQL 持久資料。每次安裝服務�
 
 ## 開始使用
 
+**想交畀 Codex 安裝，並繼續喺 Codex 對話操作公司資料？** 複製 [INSTALL.md 嘅安裝指示](INSTALL.md)；單一安裝入口會檢查環境、保留既有資料、啟動後台，再由「Codex 協作」頁完成專用憑證及 MCP 連接。
+
 需要 Docker／Compose v2。macOS／Linux：
 
 ```sh
@@ -45,6 +47,8 @@ Windows（PowerShell 7）：
 - **企業模組**：簽署、文件生成、掃描、資料分類、保存政策、歸檔及企業身份接駁。
 
 AI 員工本身由使用者另外開發及連接；後台提供身份、資料範圍、派工及結果回報。它不會自行讀取未提供嘅聊天，也不會在沒有外部員工時冒充 AI 完成工作。
+
+**Codex 作為智能入口**：繼續喺你已有嘅 Codex 對話，透過公司背景查詢同 MCP 工具讀取有來源嘅紀錄、釐清問題、保存回答，再整理成筆記、任務、日程及每日工作。網頁嘅 [Codex 協作頁預覽](docs/screenshots/codex-collaboration.png) 提供憑證同連接指引。準備用另一個雲端項目作為第一間真實公司，可直接複製 [首次使用交接](FIRST-USER.md)。
 
 ## 自架服務組合
 

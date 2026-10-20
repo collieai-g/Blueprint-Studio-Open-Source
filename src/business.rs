@@ -11,6 +11,8 @@ mod forms;
 mod records;
 mod wopi;
 
+pub(crate) use collaboration::update_note_from_mcp;
+
 use crate::{Actor, ApiError, ApiResult, AppState, Job, Resource, repo};
 use axum::{
     Router,

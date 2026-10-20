@@ -15,6 +15,15 @@ struct Cli {
 enum Command {
     Server,
     Worker,
+    /// Forward MCP JSON-RPC over stdio without loading database configuration.
+    McpStdio {
+        #[arg(long, default_value = "http://127.0.0.1:8787")]
+        url: String,
+        #[arg(long, conflicts_with = "token_file")]
+        token_env: Option<String>,
+        #[arg(long, conflicts_with = "token_env")]
+        token_file: Option<PathBuf>,
+    },
     Init {
         #[arg(long)]
         company: String,
@@ -36,15 +45,27 @@ enum Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "blueprint_backend=info,tower_http=warn".into()),
         )
         .init();
     let cli = Cli::parse();
+    let command = cli.command.unwrap_or(Command::Server);
+    if let Command::McpStdio {
+        url,
+        token_env,
+        token_file,
+    } = &command
+    {
+        mcp_bridge::run(url, token_env.as_deref(), token_file.as_deref()).await?;
+        return Ok(());
+    }
     let config = Config::from_env()?;
     let state = AppState::connect(config).await?;
-    match cli.command.unwrap_or(Command::Server) {
+    match command {
+        Command::McpStdio { .. } => unreachable!("MCP transport does not load application state"),
         Command::Server => {
             let listener = tokio::net::TcpListener::bind(&state.config.bind).await?;
             tracing::info!(bind=%state.config.bind,"Blueprint server ready");

@@ -4,6 +4,8 @@
 
 ## 第一次啟動
 
+可以直接使用新嘅 [單一安裝入口及 Codex 連接流程](../INSTALL.md)。在另一個雲端項目建立第一間真實公司，請複製 [第一位使用者交接指示](../FIRST-USER.md)。以下保留逐步部署命令，方便維護及排查。
+
 需要 Docker Engine／Docker Desktop、Compose v2。macOS／Linux 設定腳本使用 Bash 和 OpenSSL；Windows 使用 PowerShell 7。
 
 ```sh

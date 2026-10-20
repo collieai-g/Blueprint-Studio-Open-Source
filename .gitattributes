@@ -1,0 +1,4 @@
+# Linux container entrypoints must retain LF after Windows Git checkouts.
+*.sh text eol=lf
+# PowerShell 7 accepts LF on Windows, macOS and Linux.
+*.ps1 text eol=lf

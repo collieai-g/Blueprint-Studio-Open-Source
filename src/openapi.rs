@@ -1559,7 +1559,7 @@ fn decorate(doc: &mut Value) {
         );
     }
     doc["paths"]["/mcp"]["post"]["description"] = json!(
-        "Implements initialize, ping, tools/list and tools/call. Available tools: blueprint_search, blueprint_get, blueprint_create, blueprint_update, blueprint_workflow_run and blueprint_run_status. No built-in AI employee is provided. Tool authorization uses current role, bearer constraints, modules and resource/content policies. Responses are JSON-RPC JSON rather than an SSE transport."
+        "Implements initialize, ping, tools/list and tools/call. Tools include blueprint_workspace_info, blueprint_context, blueprint_search, blueprint_get, blueprint_create, blueprint_update, blueprint_workflow_run, blueprint_run_status, blueprint_agent_dispatch and blueprint_job_status. The connected Codex/AI client interprets company evidence, asks questions and organizes real saved results; no built-in model or fictional employee is provided. Note content updates preserve Yjs collaboration and expected_version conflicts. Tool authorization uses current role, bearer constraints, modules and resource/content policies. Responses are JSON-RPC JSON rather than an SSE transport; the Rust mcp-stdio CLI bridges native stdio clients without database configuration."
     );
     doc["paths"]["/collaboration/{id}/ws"]["get"]["description"] = json!(
         "Uses the authenticated HTTP cookie or Authorization header for the upgrade. Notes/canvases exchange Yjs v1 updates as base64 JSON {type:'update',update:'...'} or binary frames. The server sends persisted state, accepted update/version/actor events and errors; account, token and ACL state are rechecked during the session."

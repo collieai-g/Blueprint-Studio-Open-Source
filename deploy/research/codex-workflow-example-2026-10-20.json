@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-20",
+  "environment": "Isolated disposable design-preview company; all names/facts/answers are explicit acceptance fixtures.",
+  "intelligence": "Questions composed by the current Codex assistant after reading returned context; feedback is scripted acceptance input, not a real user interview.",
+  "transport": "Current Codex terminal calls the real Rust stdio MCP bridge; no new model process is required.",
+  "binary_sha256": "87ebeb3e0aa4639f7966e8584abd5d4a24af9ab1fbbf2f9980babac7fec9eaeb",
+  "checks": {
+    "duplicate_candidates_preserved": true,
+    "reverse_typed_project_relation_found": true,
+    "cited_ids_and_versions": [
+      {
+        "id": "7477f15c-1785-48a2-9bd9-5f0f97dd9181",
+        "version": 1
+      },
+      {
+        "id": "7addc212-5c2d-4ebf-b0d6-b13bbc4e4daa",
+        "version": 1
+      }
+    ],
+    "questions_derived_from_budget_stage_prior_decision": [
+      {
+        "question": "今次會面希望先確認水電及木工工程範圍，定係直接確定總報價？",
+        "answer": "先確認水電及木工範圍，之後再核對總報價。"
+      },
+      {
+        "question": "項目記錄顯示預算為18萬，呢個上限有冇變？",
+        "answer": "仍然以18萬為上限。"
+      },
+      {
+        "question": "聽日幾點見面、預計幾耐？",
+        "answer": "聽日下午3點，預計一小時。"
+      }
+    ],
+    "questions_saved_then_answers_updated": true,
+    "note_calendar_task_daily_work_written_and_read_back": [
+      {
+        "id": "9053e2c0-8851-44f3-a006-e9db7ef1dc57",
+        "kind": "event"
+      },
+      {
+        "id": "5505f9ef-f40d-4783-8e42-f0444c0bdd21",
+        "kind": "task"
+      },
+      {
+        "id": "43802f08-7fa4-43bb-a685-8fe0eb634311",
+        "kind": "workday"
+      }
+    ],
+    "all_outputs_private": true,
+    "no_future_work_falsely_completed": true,
+    "no_external_agent_success_fabricated": true
+  },
+  "limitations": [
+    "Separate Codex CLI model-provider probe could not reach chatgpt.com under this cloud network policy (CONNECT 403).",
+    "This is terminal-MCP use by the current assistant; native Codex MCP discovery is separately recorded.",
+    "No real external AI service or customer communication was invoked."
+  ]
+}
