@@ -14,14 +14,15 @@ try {
     $profileFile = Join-Path $PrivateDirectory '.blueprint-install-profile'
     if (Test-Path $profileFile -PathType Leaf) { $profile = [IO.File]::ReadAllText($profileFile).Trim() }
     if ($profile -notin @('basic', 'documents', 'enterprise')) { throw 'Invalid saved installation profile.' }
-    if (!(Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Docker is required for the Blueprint MCP connection.' }
+    if (!(Get-Command docker -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)) { throw 'Docker is required for the Blueprint MCP connection.' }
     # Run the stack in a new process: inherited company settings must not select
     # another Compose project or send this token into another company's app.
     # Docker context/socket, PATH, proxies and the session CA remain inherited.
     $stackPath = (Join-Path $PSScriptRoot 'stack.ps1').Replace("'", "''")
     $escapedPrivate = $PrivateDirectory.Replace("'", "''")
     $command = "& '$stackPath' -PrivateDirectory '$escapedPrivate' -Profile '$profile' -ComposeArguments @('exec', '-T', '-e', 'BLUEPRINT_MCP_TOKEN', 'app', 'blueprint-backend', 'mcp-stdio', '--url', 'http://127.0.0.1:8787', '--token-env', 'BLUEPRINT_MCP_TOKEN'); exit `$LASTEXITCODE"
-    $start = [Diagnostics.ProcessStartInfo]::new((Get-Command pwsh).Source)
+    $pwsh = (Get-Command pwsh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    $start = [Diagnostics.ProcessStartInfo]::new($pwsh)
     $start.UseShellExecute = $false
     foreach ($argument in @('-NoLogo', '-NoProfile', '-NonInteractive', '-Command', $command)) { $start.ArgumentList.Add($argument) }
     foreach ($name in @($start.Environment.Keys)) {

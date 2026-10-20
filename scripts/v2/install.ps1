@@ -28,7 +28,7 @@ $repo = Get-PhysicalDirectory (Join-Path $PSScriptRoot '../..')
 if (!(Test-Path -LiteralPath (Join-Path $repo 'compose.yaml')) -or !(Test-Path -LiteralPath (Join-Path $repo 'Dockerfile'))) {
     Stop-Installation 'Run this installer from a complete Blueprint source download.'
 }
-$dockerCommand = Get-Command docker -CommandType Application -ErrorAction SilentlyContinue
+$dockerCommand = Get-Command docker -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if (!$dockerCommand) { Stop-Installation 'Install Docker Desktop (Windows/macOS) or Docker Engine with Compose and Buildx (Linux), then run this command again.' }
 $dockerOs = (& $dockerCommand.Source info --format '{{.OSType}}' 2>$null | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { Stop-Installation 'Docker is not running or is unavailable to this account. Start Docker Desktop/Engine, then run this command again.' }

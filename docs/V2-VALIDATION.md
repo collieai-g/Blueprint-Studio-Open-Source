@@ -12,7 +12,7 @@
 | 白色格線工作台／Codex | 真實資料摘要、卡片大小／排列／保存／復原、手機無橫向溢出，以及 Codex 憑證建立／正確檔名下載／私隱／最近使用／撤銷通過；完整 9 案例用時 43.7 秒，瀏覽器錯誤為零 |
 | 公司中樞 | 同名候選、雙向真實關聯、ACL／scope／DLP／停用模組、真 CLI worker 呼叫受控 HTTP worker、token 隔離，以及已開啟 Notes 嘅 MCP／Yjs 更新通過 |
 | 真 Codex 客戶端 | Codex CLI 0.159.2 app-server 以臨時設定經 HTTP／Rust stdio 發現工具；最新版 stdio 發現全部 10 項，測試 token 已撤銷，沒有改全域設定 |
-| 安裝入口 | Bash 13 項安裝案例通過，另 4 項連接腳本案例通過；PowerShell runtime 本機未提供而跳過，CI 有 pwsh 時會自動執行相應案例 |
+| 安裝入口 | 實際 Bash／PowerShell 7.4.6（Linux）共 26 項安裝案例及 6 項連接案例通過、零跳過；包含多個 Docker／pwsh PATH、私人目錄、重跑及公司環境隔離。未宣稱完成 Windows 主機部署 |
 | 本機原檔／S3 | 完整 HTTP 流程、不可變版本、ranges、匿名分享 DLP、write-only PAT、Object Lock／hold／retention、引用保護及真正清理原檔通過 |
 | 備份還原 | 真實 `pg_dump`／`pg_restore` 9 組檢查通過；原檔、版本、歷史、身份、ACL、MFA 加密資料恢復，拒絕壞 checksum、覆寫備份及還原到已有公司 |
 | 部署配置 | 隨機秘密、私人檔案權限、拒絕重設、簽署憑證、三個 Compose 組合檢查通過 |
@@ -25,6 +25,7 @@
 - [PGroonga、Gotenberg、Seaweed 引擎實測](../deploy/research/engine-smoke-2026-10-20.json)
 - [容量方法及原始彙總](V2-PERFORMANCE.md)
 - [真正 Codex MCP 發現工具證據](../deploy/research/codex-mcp-2026-10-20.json)
+- [Bash／PowerShell 安裝及連接驗收範圍](../deploy/research/install-acceptance-2026-10-20.json)
 - [本對話 Codex 經終端機 MCP 完成背景→問題→驗收回饋→四類保存／讀回](../deploy/research/codex-workflow-example-2026-10-20.json)；公司資料及回饋均為明確測試樣例，不是真實客戶訪談
 - Codex 協作頁：[桌面](screenshots/codex-collaboration.png)／[手機](screenshots/codex-collaboration-mobile.png)
 - 白色格線工作台：[桌面](screenshots/workspace-grid-desktop.png)／[手機](screenshots/workspace-grid-mobile.png)／[編輯版面](screenshots/workspace-grid-editing.png)；使用獨立測試公司嘅可刪除設計預覽資料

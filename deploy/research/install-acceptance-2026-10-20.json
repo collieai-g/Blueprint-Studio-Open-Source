@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-20",
+  "environment": "Disposable local fixtures on Linux; PowerShell 7.4.6 portable runtime and Bash",
+  "commands": [
+    "node scripts/v2/check-install.mjs",
+    "python3 tests/v2/codex_connection_acceptance.py"
+  ],
+  "results": {
+    "installer_cases_passed": 26,
+    "connection_cases_passed": 6,
+    "failures": 0,
+    "skipped": 0
+  },
+  "coverage": [
+    "Actual private configuration generation with OpenSSL or .NET cryptography",
+    "Existing configuration and installation-profile preservation on rerun",
+    "Distinct company namespaces, canonical external directories and symlink checks",
+    "Prerequisite, startup and health failures preserve private files and volumes",
+    "Duplicate Docker and pwsh executables on PATH select the first application",
+    "Codex registration is idempotent and preserves a different existing configuration",
+    "MCP stdout is JSON-RPC only, with credentials passed by environment-variable name",
+    "Child processes discard inherited company/Compose overrides and preserve Docker/proxy context"
+  ],
+  "limitations": [
+    "Docker and Codex registration use controlled executable fixtures; this suite does not deploy containers or modify a user's Codex configuration.",
+    "Actual native Codex MCP discovery is recorded in codex-mcp-2026-10-20.json.",
+    "PowerShell executed on Linux, not on a Windows host. Actual Windows installation still needs host-specific acceptance.",
+    "The latest pull-request container job is authoritative for the production Docker image and actual runtime smoke tests."
+  ]
+}

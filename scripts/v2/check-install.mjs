@@ -22,9 +22,11 @@ function fixture(runtime) {
   const base = join(temporary, runtime);
   const repo = join(base, 'program source with spaces');
   const bin = join(base, 'mock bin');
+  const duplicateBin = join(base, 'second Docker on PATH');
   const scripts = join(repo, 'scripts', 'v2');
   mkdirSync(scripts, { recursive: true });
   mkdirSync(bin, { recursive: true });
+  mkdirSync(duplicateBin, { recursive: true });
   for (const name of ['install.sh', 'configure.sh', 'stack.sh', 'install.ps1', 'configure.ps1', 'stack.ps1']) {
     copyFileSync(join(source, 'scripts', 'v2', name), join(scripts, name));
   }
@@ -69,11 +71,16 @@ if (args[0] === 'info') {
   chmodSync(mockPath, 0o755);
   if (process.platform === 'win32') {
     writeFileSync(join(bin, 'docker.cmd'), `@echo off\r\n"${process.execPath}" "${mockPath}" %*\r\n`);
+    writeFileSync(join(duplicateBin, 'docker.cmd'), '@echo off\r\nexit /b 97\r\n');
   } else {
     copyFileSync(mockPath, join(bin, 'docker'));
     chmodSync(join(bin, 'docker'), 0o755);
+    writeFileSync(join(duplicateBin, 'docker'), '#!/bin/sh\nexit 97\n');
+    chmodSync(join(duplicateBin, 'docker'), 0o755);
   }
-  const env = { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}`, MOCK_DOCKER_LOG: log };
+  // Selecting one application is essential: Get-Command can return every PATH
+  // match. The later sentinel must never be joined into, or used as, a command.
+  const env = { ...process.env, PATH: `${bin}${delimiter}${duplicateBin}${delimiter}${process.env.PATH}`, MOCK_DOCKER_LOG: log };
   delete env.CODEX_PROXY_CERT;
   for (const name of Object.keys(env)) {
     if (/^(BLUEPRINT_|DOCUMENSO_|KEYCLOAK_|COLLABORA_|SMTP_|COMPOSE_)/.test(name) || name === 'POSTGRES_PASSWORD') delete env[name];

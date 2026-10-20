@@ -20,7 +20,7 @@ class CodexConnection(unittest.TestCase):
         self.scripts = self.repo / "scripts/v2"
         self.scripts.mkdir(parents=True)
         source = Path(__file__).resolve().parents[2] / "scripts/v2"
-        for name in ["connect-codex.sh", "mcp-stdio.sh", "stack.sh", "mcp-stdio.ps1", "stack.ps1"]:
+        for name in ["connect-codex.sh", "mcp-stdio.sh", "stack.sh", "mcp-stdio.ps1", "connect-codex.ps1", "stack.ps1"]:
             shutil.copy2(source / name, self.scripts / name)
         self.private = self.root / 'private "quoted" directory'
         self.private.mkdir(mode=0o700)
@@ -122,6 +122,16 @@ for line in sys.stdin:
     def hostile_environment(self):
         return dict(self.env, COMPOSE_PROJECT_NAME="wrong-company", COMPOSE_PROFILES="enterprise", COMPOSE_FILE="wrong-company.yaml", COMPOSE_ENV_FILES="wrong-company.env", COMPOSE_REMOVE_ORPHANS="1", BLUEPRINT_APP_IMAGE="wrong-company:image", BLUEPRINT_PUBLIC_URL="https://wrong-company.invalid", BLUEPRINT_MCP_TOKEN="inherited-wrong-token", POSTGRES_PASSWORD="wrong-fixture-password", DOCUMENSO_DB_PASSWORD="wrong-fixture-password", KEYCLOAK_DB_PASSWORD="wrong-fixture-password", COLLABORA_ADMIN_PASSWORD="wrong-fixture-password", SMTP_PASSWORD="wrong-fixture-password", RUST_LOG="trace", DOCKER_CONTEXT="fixture-context", HTTP_PROXY="http://fixture-proxy.invalid:8080")
 
+    def add_duplicate_pwsh(self, environment):
+        actual = shutil.which("pwsh")
+        os.symlink(actual, self.bin / "pwsh")
+        duplicate = self.root / "duplicate bin"
+        duplicate.mkdir()
+        sentinel = duplicate / "pwsh"
+        sentinel.write_text("#!/usr/bin/env sh\nexit 92\n")
+        sentinel.chmod(0o700)
+        environment["PATH"] = str(self.bin) + os.pathsep + str(duplicate) + os.pathsep + os.environ["PATH"]
+
     def assert_isolated_company(self, result, parent):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["id"], "isolated")
@@ -145,8 +155,30 @@ for line in sys.stdin:
     @unittest.skipUnless(shutil.which("pwsh"), "PowerShell runtime not installed")
     def test_powershell_stdio_selects_private_company_despite_inherited_environment(self):
         parent = self.hostile_environment()
+        self.add_duplicate_pwsh(parent)
         result = subprocess.run(["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", str(self.scripts / "mcp-stdio.ps1"), "-PrivateDirectory", str(self.private)], env=parent, input='{"jsonrpc":"2.0","id":"isolated","method":"ping"}\n', capture_output=True, text=True, timeout=10)
         self.assert_isolated_company(result, parent)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "PowerShell runtime not installed")
+    def test_powershell_registration_uses_one_pwsh_and_preserves_different_config(self):
+        environment = dict(self.env)
+        self.add_duplicate_pwsh(environment)
+        command = ["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", str(self.scripts / "connect-codex.ps1"), "-PrivateDirectory", str(self.private), "-Name", "company-blueprint"]
+        first = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=10)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        saved = self.state.read_text()
+        state = json.loads(saved)
+        self.assertEqual(os.path.realpath(state["company-blueprint"]["transport"]["command"]), os.path.realpath(shutil.which("pwsh")))
+        self.assertNotIn("disposable-fixture-token", saved + first.stdout + first.stderr)
+        repeat = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=10)
+        self.assertEqual(repeat.returncode, 0, repeat.stderr)
+        self.assertEqual(self.state.read_text(), saved)
+        state["company-blueprint"]["transport"]["command"] = "/another/pwsh"
+        self.state.write_text(json.dumps(state))
+        different = self.state.read_text()
+        refused = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertEqual(self.state.read_text(), different)
 
 
 if __name__ == "__main__":
