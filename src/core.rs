@@ -147,7 +147,7 @@ pub fn router(state: AppState) -> Router {
         tower_http::services::ServeFile::new(state.config.ui_dir.join("index.html")),
     );
     Router::new().nest("/api/v1",api).route("/health",get(health)).route("/api/health",get(health))
-        .fallback_service(ui).layer(DefaultBodyLimit::max(8*1024*1024)).layer(middleware::from_fn(security_headers)).layer(middleware::from_fn_with_state(state.clone(),auth::csrf)).layer(TraceLayer::new_for_http().make_span_with(|request:&axum::http::Request<axum::body::Body>|tracing::info_span!("http_request",method=%request.method(),path=%request.uri().path()))).with_state(state)
+        .fallback_service(ui).layer(DefaultBodyLimit::max(8*1024*1024)).layer(middleware::from_fn(security_headers)).layer(middleware::from_fn_with_state(state.clone(),auth::csrf)).layer(TraceLayer::new_for_http().make_span_with(|request:&axum::http::Request<axum::body::Body>|tracing::info_span!("http_request",method=%request.method(),route=request.extensions().get::<axum::extract::MatchedPath>().map(|route|route.as_str()).unwrap_or("<unmatched>")))).with_state(state)
 }
 async fn security_headers(
     req: axum::extract::Request,
