@@ -339,7 +339,7 @@ pub async fn update(
     if previous.deleted_at.is_some() {
         return Err(ApiError::conflict("Restore the resource before editing"));
     }
-    if !actor.can_write(&previous) {
+    if !actor.can_edit(&previous) {
         return Err(ApiError::forbidden("Resource is read-only"));
     }
     if up.expected_version != previous.version || up.expected_version < 1 {

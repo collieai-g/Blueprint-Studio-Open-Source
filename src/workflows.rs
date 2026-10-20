@@ -1303,22 +1303,20 @@ async fn execute_run(state: &AppState, id: Uuid) -> ApiResult<Value> {
                     &node_id,
                     step["output"]["branch"].as_bool(),
                 ));
-            } else if definition
-                .nodes
-                .iter()
-                .find(|n| n.id == node_id)
-                .is_some_and(|n| {
-                    !matches!(n.kind.as_str(), "http" | "agent" | "foreach")
-                        || n.config["idempotent"] == true
-                })
-            {
-                step["status"] = json!("pending");
-                recovery_pending.push(node_id);
             } else {
-                step["status"] = json!("needs_attention");
-                step["error"] = json!(
-                    "Interrupted external operation: reconcile its actual outcome before retrying"
-                );
+                let replay_safe = match definition.nodes.iter().find(|n| n.id == node_id) {
+                    Some(node) => running_node_replay_safe(state, &actor, node).await,
+                    None => false,
+                };
+                if replay_safe {
+                    step["status"] = json!("pending");
+                    recovery_pending.push(node_id);
+                } else {
+                    step["status"] = json!("needs_attention");
+                    step["error"] = json!(
+                        "Interrupted external operation: reconcile its actual outcome before retrying"
+                    );
+                }
             }
         }
     }
@@ -1921,6 +1919,60 @@ async fn response_json(response: reqwest::Response) -> ApiResult<Value> {
         .map_err(|_| ApiError::bad_request("Integration must return a JSON response"))
 }
 
+fn http_method(config: &Value) -> ApiResult<reqwest::Method> {
+    Ok(
+        match config
+            .get("method")
+            .and_then(Value::as_str)
+            .unwrap_or("GET")
+            .to_ascii_uppercase()
+            .as_str()
+        {
+            "GET" => reqwest::Method::GET,
+            "HEAD" => reqwest::Method::HEAD,
+            "POST" => reqwest::Method::POST,
+            "PUT" => reqwest::Method::PUT,
+            "PATCH" => reqwest::Method::PATCH,
+            "DELETE" => reqwest::Method::DELETE,
+            _ => return Err(ApiError::bad_request("Unsupported HTTP method")),
+        },
+    )
+}
+
+fn http_replay_safe(method: &reqwest::Method, config: &Value, connector: &Value) -> bool {
+    *method == reqwest::Method::GET
+        || *method == reqwest::Method::HEAD
+        || config["idempotent"] == true && connector["idempotent"] == true
+}
+
+async fn running_node_replay_safe(state: &AppState, actor: &Actor, node: &Node) -> bool {
+    match node.kind.as_str() {
+        "http" => {
+            // Recovery has no receipt of the exact resolved outbound request.
+            // Only static control fields establish replay safety; a template
+            // could resolve differently after a parallel callback completes.
+            let config = &node.config;
+            let Ok(method) = http_method(config) else {
+                return false;
+            };
+            if method == reqwest::Method::GET || method == reqwest::Method::HEAD {
+                return true;
+            }
+            let Ok(id) = str_field(config, "connector_id").and_then(uuid) else {
+                return false;
+            };
+            let Ok(connector) = integration(state, actor, id).await else {
+                return false;
+            };
+            http_replay_safe(&method, config, &connector.data)
+        }
+        // A node-author flag is not evidence of an external worker's actual
+        // deduplication contract or of every nested iteration's remote outcome.
+        "agent" | "foreach" => false,
+        _ => true,
+    }
+}
+
 async fn execute_http(
     state: &AppState,
     actor: &Actor,
@@ -1935,21 +1987,7 @@ async fn execute_http(
     let connector = integration(state, actor, id).await?;
     let target =
         checked_endpoint(&connector.data, config.get("path").and_then(Value::as_str)).await?;
-    let method = match config
-        .get("method")
-        .and_then(Value::as_str)
-        .unwrap_or("GET")
-        .to_ascii_uppercase()
-        .as_str()
-    {
-        "GET" => reqwest::Method::GET,
-        "HEAD" => reqwest::Method::HEAD,
-        "POST" => reqwest::Method::POST,
-        "PUT" => reqwest::Method::PUT,
-        "PATCH" => reqwest::Method::PATCH,
-        "DELETE" => reqwest::Method::DELETE,
-        _ => return Err(ApiError::bad_request("Unsupported HTTP method")),
-    };
+    let method = http_method(config)?;
     let permitted = connector
         .data
         .get("allowed_methods")
@@ -1977,9 +2015,7 @@ async fn execute_http(
             ));
         }
     }
-    let safe = method == reqwest::Method::GET
-        || method == reqwest::Method::HEAD
-        || config["idempotent"] == true && connector.data["idempotent"] == true;
+    let safe = http_replay_safe(&method, config, &connector.data);
     let key = format!("blueprint:{run_id}:{node_key}");
     let mut request = request_with_auth(state, &connector, method.clone(), target)
         .await?
@@ -2981,6 +3017,35 @@ mod tests {
     fn deterministic_effect_ids_are_distinct_and_stable() {
         assert_eq!(stable_id("run:one:task:1"), stable_id("run:one:task:1"));
         assert_ne!(stable_id("run:one:task:1"), stable_id("run:one:task:2"));
+    }
+
+    #[test]
+    fn http_recovery_requires_approved_mutation_idempotency() {
+        for method in [reqwest::Method::GET, reqwest::Method::HEAD] {
+            assert!(http_replay_safe(&method, &json!({}), &json!({})));
+        }
+        for method in [
+            reqwest::Method::POST,
+            reqwest::Method::PUT,
+            reqwest::Method::PATCH,
+            reqwest::Method::DELETE,
+        ] {
+            assert!(!http_replay_safe(
+                &method,
+                &json!({"idempotent":true}),
+                &json!({"idempotent":false})
+            ));
+            assert!(!http_replay_safe(
+                &method,
+                &json!({}),
+                &json!({"idempotent":true})
+            ));
+            assert!(http_replay_safe(
+                &method,
+                &json!({"idempotent":true}),
+                &json!({"idempotent":true})
+            ));
+        }
     }
 
     #[test]

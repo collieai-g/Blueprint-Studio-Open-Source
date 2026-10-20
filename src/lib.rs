@@ -330,6 +330,11 @@ impl Actor {
                     role == "editor" || (role == "uploader" && r.kind == "folder")
                 }))
     }
+    /// Folder upload grants allow adding bytes, not editing the folder itself.
+    pub fn can_edit(&self, r: &Resource) -> bool {
+        self.can_write(r)
+            && (self.is_admin() || r.owner_id == self.id || self.acl_role(r) == Some("editor"))
+    }
     pub fn can_manage(&self, r: &Resource) -> bool {
         (self.role != "viewer"
             || (r.kind == "collection" && r.owner_id == self.id && r.visibility == "private"))

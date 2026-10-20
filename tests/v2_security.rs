@@ -6,6 +6,61 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 const PASSWORD: &str = "security-regression-password-937";
+
+#[tokio::test]
+#[ignore = "Requires disposable PostgreSQL via TEST_DATABASE_URL"]
+async fn uploader_can_add_files_without_renaming_the_owners_folder() {
+    let f = Fixture::new().await;
+    let owner = f.setup().await;
+    let (member, cookie) = f.member(&owner, "uploader@example.test").await;
+    let folder=f.resource(&owner,json!({"kind":"folder","name":"Owner controlled inbox","acl":{format!("user:{}",member["id"].as_str().unwrap()):"uploader"},"data":{}})).await;
+    let id = folder["id"].as_str().unwrap();
+    let denied = f
+        .request(
+            Method::PATCH,
+            &format!("/api/v1/resource/{id}"),
+            Some(&cookie),
+            Some(json!({"expected_version":1,"name":"Uploader cannot rename"})),
+        )
+        .await;
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    let form = reqwest::multipart::Form::new()
+        .text("parent_id", id.to_owned())
+        .part(
+            "file",
+            reqwest::multipart::Part::bytes(b"authorized inbox upload".to_vec())
+                .file_name("inbox.txt")
+                .mime_str("text/plain")
+                .unwrap(),
+        );
+    let uploaded = f
+        .client
+        .post(format!("{}/api/v1/files/upload", f.base))
+        .header("Cookie", &cookie)
+        .header("X-Blueprint-Request", "1")
+        .multipart(form)
+        .send()
+        .await
+        .unwrap();
+    let status = uploaded.status();
+    let uploaded: Value = uploaded.json().await.unwrap();
+    assert!(status.is_success(), "{uploaded}");
+    assert_eq!(uploaded["parent_id"], folder["id"]);
+    let unchanged: Value = f
+        .request(
+            Method::GET,
+            &format!("/api/v1/resource/{id}"),
+            Some(&owner),
+            None,
+        )
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(unchanged["name"], folder["name"]);
+    assert_eq!(unchanged["version"], 1);
+    f.cleanup().await;
+}
 struct Fixture {
     state: AppState,
     base: String,

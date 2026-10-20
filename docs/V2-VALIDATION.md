@@ -6,7 +6,7 @@
 
 | 驗證 | 實際結果 |
 | --- | --- |
-| Rust | 68 項測試通過，包括真實 PostgreSQL HTTP、WOPI、工作流程、權限、SCIM、OIDC 及 adapter 協定測試；沒有略過需要資料庫嘅案例 |
+| Rust | 71 項測試通過，包括真實 PostgreSQL HTTP、WOPI、工作流程、權限、SCIM、OIDC 及 adapter 協定測試；沒有略過需要資料庫嘅案例 |
 | 發行建置 | `cargo build --release --locked` 通過；TypeScript strict 及 Vite production build 通過 |
 | 真實瀏覽器 | 5 個 Playwright 案例通過，直接操作 Rust 後台；桌面／手機、成員／啟用／token、檔案／分享／收藏、17 MiB 中斷續傳、業務資料表、任務、表單、Yjs 協作、批准流程、DOCX 及治理 |
 | 本機原檔／S3 | 完整 HTTP 流程、不可變版本、ranges、匿名分享 DLP、write-only PAT、Object Lock／hold／retention、引用保護及真正清理原檔通過 |
@@ -50,10 +50,16 @@ npm --prefix ui run test:e2e
 
 沒有明確 write opt-in 或測試身份時，瀏覽器測試會略過。可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定 Chromium。預設不記錄會包含登入資料及一次性 token 嘅網絡 trace。
 
+## 生產容器 CI
+
+GitHub Actions 的 `container` job 實際建置完整 Dockerfile，再載入映像執行 `scripts/v2/check-container.py`。它使用獨立 PostgreSQL、私人網絡、隨機秘密及持久 volumes，驗證非 root app／worker、編譯網頁、首次設定、原檔上載／下載、真實工作處理、重啟持久化及映像內 `pg_dump` 備份。測試只公開 loopback 端口，最後移除自己建立的測試資源。
+
+[本次 PR 的最新 CI 結果](https://github.com/collieai-g/blueprint-folder-agent/pull/1/checks) 是容器檢查的權威結果；基本 app 容器通過並不代表所有可選企業服務已完成配置及驗收。
+
 ## 實測界線
 
 Google／Documenso adapter 及 OIDC 使用可控 HTTP provider，驗證真實請求、簽章、狀態、重送、衝突及失敗處理；沒有連接使用者嘅真實 Google／Microsoft、Documenso 或 Keycloak 帳戶。Collabora WOPI 協定及資料庫鎖定測試通過，沒有宣稱完成真正 Collabora 多人 Office 編輯。
 
-繁中 OCR、ClamAV EICAR、真實收件人簽署、Windows／PowerShell、完整生產 Docker 映像及全套外部服務災難還原尚未完成實測。沒有配置嘅功能回報設定需要；安裝服務亦不等於端到端驗收。
+繁中 OCR、ClamAV EICAR、真實收件人簽署、Windows／PowerShell及全套外部服務災難還原尚未完成實測。沒有配置嘅功能回報設定需要；安裝服務亦不等於端到端驗收。
 
 本次 Clippy 執行完成，仍有可整理嘅程式風格提示。容量結果只涵蓋已記錄嘅 metadata 讀取，不能推論上載、OCR、Office、外部 AI、20 個背景工作的吞吐或生產 SLA。桌面同步與裝置信任客戶端屬後續版本。

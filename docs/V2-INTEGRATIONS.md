@@ -34,7 +34,7 @@ Tesseract、PDF.js 等實際組件亦須在發行 SBOM 列出。不同語言嘅�
 - 本機核心備份／還原：[九項實際驗證](../deploy/research/backup-restore-2026-10-20.json) 通過，包括真實 `pg_dump`／`pg_restore`、兩個原檔版本及 hash、公司／筆記／歷史、私人 ACL 拒絕、master key 解密及 TOTP 登入；拒絕覆寫快照、checksum 不符及還原到非空安裝。
 - Metadata 讀取容量：[60 秒實測](V2-PERFORMANCE.md) 使用 4 CPU／16 GiB、10,000 合成帳戶、200 sessions、12,200 metadata rows，40 GET/s 下完成 2,400 請求；排程至完成 p95 78.088 ms，0 HTTP／ACL 錯誤。沒有實際檔案流量、OCR、掃描、Office 或背景工作吞吐測試。
 
-各紀錄只證明其列明場景。Tika full 映像解壓曾因本次 32 GiB 環境磁碟空間耗盡中止；本次未完成繁中 OCR、ClamAV、Documenso、Keycloak、Collabora、Google／Microsoft 真實帳戶端到端測試。Windows 腳本未在 PowerShell 執行。完整發布映像、外部處理引擎負載及包含物件儲存／選用服務的整套恢復未驗證。
+各紀錄只證明其列明場景。Tika full 映像解壓曾因本次 32 GiB 環境磁碟空間耗盡中止；本次未完成繁中 OCR、ClamAV、Documenso、Keycloak、Collabora、Google／Microsoft 真實帳戶端到端測試。Windows 腳本未在 PowerShell 執行。完整發布映像由 GitHub Actions 實際建置，再以獨立 app／worker／PostgreSQL 驗證首次啟動、處理、重啟及備份；以 [PR 的 container job](https://github.com/collieai-g/blueprint-folder-agent/pull/1/checks) 最新結果為準。外部處理引擎負載及包含物件儲存／選用服務的整套恢復未驗證。
 
 應用程式另有真實 PostgreSQL 配合本機 provider mock 的協定測試：OIDC 使用執行時生成的 RSA key、實際 RS256 token、PKCE、公開／內部 issuer 路徑、claims 拒絕及帳戶撤銷；安全回歸涵蓋停用邀請、SCIM 交易回滾、模組關閉及 Trash 權限。Documenso／Google／WOPI 的本機協定測試與真實部署服務、實際帳戶測試分開，不把 mock 通過當作供應商端驗收。
 

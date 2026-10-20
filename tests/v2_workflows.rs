@@ -316,6 +316,91 @@ async fn unknown_external_write_is_not_retried_automatically() {
 
 #[tokio::test]
 #[ignore = "Requires disposable PostgreSQL via TEST_DATABASE_URL"]
+async fn interrupted_post_requires_connector_idempotency_approval_before_replay() {
+    let f = Fixture::new().await;
+    let calls = Arc::new(AtomicUsize::new(0));
+    let count = calls.clone();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/write", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        axum::serve(
+            listener,
+            Router::new().route(
+                "/write",
+                post(move || {
+                    let count = count.clone();
+                    async move {
+                        count.fetch_add(1, Ordering::SeqCst);
+                        Json(json!({"committed":true}))
+                    }
+                }),
+            ),
+        )
+        .await
+        .unwrap();
+    });
+    let connector = f.create(
+        "connector",
+        "Non-idempotent write service",
+        json!({"endpoint":endpoint,"allow_private_network":true,"allowed_methods":["POST"],"idempotent":false}),
+    ).await;
+    let workflow=f.workflow(json!([
+        {"id":"start","type":"trigger"},
+        {"id":"write","type":"http","config":{"connector_id":connector.id,"method":"POST","idempotent":true,"body":{"operation":"charge-once"}}}
+    ]),json!([{"source":"start","target":"write"}])).await;
+    let run = f.run(&workflow, json!({}), "interrupted-post").await;
+
+    // Model a worker dying after the real provider committed and before the
+    // workflow_effects receipt could be persisted. The remote effect is real;
+    // only the durable crash-state fixture is inserted directly.
+    let response = f
+        .state
+        .http
+        .post(&endpoint)
+        .header("Idempotency-Key", format!("blueprint:{}:write", run.id))
+        .json(&json!({"operation":"charge-once"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    let mut crash_state = run.data.clone();
+    crash_state["status"] = json!("running");
+    crash_state["pending"] = json!([]);
+    crash_state["steps"] = json!([
+        {"node_id":"start","status":"completed","output":{}},
+        {"node_id":"write","status":"running","output":null}
+    ]);
+    sqlx::query("UPDATE resources SET data=$2,version=version+1 WHERE id=$1")
+        .bind(run.id)
+        .bind(crash_state)
+        .execute(&f.state.pool)
+        .await
+        .unwrap();
+    let receipts: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM workflow_effects WHERE run_id=$1 AND node_key='write'",
+    )
+    .bind(run.id)
+    .fetch_one(&f.state.pool)
+    .await
+    .unwrap();
+    assert_eq!(receipts, 0);
+
+    assert_eq!(f.tick(&run).await["status"], "needs_attention");
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "a node-only flag must not replay the committed POST"
+    );
+    let recovered = repo::raw_get(&f.state.pool, run.id).await.unwrap();
+    assert_eq!(recovered.data["steps"][1]["status"], "needs_attention");
+    assert_eq!(f.tick(&run).await["status"], "needs_attention");
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    server.abort();
+}
+
+#[tokio::test]
+#[ignore = "Requires disposable PostgreSQL via TEST_DATABASE_URL"]
 async fn signed_callback_resumes_once_and_rejects_tampering() {
     let f = Fixture::new().await;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

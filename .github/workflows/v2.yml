@@ -56,6 +56,9 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: blueprint-backend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Production container first-run, worker, restart and backup
+        run: python3 scripts/v2/check-container.py --image blueprint-backend:ci
