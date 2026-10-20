@@ -1,0 +1,1 @@
+CREATE TABLE wopi_locks(file_id UUID PRIMARY KEY REFERENCES resources(id) ON DELETE CASCADE,lock_id TEXT NOT NULL,content_version BIGINT NOT NULL,expires_at TIMESTAMPTZ NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT now());

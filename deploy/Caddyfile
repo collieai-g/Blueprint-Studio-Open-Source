@@ -1,0 +1,8 @@
+{$BLUEPRINT_SITE:http://localhost} {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+    }
+    reverse_proxy app:8787
+}

@@ -1,0 +1,65 @@
+{
+  "schema": "blueprint-metadata-benchmark-v1",
+  "measured_at": "2026-10-20T05:56:04.150005+00:00",
+  "hardware": {
+    "logical_host_cpus": 5,
+    "cgroup_cpu_limit": 4.0,
+    "cgroup_memory_gib": 16.0
+  },
+  "proposed_deployment_target": {
+    "cpu": 8,
+    "memory_gib": 32,
+    "measured_on_this_target": false
+  },
+  "binary": {
+    "sha256": "675aa3b24a516cb845ece7402235084feb8dea185cd8f36f94a68a589fc27c4c",
+    "profile": "debug",
+    "version": "blueprint-backend 2.0.0-alpha.1"
+  },
+  "fixtures": {
+    "users": 10000,
+    "authenticated_browser_sessions": 200,
+    "metadata_files": 12200,
+    "departments": 10,
+    "private_and_group_acl_preflight_checks": 800,
+    "file_bytes": 0,
+    "metadata_only": true
+  },
+  "workload": {
+    "offered_requests_per_second": 40.0,
+    "seconds": 60.0,
+    "requests": 2400,
+    "route_mix": [
+      "GET /me",
+      "GET /resource/:id",
+      "GET /resources/file",
+      "GET /resources/file?q=Department"
+    ],
+    "max_client_threads": 32,
+    "persistent_connections": 200,
+    "open_loop": true
+  },
+  "results": {
+    "elapsed_seconds": 60.009,
+    "completed_requests_per_second": 39.994,
+    "http_response_p50_ms": 27.394,
+    "http_response_p95_ms": 77.584,
+    "scheduled_to_completion_p50_ms": 28.051,
+    "scheduled_to_completion_p95_ms": 78.088,
+    "max_dispatch_lag_ms": 49.47,
+    "errors": 0,
+    "error_rate": 0.0,
+    "error_counts": {}
+  },
+  "acceptance": {
+    "p95_budget_ms": 500.0,
+    "passed": true
+  },
+  "limitations": [
+    "Logical sessions and 200 persistent connections do not mean 200 simultaneous busy requests.",
+    "Metadata-only reads; excludes upload, full-text scale, previews, AI workers, calendar, Office, scanning and backup load.",
+    "Loopback HTTP, single app process and local PostgreSQL; no TLS, WAN or reverse-proxy latency.",
+    "Fixtures are inserted directly; actual permission decisions and measured reads run through HTTP.",
+    "This is observed capacity on the recorded host, not a promise for the proposed deployment size."
+  ]
+}

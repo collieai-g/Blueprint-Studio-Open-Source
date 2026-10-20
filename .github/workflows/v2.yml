@@ -1,0 +1,61 @@
+name: Rust company workspace
+on:
+  push:
+    branches: [main, 'rewrite/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_USER: blueprint_test
+          POSTGRES_PASSWORD: test_database_only
+          POSTGRES_DB: blueprint_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blueprint_test -d blueprint_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      BLUEPRINT_TEST_DATABASE_URL: postgresql://blueprint_test:test_database_only@127.0.0.1:5432/blueprint_test
+      TEST_DATABASE_URL: postgresql://blueprint_test:test_database_only@127.0.0.1:5432/blueprint_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Build TypeScript web app
+        run: npm ci --prefix ui && npm run build --prefix ui
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Rust tests
+        run: cargo test --locked --all-targets -- --include-ignored --test-threads=1
+      - name: Deployment configuration and secrets
+        run: node scripts/v2/check-deploy.mjs
+      - name: Compile release
+        run: cargo build --release --locked
+
+  container:
+    runs-on: ubuntu-24.04
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Verify production image build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: blueprint-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

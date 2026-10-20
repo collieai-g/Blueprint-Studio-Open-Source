@@ -1,0 +1,8 @@
+services:
+  app:
+    environment: &document-services
+      BLUEPRINT_GOTENBERG_URL: http://gotenberg:3000
+      BLUEPRINT_TIKA_URL: http://tika:9998
+      BLUEPRINT_CLAMAV_URL: tcp://clamav:3310
+  worker:
+    environment: *document-services

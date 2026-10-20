@@ -1,0 +1,13 @@
+# Build only: the managed-cloud CA is not copied into the resulting image.
+services:
+  app:
+    build:
+      secrets:
+        - proxy_ca
+  tika:
+    build:
+      secrets:
+        - proxy_ca
+secrets:
+  proxy_ca:
+    file: ${CODEX_PROXY_CERT:?Set the managed environment CA path}

@@ -1,0 +1,133 @@
+{
+  "schema": "blueprint-engine-smoke-evidence-v1",
+  "captured_date": "2026-10-20",
+  "authority": "actual-engine-http-and-process-test",
+  "application_end_to_end": false,
+  "services": {
+    "postgres": {
+      "image": "groonga/pgroonga:4.1.0-alpine-17",
+      "results": [
+        "pgroonga extension created",
+        "independent documenso/keycloak roles and databases created",
+        "extension and databases persist after restart"
+      ]
+    },
+    "gotenberg": {
+      "image": "gotenberg/gotenberg:8.38.1",
+      "results": [
+        {
+          "operation": "POST /forms/libreoffice/convert",
+          "input": "minimal generated DOCX",
+          "status": 200,
+          "extracted_text": "Blueprint DOCX conversion validation"
+        },
+        {
+          "operation": "POST /forms/pdfengines/stamp",
+          "status": 200,
+          "input_sha256": "eecdaf0787528e458aaab871fba41d5bd37bae51a354d9be0730a225badd7fcb",
+          "output_sha256": "bb49a8f422d2214832662533bd449960b3aa77ce68077e9505a60ddb80d4975e",
+          "original_and_stamp_text_extracted": true,
+          "tested_stamp_options": {
+            "font": "Helvetica",
+            "points": "24",
+            "color": "#808080",
+            "rotation": "45",
+            "opacity": "0.25"
+          }
+        }
+      ]
+    },
+    "seaweedfs": {
+      "image": "chrislusf/seaweedfs:4.48",
+      "protocol": "AWS4-HMAC-SHA256, S3 HTTP",
+      "results": [
+        {
+          "name": "create ObjectLock bucket",
+          "status": 200,
+          "version": null
+        },
+        {
+          "name": "ObjectLock configured",
+          "status": 200,
+          "version": null
+        },
+        {
+          "name": "enable versioning",
+          "status": 200,
+          "version": null
+        },
+        {
+          "name": "upload retained version",
+          "status": 200,
+          "version": "671fd9b2caa2ae26dc30cf2cc9fc5064"
+        },
+        {
+          "name": "read version1",
+          "status": 200,
+          "version": "671fd9b2caa2ae26dc30cf2cc9fc5064"
+        },
+        {
+          "name": "upload version2",
+          "status": 200,
+          "version": "671fd9b2bdf083e7c36106ced8ff5867"
+        },
+        {
+          "name": "old version still readable",
+          "status": 200,
+          "version": "671fd9b2caa2ae26dc30cf2cc9fc5064"
+        },
+        {
+          "name": "governance blocks permanent version delete",
+          "status": 403,
+          "version": null
+        },
+        {
+          "name": "set legal hold ON",
+          "status": 200,
+          "version": "671fd9b2bdf083e7c36106ced8ff5867"
+        },
+        {
+          "name": "legal hold blocks permanent version delete",
+          "status": 403,
+          "version": null
+        },
+        {
+          "name": "set legal hold OFF",
+          "status": 200,
+          "version": "671fd9b2bdf083e7c36106ced8ff5867"
+        },
+        {
+          "name": "current version content",
+          "status": 200,
+          "version": "671fd9b2bdf083e7c36106ced8ff5867"
+        },
+        {
+          "name": "ObjectLock and version listing persist after restart",
+          "status": 200
+        },
+        {
+          "name": "retention blocks permanent version deletion after restart",
+          "status": 403
+        },
+        {
+          "name": "old version readable after restart",
+          "status": 200
+        }
+      ]
+    }
+  },
+  "not_exercised": [
+    "Rust application HTTP integration with these engines (separate application test record required)",
+    "Tika/Tesseract OCR",
+    "ClamAV EICAR scan",
+    "Documenso account/signing lifecycle",
+    "Keycloak OIDC/SAML/MFA lifecycle",
+    "Collabora simultaneous editing",
+    "Google/Microsoft real account OAuth",
+    "Windows PowerShell scripts",
+    "complete production container build",
+    "external-processing throughput and complete multi-service disaster recovery"
+  ],
+  "environment_limit": "Docker vfs physical layer amplification exhausted 32 GiB filesystem during Tika image extraction. Only disposable images and containers created for these checks were removed; tests resumed on the existing small Seaweed image.",
+  "scope": "Engine-only test record. Later application, metadata benchmark, and local backup/restore evidence are separate artifacts; this list is not a global final verification status."
+}

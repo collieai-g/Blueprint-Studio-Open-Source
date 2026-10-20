@@ -12,3 +12,14 @@ access.json
 .env
 .env.*
 !.env.example
+/target/
+/ui/node_modules/
+/ui/dist/
+/ui/playwright-report/
+*.tsbuildinfo
+/blueprint-data/
+/backups/
+/deploy/secrets/
+*.p12
+*.pem
+master.key

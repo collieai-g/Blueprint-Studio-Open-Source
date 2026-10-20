@@ -1,0 +1,24 @@
+{
+  "schema": "blueprint-backup-acceptance-v1",
+  "executed_at": "2026-10-20T06:07:05Z",
+  "binary_sha256": "4ea90c916e5a5d0e209e7de2cabffcc522a3a89a5d9ced590fd4b4091b759c36",
+  "postgresql": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "external_services": "none",
+  "checks": {
+    "source_original_versions_private_identities_notes_and_mfa_challenge_persisted": true,
+    "actual_pg_dump_snapshot_contains_database_objects_and_active_master_key": true,
+    "backup_refuses_overwriting_existing_snapshot": true,
+    "restore_rejects_database_checksum_mismatch": true,
+    "actual_pg_restore_into_fresh_database_and_storage": true,
+    "restored_login_identity_company_original_hashes_versions_note_and_history": true,
+    "restored_private_denials_and_explicit_viewer_acl": true,
+    "restored_encrypted_mfa_challenge_decrypts_and_totp_login_is_enforced": true,
+    "restore_refuses_populated_installation": true
+  },
+  "backup_format": "blueprint-backup-v2",
+  "backup_database_sha256": "ed384712b5f394974caf375463788422945f300b88e8f1cee1119f13aef8c89e",
+  "original_sha256": "a3033880bf6005ce0831db17430931463ad4289426728bbe726cc1beede90603",
+  "current_sha256": "fc0d5abd9738200715f4b3588a8937ae1556922679ed38a69ff10d19d8f55487",
+  "restored_file_versions": 2,
+  "passed": true
+}

@@ -1,0 +1,78 @@
+{
+  "recorded_at": "2026-10-20T06:14:05.700888+00:00",
+  "scope": "Real loopback HTTP requests to the built Rust application and worker using disposable PostgreSQL databases; separate local-filesystem and actual SeaweedFS S3 runs. Test credentials and signed requests are excluded.",
+  "binary": {
+    "version": "2.0.0-alpha.1",
+    "profile": "debug",
+    "sha256": "c61c556de14b1a488d389a426fda34d79f6e873cecce5de1d23633e0471b0bc0",
+    "built_at_utc": "2026-10-20 06:12:39 UTC"
+  },
+  "services": {
+    "postgresql": "17.11 (Debian 17.11-1.pgdg12+2)",
+    "search_extension": "PGroonga not installed in disposable test PostgreSQL; SQL fallback used",
+    "seaweedfs": "4.48 / 530be3e37 linux amd64",
+    "seaweed_test_capacity": {
+      "max_volume_slots": 64,
+      "volume_size_limit_mb": 32
+    }
+  },
+  "runs": [
+    {
+      "command": "python3 tests/v2/content_local_acceptance.py",
+      "result": "passed",
+      "checks": [
+        "streamed UTF-8 upload and native preview",
+        "byte-range downloads",
+        "immutable versions, stale-write conflict, version restore",
+        "forged blob metadata rejected",
+        "sharing password, download restriction, revocation",
+        "direct ACL and ancestor folder access",
+        "collaborative lock enforcement",
+        "classification/DLP download restrictions",
+        "archive permanently revokes existing links",
+        "legal hold blocks permanent metadata purge",
+        "resumable offsets, duplicate offset conflict, interrupted resume, final SHA256, idempotent finalize and abort",
+        "nested public folder ancestry and outside-tree rejection",
+        "atomic recursive folder copy and move-to-root",
+        "trashed source unavailable through direct/public downloads",
+        "write-only parent-scoped PAT uploads/finalizes without gaining read access",
+        "actual worker verifies signed processing grant and completes processing for write-only multipart/resumable uploads",
+        "forced-time 24h deferred GC preserves live copy/history references then physically removes final local blob",
+        "public share uses actual viewer identity: signed-in exempt owner allowed; anonymous visitor and non-exempt member denied; disabling policy restores anonymous download; anonymous audit principal is SQL NULL",
+        "actual 30s worker maintenance removes expired uploading and abandoned finalizing staging, preserves unexpired active uploads and recently updated finalizing transfers during 5minute grace, and records explicit system history plus NULL-principal audit"
+      ],
+      "completed_at_utc": "2026-10-20T06:14:05.700888+00:00"
+    },
+    {
+      "command": "python3 tests/v2/content_s3_acceptance.py",
+      "result": "passed",
+      "checks": [
+        "full content HTTP acceptance suite using actual Rust S3 adapter",
+        "automatic Object Lock bucket creation and versioning verification",
+        "actual object-version receipts persisted",
+        "current and historical immutable bytes and HTTP ranges",
+        "actual provider legal-hold ON/OFF",
+        "copied reference release does not release original physical object hold",
+        "actual provider DELETE denied under legal hold",
+        "COMPLIANCE retention set on actual object version and DELETE denied",
+        "forced-time deferred GC preserves live copy/history references then deletes the final exact S3 object version",
+        "public share uses actual viewer identity: signed-in exempt owner allowed; anonymous visitor and non-exempt member denied; disabling policy restores anonymous download; anonymous audit principal is SQL NULL"
+      ],
+      "completed_at_utc": "2026-10-20T06:14:05.700888+00:00"
+    }
+  ],
+  "gc_clock_handling": "Only disposable database not_before/pin timestamps were advanced. Production 24h grace was not shortened in application code.",
+  "limitations": [
+    "This evidence does not claim proprietary Box UI/backend parity.",
+    "Gotenberg, Tika, ClamAV and Office providers were not configured for these two application runs; separate engine evidence covers provider smoke tests."
+  ],
+  "final_regression_result": "Passed both local and actual S3 application runs with final viewer-specific DLP, signed worker grants, physical GC and expired-upload maintenance code.",
+  "fixtures": "Each run creates and drops a unique PostgreSQL database and private loopback application. S3 tests use unique disposable Object Lock buckets; provider-retained smoke objects remain protected until their configured test retention expires.",
+  "maintenance": {
+    "expired_resumable_worker_interval_seconds": 30,
+    "finalizing_idle_grace_seconds": 300,
+    "max_expired_sessions_per_pass": 100,
+    "scope": "upload_session rows and their UUID-validated resumable staging files only; completed file rows and immutable originals are excluded",
+    "system_attribution": "audit_log.actor_id is NULL; required history owner reference is accompanied by explicit system.upload_expired action and expired_by=system metadata"
+  }
+}

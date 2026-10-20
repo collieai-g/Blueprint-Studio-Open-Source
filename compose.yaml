@@ -1,19 +1,214 @@
+name: ${COMPOSE_PROJECT_NAME:-blueprint-workspace}
+
+x-app-environment: &app-environment
+  BLUEPRINT_DATABASE_URL: postgresql://blueprint:${POSTGRES_PASSWORD:?Run scripts/v2/configure.sh first}@postgres:5432/blueprint
+  BLUEPRINT_DATA_DIR: /data
+  BLUEPRINT_UI_DIR: /app/ui/dist
+  BLUEPRINT_BIND: 0.0.0.0:8787
+  BLUEPRINT_PUBLIC_URL: ${BLUEPRINT_PUBLIC_URL:-http://127.0.0.1:8787}
+  BLUEPRINT_SETUP_TOKEN: ${BLUEPRINT_SETUP_TOKEN:?Generate a private setup token}
+  BLUEPRINT_MASTER_KEY: ${BLUEPRINT_MASTER_KEY:?Generate a persistent 32-byte hex key}
+  BLUEPRINT_GOTENBERG_URL: ${BLUEPRINT_GOTENBERG_URL:-}
+  BLUEPRINT_TIKA_URL: ${BLUEPRINT_TIKA_URL:-}
+  BLUEPRINT_CLAMAV_URL: ${BLUEPRINT_CLAMAV_URL:-}
+  BLUEPRINT_DOCUMENSO_URL: ${BLUEPRINT_DOCUMENSO_URL:-}
+  BLUEPRINT_DOCUMENSO_API_TOKEN: ${BLUEPRINT_DOCUMENSO_API_TOKEN:-}
+  BLUEPRINT_DOCUMENSO_WEBHOOK_SECRET: ${BLUEPRINT_DOCUMENSO_WEBHOOK_SECRET:-}
+  BLUEPRINT_COLLABORA_URL: ${BLUEPRINT_COLLABORA_URL:-}
+  BLUEPRINT_COLLABORA_PUBLIC_URL: ${BLUEPRINT_COLLABORA_PUBLIC_URL:-}
+  BLUEPRINT_KEYCLOAK_URL: ${BLUEPRINT_KEYCLOAK_URL:-}
+  BLUEPRINT_KEYCLOAK_PUBLIC_URL: ${BLUEPRINT_KEYCLOAK_PUBLIC_URL:-}
+  BLUEPRINT_OIDC_ISSUER: ${BLUEPRINT_OIDC_ISSUER:-}
+  BLUEPRINT_OIDC_REALM: ${BLUEPRINT_OIDC_REALM:-blueprint}
+  BLUEPRINT_OIDC_CLIENT_ID: ${BLUEPRINT_OIDC_CLIENT_ID:-}
+  BLUEPRINT_OIDC_CLIENT_SECRET: ${BLUEPRINT_OIDC_CLIENT_SECRET:-}
+  BLUEPRINT_S3_ENDPOINT: ${BLUEPRINT_S3_ENDPOINT:-}
+  BLUEPRINT_S3_BUCKET: ${BLUEPRINT_S3_BUCKET:-blueprint}
+  BLUEPRINT_S3_REGION: ${BLUEPRINT_S3_REGION:-us-east-1}
+  BLUEPRINT_S3_REQUIRE_OBJECT_LOCK: ${BLUEPRINT_S3_REQUIRE_OBJECT_LOCK:-1}
+  BLUEPRINT_S3_ACCESS_KEY: ${BLUEPRINT_S3_ACCESS_KEY:-}
+  BLUEPRINT_S3_SECRET_KEY: ${BLUEPRINT_S3_SECRET_KEY:-}
+  BLUEPRINT_GOOGLE_CLIENT_ID: ${BLUEPRINT_GOOGLE_CLIENT_ID:-}
+  BLUEPRINT_GOOGLE_CLIENT_SECRET: ${BLUEPRINT_GOOGLE_CLIENT_SECRET:-}
+  BLUEPRINT_MICROSOFT_CLIENT_ID: ${BLUEPRINT_MICROSOFT_CLIENT_ID:-}
+  BLUEPRINT_MICROSOFT_CLIENT_SECRET: ${BLUEPRINT_MICROSOFT_CLIENT_SECRET:-}
+  RUST_LOG: ${RUST_LOG:-blueprint_backend=info,tower_http=info}
+
 services:
-  library:
+  postgres:
+    image: ${BLUEPRINT_POSTGRES_IMAGE:-blueprint-postgres:4.1.0-pg17}
     build:
       context: .
-      dockerfile: company/Dockerfile
-    ports:
-      - "127.0.0.1:8787:8787"
+      dockerfile: deploy/postgres.Dockerfile
     environment:
-      BLUEPRINT_ADMIN_USERNAME: ${BLUEPRINT_ADMIN_USERNAME:-admin}
-      BLUEPRINT_ADMIN_PASSWORD: ${BLUEPRINT_ADMIN_PASSWORD:?請先在本機 .env 設定管理員密碼}
-      BLUEPRINT_COMPANY_NAME: ${BLUEPRINT_COMPANY_NAME:-}
-      BLUEPRINT_COMPANY_INDUSTRY: ${BLUEPRINT_COMPANY_INDUSTRY:-}
-      BLUEPRINT_COMPANY_DESCRIPTION: ${BLUEPRINT_COMPANY_DESCRIPTION:-}
-      BLUEPRINT_COMPANY_GOALS: ${BLUEPRINT_COMPANY_GOALS:-}
+      POSTGRES_DB: blueprint
+      POSTGRES_USER: blueprint
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate a database password}
+      DOCUMENSO_DB_PASSWORD: ${DOCUMENSO_DB_PASSWORD:-}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U blueprint -d blueprint"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    image: ${BLUEPRINT_APP_IMAGE:-blueprint-backend:2.0.0-alpha.1}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment: *app-environment
+    ports:
+      - "${BLUEPRINT_LISTEN_ADDRESS:-127.0.0.1}:${BLUEPRINT_PORT:-8787}:8787"
     volumes:
       - company-data:/data
+      - backup-data:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
+
+  worker:
+    image: ${BLUEPRINT_APP_IMAGE:-blueprint-backend:2.0.0-alpha.1}
+    command: ["worker"]
+    environment: *app-environment
+    volumes:
+      - company-data:/data
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+  caddy:
+    image: ${BLUEPRINT_CADDY_IMAGE:-caddy:2.10.2-alpine}
+    profiles: ["https"]
+    environment:
+      BLUEPRINT_SITE: ${BLUEPRINT_SITE:-http://localhost}
+    ports:
+      - "${BLUEPRINT_HTTP_PORT:-80}:80"
+      - "${BLUEPRINT_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  seaweed:
+    image: ${BLUEPRINT_SEAWEED_IMAGE:-chrislusf/seaweedfs:4.48}
+    profiles: ["storage", "enterprise"]
+    command: ["server", "-s3", "-s3.config=/run/secrets/s3.json", "-ip=seaweed", "-ip.bind=0.0.0.0", "-volume.max=${BLUEPRINT_SEAWEED_MAX_VOLUMES:-0}", "-master.volumeSizeLimitMB=${BLUEPRINT_SEAWEED_VOLUME_SIZE_MB:-1024}"]
+    volumes:
+      - object-data:/data
+    secrets:
+      - source: seaweed-s3
+        target: s3.json
+    restart: unless-stopped
+
+  gotenberg:
+    image: ${BLUEPRINT_GOTENBERG_IMAGE:-gotenberg/gotenberg:8.38.1}
+    profiles: ["documents", "enterprise"]
+    command: ["gotenberg", "--api-timeout=120s", "--chromium-disable-routes=true"]
+    restart: unless-stopped
+
+  tika:
+    image: ${BLUEPRINT_TIKA_IMAGE:-blueprint-tika:3.2.3.0-full}
+    profiles: ["documents", "enterprise"]
+    build:
+      context: .
+      dockerfile: deploy/tika.Dockerfile
+    restart: unless-stopped
+
+  clamav:
+    image: ${BLUEPRINT_CLAMAV_IMAGE:-clamav/clamav:1.5.4}
+    profiles: ["documents", "enterprise"]
+    volumes:
+      - clamav-data:/var/lib/clamav
+    restart: unless-stopped
+
+  documenso:
+    image: ${BLUEPRINT_DOCUMENSO_IMAGE:-ghcr.io/documenso/documenso:v2.21.0}
+    profiles: ["enterprise"]
+    environment:
+      PORT: 3000
+      NEXTAUTH_SECRET: ${DOCUMENSO_AUTH_SECRET:-}
+      NEXT_PRIVATE_ENCRYPTION_KEY: ${DOCUMENSO_ENCRYPTION_KEY:-}
+      NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ${DOCUMENSO_SECONDARY_KEY:-}
+      NEXT_PUBLIC_WEBAPP_URL: ${BLUEPRINT_DOCUMENSO_PUBLIC_URL:-http://127.0.0.1:3001}
+      NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://documenso:3000
+      NEXT_PRIVATE_DATABASE_URL: postgresql://documenso:${DOCUMENSO_DB_PASSWORD:-}@postgres:5432/documenso
+      NEXT_PRIVATE_DIRECT_DATABASE_URL: postgresql://documenso:${DOCUMENSO_DB_PASSWORD:-}@postgres:5432/documenso
+      NEXT_PRIVATE_SIGNING_TRANSPORT: local
+      NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
+      NEXT_PRIVATE_SIGNING_PASSPHRASE: ${DOCUMENSO_SIGNING_PASSWORD:-}
+      NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
+      NEXT_PRIVATE_SMTP_HOST: ${SMTP_HOST:-}
+      NEXT_PRIVATE_SMTP_PORT: ${SMTP_PORT:-587}
+      NEXT_PRIVATE_SMTP_USERNAME: ${SMTP_USERNAME:-}
+      NEXT_PRIVATE_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      NEXT_PRIVATE_SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Blueprint Studio}
+      NEXT_PRIVATE_SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS:-}
+      NEXT_PRIVATE_JOBS_PROVIDER: local
+      NEXT_PUBLIC_FEATURE_BILLING_ENABLED: "false"
+      NEXT_PUBLIC_POSTHOG_KEY: ""
+    ports:
+      - "127.0.0.1:${BLUEPRINT_DOCUMENSO_PORT:-3001}:3000"
+    volumes:
+      - ${BLUEPRINT_SECRETS_DIR:?Generate private deployment files}/signing.p12:/opt/documenso/cert.p12:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  keycloak:
+    image: ${BLUEPRINT_KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.8.1}
+    profiles: ["enterprise"]
+    command: ["start", "--http-enabled=true", "--hostname=${BLUEPRINT_KEYCLOAK_PUBLIC_URL:-http://127.0.0.1:8081}", "--proxy-headers=xforwarded"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-blueprint-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
+      KC_HTTP_MANAGEMENT_HEALTH_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${BLUEPRINT_KEYCLOAK_PORT:-8081}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  collabora:
+    image: ${BLUEPRINT_COLLABORA_IMAGE:-collabora/code:25.04.7.2.1}
+    profiles: ["enterprise"]
+    environment:
+      aliasgroup1: ${BLUEPRINT_COLLABORA_WOPI_ORIGIN:-http://app:8787}
+      extra_params: --o:ssl.enable=false --o:ssl.termination=true --o:welcome.enable=false
+      username: ${COLLABORA_ADMIN_USER:-blueprint-admin}
+      password: ${COLLABORA_ADMIN_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${BLUEPRINT_COLLABORA_PORT:-9980}:9980"
+    cap_add: ["MKNOD"]
+    restart: unless-stopped
+
+secrets:
+  seaweed-s3:
+    file: ${BLUEPRINT_SECRETS_DIR:-./deploy/secrets}/s3.json
+
 volumes:
+  postgres-data:
   company-data:
+  backup-data:
+  object-data:
+  caddy-data:
+  caddy-config:
+  clamav-data:

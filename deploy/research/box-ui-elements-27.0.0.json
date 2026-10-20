@@ -1,0 +1,215 @@
+{
+  "schema": "blueprint-rea-public-artifact-evidence-v1",
+  "captured_date": "2026-10-20",
+  "tool": {
+    "name": "rea-agents",
+    "version": "6.7.0",
+    "operation": "analyze_javascript_application",
+    "provider": {
+      "id": "rea-javascript-application",
+      "name": "REA JavaScript application analyzer",
+      "version": "1"
+    }
+  },
+  "artifact": {
+    "package": "box-ui-elements",
+    "version": "27.0.0",
+    "url": "https://registry.npmjs.org/box-ui-elements/-/box-ui-elements-27.0.0.tgz",
+    "bytes": 16418471,
+    "sha256": "afeccffd7132b003ba579140156ca3fcdc836f2fb9aa23d165cb8213ffbc9d2e",
+    "integrity": "sha512-pApbnO08aDtiyUY8mliUXyblDXP+74vHSeC61ghCTDkLvsv0j5h448oMLXfoKk4bAG5MFKREAiQimQwYG+hlCg==",
+    "extracted_artifact_sha256": "8f39b61c4c80690f66d62ef5456b9f3703199e2ab15c96be9b3b17f06694d638"
+  },
+  "evidence_id": "ev_77aeca41487116c1361142480155fc30c69fbcfb238755d97ea10d4783ad6f31",
+  "authority": "shipped-artifact",
+  "confidence": "derived",
+  "inventory_manifest_id": "agm_305e30ff213a90b7fd8f0514ebe24598d497d2d2334436693373891b66cdf3d2",
+  "inventory_graph_sha256": "8d6f0fae7e532c64fa7839ced68532eb35d8183530fd78f1dcacc88f8b0ff233",
+  "statistics": {
+    "relevant_files": 10157,
+    "nested_asar_containers": 0,
+    "text_bytes_read": 179893,
+    "invalid_utf8_files": 0,
+    "parsed_javascript_files": 6,
+    "skipped_javascript_files": 0,
+    "visited_ast_nodes": 18936,
+    "findings": 396,
+    "modules": 0,
+    "parse_failures": 0
+  },
+  "selected_sources": [
+    {
+      "path": "es/elements/content-explorer/ContentExplorer.js",
+      "bytes": 58465,
+      "sha256": "ed22b9268a29a80b9485349195efafd34c2aa42255cdd75536ad337600bf8baa"
+    },
+    {
+      "path": "es/elements/content-explorer/RenameDialog.js",
+      "bytes": 3051,
+      "sha256": "e1b7c3e1670dce2906258274a39af534d790990ae4226df12eeaf207a15b14f6"
+    },
+    {
+      "path": "es/elements/content-explorer/DeleteConfirmationDialog.js",
+      "bytes": 2033,
+      "sha256": "9358c1a5ac231dc2e0ed56b450f1189e119a425e6ad49a662a84370d7193a4ab"
+    },
+    {
+      "path": "es/elements/content-explorer/ShareDialog.js",
+      "bytes": 2537,
+      "sha256": "09e4795cbb8b197042b8cda93fd7d39030f339570df5498c03f66f2789c884e0"
+    },
+    {
+      "path": "es/elements/content-preview/ContentPreview.js",
+      "bytes": 50151,
+      "sha256": "23d584152d892a6036b3c343db9e55789140662195e47c9d71d54f66fc8a5433"
+    },
+    {
+      "path": "es/elements/content-uploader/ContentUploader.js",
+      "bytes": 63656,
+      "sha256": "848895bd2d51aaeef958b461c414bdf786216f2f1b9d93f74da6af809befc210"
+    }
+  ],
+  "unselected_files": 10151,
+  "graph": {
+    "nodes": 19942,
+    "edges": 20710,
+    "coverage": {
+      "status": "partial",
+      "truncated": false,
+      "omitted_count": null,
+      "limits": []
+    }
+  },
+  "semantic_graph": {
+    "nodes": 12000,
+    "relations": 7757,
+    "status": "partial",
+    "truncated": true,
+    "limits": [
+      {
+        "name": "semantic_graph_file_node_ceiling",
+        "value": 3000,
+        "unit": "items"
+      },
+      {
+        "name": "semantic_graph_file_unknown_ceiling",
+        "value": 20000,
+        "unit": "items"
+      },
+      {
+        "name": "semantic_graph_node_ceiling",
+        "value": 12000,
+        "unit": "items"
+      },
+      {
+        "name": "semantic_graph_unknown_ceiling",
+        "value": 3000,
+        "unit": "items"
+      }
+    ],
+    "omitted_unknown_occurrences": [
+      {
+        "family": "boundary",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "call-flow",
+        "reason": "dynamic-call",
+        "occurrences": 346
+      },
+      {
+        "family": "call-flow",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "child-process",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "closure",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "configuration",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "data-flow",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "data-flow",
+        "reason": "unknown-value",
+        "occurrences": 246
+      },
+      {
+        "family": "event",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "object-flow",
+        "reason": "ambiguous-target",
+        "occurrences": 733
+      },
+      {
+        "family": "object-flow",
+        "reason": "dynamic-property",
+        "occurrences": 20
+      },
+      {
+        "family": "object-flow",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "promise-ownership",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "request",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "resource-lifecycle",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      },
+      {
+        "family": "timer",
+        "reason": "ambiguous-target",
+        "occurrences": 4
+      },
+      {
+        "family": "timer",
+        "reason": "incomplete-module",
+        "occurrences": 7795
+      }
+    ]
+  },
+  "limitations": [
+    "Caller-selected source analysis leaves 10151 inventoried files outside analysis scope. Inventory identity covers the complete artifact; relationships through unselected sources remain unknown.",
+    "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+    "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+    "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+    "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+    "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+    "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code."
+  ],
+  "canonical_output": {
+    "path": "rea-analysis.json (outside product repository)",
+    "sha256": "18b4ee47564df2b0ad09f6fc2eaf4291c18436e7b03543bf635dd5913c6548c6",
+    "bytes": 76446774
+  },
+  "runtime_executed": false,
+  "box_login_used": false,
+  "code_copied_into_product": false
+}
