@@ -10,6 +10,7 @@ const PublicFormPage = lazy(() => import('./pages/Business').then(module => ({ d
 const WorkflowPage = lazy(() => import('./pages/Workflow').then(module => ({ default: module.WorkflowPage })));
 const EditorPage = lazy(() => import('./pages/Editors').then(module => ({ default: module.EditorPage })));
 const EnterprisePage = lazy(() => import('./pages/Enterprise').then(module => ({ default: module.EnterprisePage })));
+const OverviewPage = lazy(() => import('./pages/Overview').then(module => ({ default: module.OverviewPage })));
 
 type ToastMessage = { id: number; text: string; tone: 'success' | 'error' };
 type Status = { initialized: boolean; company_name: string; version: string; setup_available?: boolean; sso_available?: boolean };
@@ -42,7 +43,7 @@ function Workspace() {
   const [actor, setActor] = useState<Actor | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
-  const [route, setRoute] = useState(location.hash.slice(1) || 'files');
+  const [route, setRoute] = useState(location.hash.slice(1) || 'overview');
   const [sidebar, setSidebar] = useState(false);
   const [collectionsOpen, setCollectionsOpen] = useState(true);
   const [folderTreeOpen, setFolderTreeOpen] = useState(false);
@@ -90,7 +91,7 @@ function Workspace() {
   useEffect(() => { void init(); }, [init]);
   useEffect(() => { void refreshNavigation(); }, [refreshNavigation]);
   useEffect(() => {
-    const hash = () => { setRoute(location.hash.slice(1) || 'files'); setSidebar(false); setProfileOpen(false); };
+    const hash = () => { setRoute(location.hash.slice(1) || 'overview'); setSidebar(false); setProfileOpen(false); };
     window.addEventListener('hashchange', hash); return () => window.removeEventListener('hashchange', hash);
   }, []);
   useEffect(() => {
@@ -128,13 +129,14 @@ function Workspace() {
   if (error && !status) return <div className="boot-screen"><span className="brand-mark">b</span><h2>暫時未能連接工作空間</h2><ErrorNotice error={error} onRetry={() => { void init(); }} /></div>;
   if (!actor) return <AuthScreen status={status} onAuthenticated={async user => { setActor(user); setStatus(old => ({ initialized: true, company_name: old?.company_name ?? '藍圖工作室', version: old?.version ?? '2.0.0' })); }} />;
   const navGroups = [
-    [{ key: 'files', label: '文件', icon: Files }, { key: 'favorites', label: '星號收藏', icon: Star }],
+    [{ key: 'overview', label: '工作總覽', icon: LayoutDashboard }, { key: 'files', label: '文件', icon: Files }, { key: 'favorites', label: '星號收藏', icon: Star }],
     [{ key: 'hubs', label: '知識入口', icon: BookOpen }, { key: 'notes', label: '筆記', icon: StickyNote }, { key: 'canvas', label: '白板', icon: PenLine }],
     [{ key: 'tables', label: '業務資料庫', icon: LayoutDashboard }, { key: 'tasks', label: '待辦事項', icon: ListTodo }, { key: 'calendar', label: '日程', icon: CalendarDays }, { key: 'workdays', label: '每日工作', icon: FileClock }],
     [{ key: 'forms', label: '表單', icon: Blocks }, { key: 'workflows', label: '工作流程', icon: Workflow }, { key: 'sign', label: '電子簽署', icon: PenLine }, { key: 'agents', label: 'AI 員工接入', icon: Network }],
   ];
   let page: ReactNode;
   if (!moduleEnabled(section) && !adminSections.includes(section)) page = <div className="page-content"><EmptyState icon={<Blocks size={36} />} title="這個模組已停用" description="現有資料仍然保留。管理員可以在模組設定中重新啟用。">{isAdmin && <button className="button primary" onClick={() => navigate('settings')}>前往模組設定</button>}</EmptyState></div>;
+  else if (section === 'overview') page = <OverviewPage actor={actor} companyName={companyName} moduleEnabled={moduleEnabled} />;
   else if (businessSections.includes(section)) page = <BusinessPage key={section} section={section} />;
   else if (workflowSections.includes(section)) page = <WorkflowPage key={section} section={section} />;
   else if (editorSections.includes(section)) page = <EditorPage key={section} section={section} />;
@@ -143,7 +145,7 @@ function Workspace() {
   else page = <ContentPage key={section} section={section} folderId={section === 'files' ? route.split('/')[1] : undefined} collectionId={section === 'collections' ? route.split('/')[1] : undefined} actor={actor} toast={toast} collectionsEnabled={moduleEnabled('collections')} onCollectionsChanged={() => { void refreshNavigation(); }} />;
   return <div className="workspace-shell">
     {sidebar && <button className="sidebar-scrim" onClick={() => setSidebar(false)} aria-label="關閉導覽" />}
-    <aside className={`sidebar ${sidebar ? 'sidebar-open' : ''}`}><a className="workspace-brand" href="#files"><span className="brand-mark">b<span /></span><span className="brand-wordmark">藍圖<span>WORKSPACE</span></span></a>
+    <aside className={`sidebar ${sidebar ? 'sidebar-open' : ''}`}><a className="workspace-brand" href="#overview"><span className="brand-mark">b<span /></span><span className="brand-wordmark">藍圖<span>WORKSPACE</span></span></a>
       <button className="company-switcher" onClick={() => navigate(isAdmin ? 'settings' : 'account')}><span className="company-avatar">{companyName.slice(0, 1)}</span><span><strong>{companyName}</strong><small>公司工作空間</small></span><Settings size={14} /></button>
       <nav className="main-navigation" aria-label="主要導覽">{navGroups.map((group, index) => <div className="nav-group" key={index}>{group.filter(item => moduleEnabled(item.key)).map(item => { const Icon = item.icon; return <a key={item.key} href={`#${item.key}`} className={`nav-item ${section === item.key || (item.key === 'files' && section === 'recent') ? 'active' : ''}`} aria-current={section === item.key ? 'page' : undefined}><Icon size={18} strokeWidth={1.7} /><span>{item.label}</span>{item.key === 'tasks' && <span className="nav-end-dot" />}</a>; })}
         {index === 0 && <>{folders.length > 0 && <><button className="nav-item nav-expand" onClick={() => setFolderTreeOpen(!folderTreeOpen)} aria-expanded={folderTreeOpen}><Folder size={18} strokeWidth={1.7} /><span>資料夾樹</span><ChevronDown size={13} className={folderTreeOpen ? '' : 'rotate-closed'} /></button>{folderTreeOpen && <div className="folder-navigation">{folders.filter(folder => !folder.parent_id).map(folder => <FolderBranch key={folder.id} folder={folder} folders={folders} activeRoute={route} />)}</div>}</>}<button disabled={!moduleEnabled('collections')} className={`nav-item nav-expand ${section === 'collections' ? 'active' : ''}`} onClick={() => setCollectionsOpen(!collectionsOpen)} aria-expanded={collectionsOpen}><Folder size={18} strokeWidth={1.7} /><span>個人集合</span><ChevronDown size={13} className={collectionsOpen ? '' : 'rotate-closed'} /></button>{moduleEnabled('collections') && collectionsOpen && <div className="collection-navigation">{collections.length ? collections.map(item => <div className="collection-nav-row" key={item.id}><a href={`#collections/${item.id}`} className={route === `collections/${item.id}` ? 'active' : ''}><span className="collection-dot" />{item.name}</a><button className="icon-button" aria-label={`重新命名 ${item.name}`} onClick={() => { setCollectionDialog(item); setCollectionName(item.name); }}><PenLine size={11} /></button></div>) : <span className="nav-empty">在文件中建立你的第一個集合</span>}</div>}</>}

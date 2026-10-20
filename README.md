@@ -6,9 +6,11 @@ Rust 核心、TypeScript 網頁、PostgreSQL 持久資料。每次安裝服務�
 
 此分支為 **v2.0.0-alpha.1 Rust 重寫開發版**。以公開 Box 文件、示範及介面行為作參考，建立獨立嘅藍圖產品。功能及企業容量須以實際測試報告為準；尚未配置嘅簽署、日曆、Office、掃描或 AI 接口會顯示設定需要，不會產生模擬成功。
 
-![藍圖 Rust v2 實際工作台](docs/screenshots/workspace-desktop.png)
+![藍圖白色格線工作台：真實後台及可刪除設計預覽資料](docs/screenshots/workspace-grid-desktop.png)
 
-[手機操作畫面](docs/screenshots/workspace-mobile.png) · [實際驗證紀錄](docs/V2-VALIDATION.md)
+[手機工作台](docs/screenshots/workspace-grid-mobile.png) · [編輯卡片版面](docs/screenshots/workspace-grid-editing.png) · [實際驗證紀錄](docs/V2-VALIDATION.md)
+
+白色工作畫布配合極淺方格線，文件、待辦、日程、AI 員工及筆記各有合適嘅位置。在「工作總覽 → 編輯版面」逐張調整卡片闊度、高度、次序及顯示；每個帳戶嘅版面會自動儲存於目前瀏覽器。截圖使用獨立、可刪除嘅設計預覽資料。
 
 ## 開始使用
 

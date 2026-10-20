@@ -8,7 +8,8 @@
 | --- | --- |
 | Rust | 71 項測試通過，包括真實 PostgreSQL HTTP、WOPI、工作流程、權限、SCIM、OIDC 及 adapter 協定測試；沒有略過需要資料庫嘅案例 |
 | 發行建置 | `cargo build --release --locked` 通過；TypeScript strict 及 Vite production build 通過 |
-| 真實瀏覽器 | 5 個 Playwright 案例通過，直接操作 Rust 後台；桌面／手機、成員／啟用／token、檔案／分享／收藏、17 MiB 中斷續傳、業務資料表、任務、表單、Yjs 協作、批准流程、DOCX 及治理 |
+| 真實瀏覽器 | 8 個 Playwright 案例通過，直接操作 Rust 後台；桌面／手機、成員／啟用／token、檔案／分享／收藏、17 MiB 中斷續傳、業務資料表、任務、表單、Yjs 協作、批准流程、DOCX、治理及個人工作台版面 |
+| 白色格線工作台 | 真實資料摘要、逐張調整大小、滑鼠吸附、鍵盤、取消拖曳、重載保存、平板保留桌面欄寬、次序／隱藏／還原、損壞 localStorage 復原及手機無橫向溢出通過；完整 8 案例用時 34.9 秒，瀏覽器錯誤為零 |
 | 本機原檔／S3 | 完整 HTTP 流程、不可變版本、ranges、匿名分享 DLP、write-only PAT、Object Lock／hold／retention、引用保護及真正清理原檔通過 |
 | 備份還原 | 真實 `pg_dump`／`pg_restore` 9 組檢查通過；原檔、版本、歷史、身份、ACL、MFA 加密資料恢復，拒絕壞 checksum、覆寫備份及還原到已有公司 |
 | 部署配置 | 隨機秘密、私人檔案權限、拒絕重設、簽署憑證、三個 Compose 組合檢查通過 |
@@ -20,7 +21,7 @@
 - [備份／還原實測](../deploy/research/backup-restore-2026-10-20.json)
 - [PGroonga、Gotenberg、Seaweed 引擎實測](../deploy/research/engine-smoke-2026-10-20.json)
 - [容量方法及原始彙總](V2-PERFORMANCE.md)
-- [桌面](screenshots/workspace-desktop.png)／[手機](screenshots/workspace-mobile.png)實際畫面
+- 白色格線工作台：[桌面](screenshots/workspace-grid-desktop.png)／[手機](screenshots/workspace-grid-mobile.png)／[編輯版面](screenshots/workspace-grid-editing.png)；使用獨立測試公司嘅可刪除設計預覽資料
 
 ## 重跑
 

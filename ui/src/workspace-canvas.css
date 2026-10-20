@@ -1,0 +1,163 @@
+/* The right-hand workspace is a quiet sheet of drafting paper.
+   Keep navigation independent; opaque content surfaces protect readability. */
+.workspace-content {
+  --canvas-line: #eef1f4;
+  --canvas-unit: 24px;
+  background-color: #fff;
+  background-image:
+    linear-gradient(to right, var(--canvas-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--canvas-line) 1px, transparent 1px);
+  background-size: var(--canvas-unit) var(--canvas-unit);
+  background-position: -1px -1px;
+}
+
+.workspace-main .topbar {
+  border-bottom-color: #edf0f3;
+  height: 72px;
+}
+
+.workspace-main .global-search {
+  height: 38px;
+  border-radius: 8px;
+  background: #fafbfc;
+  border-color: #edf0f3;
+  font-size: 12px;
+}
+
+.workspace-main .workspace-status { font-size: 10px; }
+.workspace-main .workspace-footer {
+  background: #fff;
+  margin: 0;
+  padding: 18px 36px;
+  font-size: 10px;
+  border-color: #edf0f3;
+}
+
+.workspace-content .content-page,
+.workspace-content .page-content,
+.workspace-content .business-page { padding: 32px 36px 48px; }
+
+.workspace-content .page-header,
+.workspace-content .business-heading { margin-bottom: 28px; }
+.workspace-content .business-heading { padding-bottom: 0; }
+.workspace-content .page-header h1,
+.workspace-content .business-heading h1 {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -.8px;
+  line-height: 1.4;
+}
+.workspace-content .page-header p,
+.workspace-content .business-heading p {
+  color: #738093;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.workspace-content .breadcrumbs { font-size: 11px; margin-bottom: 20px; }
+.workspace-content .breadcrumbs button { font-size: 11px; }
+.workspace-content .page-actions > .button,
+.workspace-content .page-actions > .menu-anchor > .button {
+  min-height: 38px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.workspace-content .file-section {
+  padding: 20px 24px 10px;
+  background: #fff;
+  border: 1px solid #e5e9ef;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #20334c04;
+}
+.workspace-content .content-toolbar { padding-bottom: 16px; }
+.workspace-content .toolbar-left h2 { font-size: 14px; color: #344256; }
+.workspace-content .inline-search { height: 33px; border-radius: 7px; }
+.workspace-content .inline-search input { font-size: 12px; }
+.workspace-content .filter-select { font-size: 11px; }
+.workspace-content .file-table { font-size: 12px; }
+.workspace-content .file-table th,
+.workspace-content .sort-heading { font-size: 11px; color: #7a8799; }
+.workspace-content .file-table td { height: 72px; }
+.workspace-content .resource-open strong { font-size: 12px; color: #34445a; font-weight: 550; }
+.workspace-content .resource-open small,
+.workspace-content .updated-by,
+.workspace-content .size-cell,
+.workspace-content .visibility-label { font-size: 11px; }
+.workspace-content .list-footer { padding: 18px 0 12px; font-size: 10px; }
+.workspace-content .item-count { font-size: 10px; background: #f3f5f8; }
+.workspace-content .section-caption h2 { font-size: 13px; color: #596a7f; }
+.workspace-content .section-caption button { font-size: 11px; }
+.workspace-content .recent-grid { gap: 16px; }
+.workspace-content .recent-card {
+  border-color: #e5e9ef;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #20334c03;
+}
+.workspace-content .recent-thumbnail { background: #fafbfc; height: 112px; }
+.workspace-content .recent-card-details { padding: 16px; gap: 8px; }
+.workspace-content .recent-card strong { font-size: 12px; }
+.workspace-content .recent-card-details > span { font-size: 10px; }
+.workspace-content .file-card { border-color: #e5e9ef; border-radius: 10px; }
+.workspace-content .card-open strong { font-size: 12px; }
+.workspace-content .card-open > span { font-size: 10px; }
+
+.workspace-content :is(.panel, .resource-card, .integration-card,
+  .workday-card, .hub-card, .business-data-grid, .task-list,
+  .business-calendar, .calendar-agenda, .document-card,
+  .service-card, .group-card, .business-chart-panel) {
+  background-color: #fff;
+  border-radius: 12px;
+  border-color: #e5e9ef;
+  box-shadow: 0 2px 8px #20334c03;
+}
+.workspace-content :is(.business-empty, .empty-state) { background: #fff; border-radius: 12px; }
+.workspace-content .empty-state h3 { font-size: 18px; }
+.workspace-content .empty-state p { font-size: 13px; }
+
+@media (min-width: 1700px) {
+  .workspace-content .content-page,
+  .workspace-content .page-content,
+  .workspace-content .business-page { padding-left: 48px; padding-right: 48px; }
+}
+
+@media (max-width: 1100px) {
+  .workspace-content .file-section { padding: 16px 18px 8px; }
+  .workspace-content .content-toolbar { flex-wrap: wrap; gap: 12px; }
+  .workspace-content .content-toolbar > .toolbar-right { margin-left: auto; }
+}
+
+@media (max-width: 760px) {
+  .workspace-main .topbar { height: 62px; }
+  .workspace-content .content-page,
+  .workspace-content .page-content,
+  .workspace-content .business-page { padding: 24px 20px 32px; }
+  .workspace-content .page-header,
+  .workspace-content .business-heading { margin-bottom: 24px; }
+  .workspace-content .page-header h1,
+  .workspace-content .business-heading h1 { font-size: 26px; }
+  .workspace-content .page-header p,
+  .workspace-content .business-heading p { font-size: 12px; }
+  .workspace-content .recent-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .workspace-content .recent-card:nth-child(3) { display: block; }
+  .workspace-content .file-table td { height: 66px; }
+  .workspace-main .workspace-footer { padding: 16px 20px; }
+}
+
+@media (max-width: 500px) {
+  .workspace-content .content-page,
+  .workspace-content .page-content,
+  .workspace-content .business-page { padding: 22px 16px 32px; }
+  .workspace-content .page-header { flex-wrap: wrap; gap: 16px; }
+  .workspace-content .page-header p { max-width: none; }
+  .workspace-content .page-actions { margin-left: auto; }
+  .workspace-content .page-actions > .button { font-size: 11px; gap: 6px; padding: 9px 11px; }
+  .workspace-content .file-section { padding: 12px 10px 4px; border-radius: 10px; }
+  .workspace-content .toolbar-left h2 { font-size: 12px; }
+  .workspace-content .inline-search input { font-size: 11px; width: 110px; }
+  .workspace-content .content-toolbar > .toolbar-right { flex-wrap: wrap; }
+  .workspace-content .resource-open strong { font-size: 11px; }
+  .workspace-content .recent-card-details { padding: 12px; }
+  .workspace-content .recent-card strong { font-size: 11px; }
+  .workspace-content .recent-card-details > span { font-size: 10px; }
+  .workspace-main .workspace-footer { padding: 16px; font-size: 9px; }
+}

@@ -41,7 +41,7 @@ test.describe('real administrator lifecycle', () => {
     await page.getByLabel('電郵地址', { exact: true }).fill(email!);
     await page.getByLabel('密碼', { exact: true }).fill(password!);
     await page.getByRole('button', { name: '登入工作空間', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '文件', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '工作總覽', exact: true })).toBeVisible();
     await page.goto('/#settings');
     await page.getByLabel('公司簡介 選填').fill(`Browser acceptance ${unique}`);
     await page.getByRole('button', { name: '儲存變更', exact: true }).click();
@@ -94,6 +94,8 @@ test.describe('real administrator lifecycle', () => {
     await inviteePage.getByLabel('登入密碼', { exact: true }).fill(activationPassword);
     await inviteePage.getByLabel('確認密碼', { exact: true }).fill(activationPassword);
     await inviteePage.getByRole('button', { name: '啟用帳戶', exact: true }).click();
+    await expect(inviteePage.getByRole('heading', { name: '工作總覽', exact: true })).toBeVisible();
+    await inviteePage.goto('/#files');
     await expect(inviteePage.getByRole('heading', { name: '文件', exact: true })).toBeVisible();
     await expect(inviteePage.getByRole('button', { name: '上傳', exact: true })).toBeDisabled();
     await invitee.close();
