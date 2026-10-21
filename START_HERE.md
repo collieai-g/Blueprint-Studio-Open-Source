@@ -1,4 +1,4 @@
-# 交給 AI，安裝並接通 V2.3
+# 交給 AI，安裝並接通 V2.4
 
 你只需將 [INSTALL_AI.txt](INSTALL_AI.txt) 全部文字貼給有安裝／部署工具的 AI，或把完整安裝 ZIP 交給 AI 並說：
 
@@ -21,3 +21,5 @@
 - [從工作台完成接駁](docs/CONNECT.md)
 - [保留資料升級](docs/UPGRADE.md)
 - [完整安裝](docs/INSTALL.md)
+
+V2.4 新增五組導覽與公司工作流程，見 [功能與完成範圍](docs/V2.4.md)。原生版會加到 schema 5；先備份，不能只退回舊程式來回復。Sites 的 UI 包不包含新版公司後台，須由安裝 AI 先按 [API 規格](docs/STUDIO_API.md) 實際適配。專員及截圖／影片等外部能力未接上時會清楚保留等待狀態。

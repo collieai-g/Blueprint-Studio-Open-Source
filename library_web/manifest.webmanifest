@@ -1,0 +1,1 @@
+{"id":"/","name":"藍圖工作室","short_name":"藍圖工作室","start_url":"/","scope":"/","display":"standalone","background_color":"#ffffff","theme_color":"#ffffff","icons":[{"src":"/brand.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}],"share_target":{"action":"/","method":"GET","params":{"title":"share_title","text":"share_text","url":"share_url"}}}

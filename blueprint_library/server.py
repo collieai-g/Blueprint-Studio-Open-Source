@@ -134,9 +134,18 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 username, password = decoded.split(":", 1)
                 if len(password) <= 1024:
                     profile = self.server.credential
+                    identity = {'username': profile['username'], 'name': profile['username'], 'role': 'owner'}
+                    if username != profile['username']:
+                        with self.server.store._connection() as conn:
+                            account = conn.execute('SELECT * FROM studio_users WHERE username=? AND enabled=1', (username,)).fetchone()
+                        if account:
+                            profile = dict(account)
+                            identity = {key: profile[key] for key in ('username', 'name', 'role')}
                     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
                         bytes.fromhex(profile["salt"]), PASSWORD_ROUNDS).hex()
                     valid = hmac.compare_digest(username.encode("utf-8"), profile["username"].encode("utf-8")) & hmac.compare_digest(digest, profile["password_hash"])
+                    if valid:
+                        self.identity = identity
             except (ValueError, UnicodeError, binascii.Error):
                 pass
         with self.server.auth_lock:
@@ -199,14 +208,34 @@ class LibraryHandler(BaseHTTPRequestHandler):
         if method in {"POST", "PATCH"}:
             self._write_allowed()
         store = self.server.store
-        actor = self.server.credential["username"]
+        actor = self.identity['username']
+        from .studio import Studio
+        from .studio_http import handle as studio_route
+        studio = Studio(store, self.identity)
+        def collection_payload(data):
+            collection_id = data.get('collection_id')
+            if collection_id and not studio.admin:
+                if not isinstance(collection_id, str):
+                    raise LibraryError('收藏集編號不正確。')
+                with store._connection() as conn:
+                    if conn.execute("SELECT 1 FROM studio_records WHERE id=? AND visibility='admin'", (collection_id,)).fetchone():
+                        raise LibraryError('你的帳戶不能把資料放入這個私人主題。', 403)
+            return data
+        if studio_route(self, method, path, parse_qs(parsed.query, keep_blank_values=True)):
+            return
+        if not studio.admin:
+            if path == '/api/export' or (path == '/api/company-profile' and method == 'PATCH'):
+                raise LibraryError('你的帳戶沒有這項權限。', 403)
+            protected = re.fullmatch(r'/api/(items|files|workdays|todos)/([a-zA-Z0-9-]+)(?:/history)?', path)
+            if protected and not studio.resource_allowed({'items':'item','files':'item','workdays':'workday','todos':'todo'}[protected.group(1)], protected.group(2)):
+                raise LibraryError('你的帳戶沒有這項權限。', 403)
         if method == "GET" and path == "/api/info":
             profile = store.get_company_profile()
             return self._json({"version": __version__, "company_name": profile["name"] or "藍圖工作室 Blueprint Studio",
                                "company_profile": profile,
                                "product_name": "Blueprint Studio Backend",
                                "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
-                               "connection_mode": "native", "classification": "rules", "stats": store.stats()})
+                               "connection_mode": "native", "classification": "rules", "stats": store.stats(member_access=not studio.admin), "account": self.identity, "studio_schema": 5})
         if path == "/api/company-profile":
             if method == "GET":
                 return self._json({"company_profile": store.get_company_profile()})
@@ -232,9 +261,9 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 return self._json(store.list_workdays(
                     q=query.get("q", [""])[0], date=query.get("date", [""])[0],
                     limit=int(query.get("limit", ["30"])[0]),
-                    offset=int(query.get("offset", ["0"])[0])))
+                    offset=int(query.get("offset", ["0"])[0]), member_access=not studio.admin))
             if method == "POST":
-                result = store.import_workday(self._body(), actor=actor)
+                result = store.import_workday(self._body(), actor=actor, member_access=not studio.admin)
                 return self._json(result, 201 if result["created"] else 200)
         workday_match = re.fullmatch(r"/api/workdays/([a-zA-Z0-9-]+)(/history)?", path)
         if workday_match and method == "GET":
@@ -252,13 +281,13 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 done=None if done == "all" else done == "1",
                 date=query.get("date", [""])[0], q=query.get("q", [""])[0],
                 limit=int(query.get("limit", ["100"])[0]),
-                offset=int(query.get("offset", ["0"])[0])))
+                offset=int(query.get("offset", ["0"])[0]), member_access=not studio.admin))
         todo_match = re.fullmatch(r"/api/todos/([a-zA-Z0-9-]+)", path)
         if todo_match and method == "PATCH":
             return self._json({"todo": store.update_todo(todo_match.group(1), self._body(), actor=actor)})
         if path == "/api/collections":
             if method == "GET":
-                return self._json({"collections": store.list_collections()})
+                return self._json({"collections": store.list_collections(member_access=not studio.admin)})
             if method == "POST":
                 return self._json({"collection": store.create_collection(self._body())}, 201)
         if path == "/api/items":
@@ -277,18 +306,18 @@ class LibraryHandler(BaseHTTPRequestHandler):
                         raise LibraryError("待整理篩選需要 0 或 1。")
                     options["unfiled"] = query["unfiled"][0] == "1"
                 options["sort"] = query.get("sort", ["updated"])[0]
-                return self._json(store.list_items(**options))
+                return self._json(store.list_items(**options, member_access=not studio.admin))
             if method == "POST":
-                return self._json({"item": store.create_item(self._body(), actor=actor)}, 201)
+                return self._json({"item": store.create_item(collection_payload(self._body()), actor=actor)}, 201)
         match = re.fullmatch(r"/api/items/([a-zA-Z0-9-]+)(/history)?", path)
         if match:
             item_id, history = match.groups()
             if method == "GET":
                 return self._json({"versions": store.item_history(item_id)} if history else {"item": store.get_item(item_id)})
             if method == "PATCH" and not history:
-                return self._json({"item": store.update_item(item_id, self._body(), actor=actor)})
+                return self._json({"item": store.update_item(item_id, collection_payload(self._body()), actor=actor)})
         if path == "/api/files" and method == "POST":
-            data = self._body(MAX_FILE_BYTES * 4 // 3 + 128 * 1024)
+            data = collection_payload(self._body(MAX_FILE_BYTES * 4 // 3 + 128 * 1024))
             content = data.get("content_base64")
             if not isinstance(content, str):
                 raise LibraryError("請提供 base64 文件內容。")
@@ -323,11 +352,13 @@ class LibraryHandler(BaseHTTPRequestHandler):
             data = self._body()
             if set(data) - {"item_ids", "task"}:
                 raise LibraryError("交接只接受資料編號及用途。")
+            if isinstance(data.get('item_ids'), list) and any(not studio.resource_allowed('item', item_id) for item_id in data['item_ids']):
+                raise LibraryError('你不能使用這項私人資料。', 403)
             return self._json(build_context(store, data.get("item_ids"), data.get("task", "general")))
         if path == "/api/export" and method == "GET":
             return self._json(store.export_metadata(), extra={"Content-Disposition": 'attachment; filename="blueprint-library-metadata.json"'})
         if method == "GET":
-            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/connection-guide.json"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/connection-guide.json", "/studio.js", "/studio.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()

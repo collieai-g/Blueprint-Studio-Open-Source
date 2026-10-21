@@ -27,7 +27,7 @@ _WORKSPACE_NAME = "藍圖工作室 Blueprint Studio"
 def installation_instruction() -> str:
     """Return a portable prompt usable by an equipped AI or a plain chat."""
     return (
-        "請幫我安裝或升級到 Blueprint Studio Open Source V2.3（2.3.0），建立並接通我自己的完整原版藍圖工作台。\n"
+        "請幫我安裝或升級到 Blueprint Studio Open Source V2.4（2.4.0），建立並接通我自己的完整原版藍圖工作台。\n"
         "公開工具：\n"
         f"{_REPOSITORY}\n\n"
         "先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、"
@@ -61,7 +61,7 @@ def installation_instruction() -> str:
         "沿用來源識別；修改使用版本檢查並保留可恢復歷史，不用隨機識別繞過衝突。"
         "不保存秘密或整段原始聊天，不聲稱能讀取其他平台不可見對話。"
         "目前沒有可用連線時，只輸出可匯入 JSON，不聲稱已儲存。"
-        "先做好公司設定、文件整理、收藏及每日工作，不增加未要求的公司模組。\n"
+        "按 docs/V2.4.md 驗收五組側欄與公司資料流程。原生版以完整備份升至 schema 5，回復舊版須匹配舊資料快照。Sites 先按 docs/STUDIO_API.md 在原後台完成適配，單換 UI 不能完成升級。專員及外部截圖／影片服務未接入時保留等待狀態，不宣稱已自動執行。\n"
     )
 
 

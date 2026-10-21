@@ -8,6 +8,24 @@ const request = (message, authorized = true) => new Request('https://workspace.e
 const authorize = req => { if (!req.headers.has('Verified-Test-User')) throw new Error('Denied'); };
 const rpc = (name, args) => ({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'blueprint_' + name, arguments: args } });
 
+test('V2.4 tool transport parses bounded JSON and keeps the original identity', async () => {
+  const calls=[];
+  const handler=createMcpHandler({tools,authorize,version:'2.4.0',dispatch:async req=>{
+    calls.push({url:req.url,user:req.headers.get('Verified-Test-User'),body:await req.json()});
+    return Response.json({record:{id:'project-1',version:1}});
+  }});
+  const good=await (await handler(request(rpc('studio_create',{kind:'project',title:'實際項目',data_json:'{"progress":25}',refs_json:'[]'})),{})).json();
+  assert.equal(good.result.isError,false);
+  assert.equal(calls[0].url,'https://workspace.example/api/studio/records');
+  assert.equal(calls[0].user,'owner');
+  assert.deepEqual(calls[0].body,{kind:'project',title:'實際項目',data:{progress:25},refs:[]});
+  for(const args of [{kind:'project',title:'bad',data_json:'[]'},{kind:'project',title:'bad',refs_json:'{}'}]) {
+    const bad=await (await handler(request(rpc('studio_create',args)),{})).json();
+    assert.equal(bad.result.isError,true);
+  }
+  assert.equal(calls.length,1);
+});
+
 test('platform authentication is required before tool discovery or mutation', async () => {
   let writes = 0;
   const handler = createMcpHandler({ tools, authorize, version: 'test', dispatch: () => { writes++; } });
@@ -93,7 +111,7 @@ test('guided acceptance uses existing API, resumes partial writes and keeps clie
     }
     return Response.json({ error: 'missing' }, { status: 404 });
   };
-  const handler = createMcpHandler({ tools, authorize, version: '2.3.0', dispatch });
+  const handler = createMcpHandler({ tools, authorize, version: '2.4.0', dispatch });
   const args = { challenge: 'd'.repeat(32), client: 'Codex', date: '2026-10-21' };
   const call = async value => (await (await handler(request(rpc('verify_connection', value)), {})).json()).result;
   const first = await call(args);
@@ -115,7 +133,7 @@ test('guided acceptance uses existing API, resumes partial writes and keeps clie
   records.get(resumed.structuredContent.workday_id).summary = 'User edited';
   assert.equal((await call(args)).isError, true);
   assert.equal(records.get(resumed.structuredContent.workday_id).summary, 'User edited');
-  const readonly = createMcpHandler({ tools, authorize, readOnly: true, version: '2.3.0', dispatch });
+  const readonly = createMcpHandler({ tools, authorize, readOnly: true, version: '2.4.0', dispatch });
   assert.equal((await (await readonly(request(rpc('verify_connection', args)), {})).json()).result.isError, true);
   assert.equal(records.size, 2);
 });

@@ -251,7 +251,7 @@ class WorkdayMixin:
         conn.execute("INSERT INTO workday_entries(" + ",".join(columns) + ") VALUES("
                      + ",".join("?" for _ in columns) + ")", values)
 
-    def import_workday(self, payload, actor="owner") -> dict:
+    def import_workday(self, payload, actor="owner", member_access=False) -> dict:
         from .store import LibraryError, _now, _text
 
         report, payload_hash = _report(payload)
@@ -262,6 +262,8 @@ class WorkdayMixin:
             existing = conn.execute("SELECT id,payload_hash FROM workdays WHERE date=? AND source=? AND source_key=?",
                                     (report["date"], report["source"], report["source_key"])).fetchone()
             if existing is not None:
+                if member_access and conn.execute("SELECT 1 FROM studio_resource_acl WHERE kind='workday' AND resource_id=?", (existing['id'],)).fetchone():
+                    raise LibraryError('你的帳戶沒有這項權限。', 403)
                 if existing["payload_hash"] != payload_hash:
                     raise LibraryError("同一來源識別碼已有不同內容，未有覆寫。請先查看原有紀錄；不同工作可另設來源識別碼。", 409)
                 return {"workday": self._workday_full(conn, existing["id"]), "created": False, "duplicate": True}
@@ -361,9 +363,10 @@ class WorkdayMixin:
             conn.execute("BEGIN")
             return self._workday_full(conn, workday_id)
 
-    def list_workdays(self, q="", date="", limit=30, offset=0) -> dict:
+    def list_workdays(self, q="", date="", limit=30, offset=0, member_access=False) -> dict:
         terms, day = _query(q, date, limit, offset, 100)
         where, args = [], []
+        if member_access: where.append("NOT EXISTS(SELECT 1 FROM studio_resource_acl a WHERE a.kind='workday' AND a.resource_id=w.id)")
         if day:
             where.append("w.date=?")
             args.append(day)
@@ -390,11 +393,12 @@ class WorkdayMixin:
                 workdays.append(record)
             return {"workdays": workdays, "total": total}
 
-    def list_todos(self, done=None, date="", q="", limit=100, offset=0) -> dict:
+    def list_todos(self, done=None, date="", q="", limit=100, offset=0, member_access=False) -> dict:
         from .store import _boolean
 
         terms, day = _query(q, date, limit, offset, 200)
         where, args = ["e.type='todo'"], []
+        if member_access: where.append("NOT EXISTS(SELECT 1 FROM studio_resource_acl a WHERE (a.kind='workday' AND a.resource_id=w.id) OR (a.kind='todo' AND a.resource_id=e.id))")
         if done is not None:
             where.append("e.done=?")
             args.append(int(_boolean(done, "完成狀態")))
@@ -444,11 +448,11 @@ class WorkdayMixin:
             return _entry_public(result, context=True)
 
     @staticmethod
-    def _workday_stats(conn):
+    def _workday_stats(conn, member_access=False):
         row = conn.execute("""SELECT
             COALESCE(SUM(type='todo' AND done=0),0) AS todos_open,
-            COALESCE(SUM(type='todo' AND done=1),0) AS todos_done FROM workday_entries""").fetchone()
-        return {"workdays": conn.execute("SELECT COUNT(*) FROM workdays").fetchone()[0], **dict(row)}
+            COALESCE(SUM(type='todo' AND done=1),0) AS todos_done FROM workday_entries e WHERE (?=0 OR NOT EXISTS(SELECT 1 FROM studio_resource_acl a WHERE (a.kind='workday' AND a.resource_id=e.workday_id) OR (a.kind='todo' AND a.resource_id=e.id)))""", (int(member_access),)).fetchone()
+        return {"workdays": conn.execute("SELECT COUNT(*) FROM workdays w WHERE (?=0 OR NOT EXISTS(SELECT 1 FROM studio_resource_acl a WHERE a.kind='workday' AND a.resource_id=w.id))", (int(member_access),)).fetchone()[0], **dict(row)}
 
     def workday_stats(self) -> dict:
         with self._connection() as conn:

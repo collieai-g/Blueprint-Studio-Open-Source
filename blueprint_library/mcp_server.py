@@ -61,6 +61,15 @@ class Bridge:
         path = route['path']
         if '{id}' in path:
             path = path.replace('{id}', data.pop('id'))
+        if route.get('transform') == 'studio_json':
+            for source, target, typ in [('data_json', 'data', dict), ('refs_json', 'refs', list), ('arguments_json', 'arguments', dict)]:
+                if source in data:
+                    try:
+                        value = json.loads(data.pop(source))
+                        if not isinstance(value, typ): raise ValueError
+                    except (ValueError, TypeError):
+                        raise LibraryError('工作台 JSON 內容格式不正確。') from None
+                    data[target] = value
         if route.get('transform') == 'utf8_file':
             data['content_base64'] = base64.b64encode(data.pop('text').encode('utf-8')).decode('ascii')
         if route['method'] == 'GET':

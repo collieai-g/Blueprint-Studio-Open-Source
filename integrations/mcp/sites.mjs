@@ -77,6 +77,15 @@ export function createMcpHandler({ tools, dispatch, authorize, version, readOnly
       const data = { ...args }, route = tool.route;
       let path = route.path;
       if (path.includes('{id}')) { path = path.replace('{id}', data.id); delete data.id; }
+      if (route.transform === 'studio_json') {
+        for (const [source, target, array] of [['data_json','data',false],['refs_json','refs',true],['arguments_json','arguments',false]]) {
+          if (Object.hasOwn(data,source)) {
+            let value;try {value=JSON.parse(data[source]);} catch {return failure('工作台 JSON 內容格式不正確。',400);}
+            if (!value || typeof value !== 'object' || Array.isArray(value)!==array) return failure('工作台 JSON 內容格式不正確。',400);
+            data[target]=value;delete data[source];
+          }
+        }
+      }
       if (route.transform === 'utf8_file') {
         const bytes = new TextEncoder().encode(data.text);
         let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte);

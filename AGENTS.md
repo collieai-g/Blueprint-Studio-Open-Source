@@ -38,7 +38,7 @@ docs/INSTALL.md and report workbench readiness separately from verified AI write
 The user now authorizes the V2 source redesign: AI-first entry with manual fallback,
 white/gray notebook grid, the original Blueprint Studio Identity 05 logo, and
 movable/resizable/collapsible dashboard cards. Installers preserve the selected
-version's full functionality. Keep legacy APIs and schema 4 compatible; never
+version's full functionality. Keep legacy APIs and all schema 4 records compatible; never
 reinitialize existing installations on update. Follow docs/UPGRADE.md for full
 private backups, same-site/source upgrades, data-preservation checks and rollback.
 The V2 UI package can update a compatible Sites adapter; preserve its authentication,
@@ -63,7 +63,7 @@ Reuse the challenge on retries. Do not manufacture completion receipts via a
 browser or direct API; do not claim a historical check proves a new chat is loaded.
 Follow the six built-in troubleshooting routes, keep proxy/TLS and use supported
 platform configuration for network changes. Guide necessary user login/actions,
-then finish one real user task. No database reinitialization or schema change.
+then finish one real user task. No database reinitialization. V2.4 adds schema 5 tables as described below.
 Installed plugins, tool discovery and a visible workbench are separate from a
 verified write/readback. Check the actual tools loaded in the current chat.
 V2.3 authorizes grid-aligned personalized layout of all dashboard modules.
@@ -108,3 +108,15 @@ Do not add unrelated company features, simulated AI connections or OS icon hooks
 - After editing web source, run `python tools/build_web.py`.
 - Verify with `python -m unittest discover -s tests -v` and
   `node --test tests/test_packager.cjs`.
+
+V2.4 authorizes the five-group navigation and persistent company workflows in docs/V2.4.md.
+Preserve the V2.3 visual style, grid and all old data. Additive schema 5 migration
+creates studio tables transactionally, without resetting old records or credentials.
+Old binaries cannot open schema 5; rollback requires the matching pre-upgrade full
+backup, after preserving newer data. Follow docs/STUDIO_API.md for platform ports.
+Enforce finance/personnel and linked-resource permissions on the server, including
+old APIs, history, downloads, search and MCP. Specialists remain unconnected shells;
+never fabricate replies, screenshots, metrics or external sending. Connection
+registration and recorded budget flags are not a running provider integration.
+Describe pending capture workers, native-only backend availability and Sites
+adaptation truthfully. All new copy uses clear standard written Chinese.

@@ -16,7 +16,9 @@ REQUIRED = {'INSTALL_AI.txt', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
             'library_web/connection.js', 'library_web/connection-guide.json',
             'blueprint_library/connection.py', 'integrations/mcp/connection.mjs',
             'integrations/mcp/tools.json', 'docs/CONNECT.md', 'docs/UPGRADE.md',
-            'requirements-mcp.txt', 'company/Dockerfile'}
+            'requirements-mcp.txt', 'company/Dockerfile', 'library_web/navigation.js',
+            'library_web/studio.js', 'library_web/studio.css', 'blueprint_library/studio.py',
+            'blueprint_library/studio_schema.py', 'blueprint_library/studio_http.py', 'docs/V2.4.md'}
 
 
 def build(output):
@@ -33,7 +35,7 @@ def build(output):
             raise ValueError('安裝包包含不允許的來源檔案。')
         files[name] = path.read_bytes()
     manifest = {'product': 'Blueprint Studio Open Source', 'version': __version__,
-                'entrypoint': 'INSTALL_AI.txt', 'database_schema': 4, 'private_data_included': False,
+                'entrypoint': 'INSTALL_AI.txt', 'database_schema': 5, 'private_data_included': False,
                 'files': {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}}
     with zipfile.ZipFile(output, 'x', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in files.items():

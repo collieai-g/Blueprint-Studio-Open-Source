@@ -191,7 +191,7 @@
   async function loadInfo() {
     const info = await api('/api/info');
     document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
-    $('version').textContent = '工作台 v2.3.0';
+    $('version').textContent = '工作台 v2.4.0';
     $('version').title = info.version ? `後台 API v${info.version}` : '';
     document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = Number(info.stats?.[node.dataset.count]) || 0; });
     if (info.company_profile) applyCompanyProfile(info.company_profile);
@@ -379,6 +379,7 @@
     workdaysUI?.setView(view);
     if (!workView) refresh();
     if (view === 'dashboard') workdaysUI?.refreshDashboard();
+    window.BlueprintStudio?.legacyView(view, collectionId);
   }
 
   function openDialog(id) {
@@ -603,13 +604,15 @@
       const results = await Promise.allSettled([
         api(`/api/items?${new URLSearchParams({ q: query, archived: '0', limit: '8', sort: 'updated' })}`),
         api(`/api/workdays?${new URLSearchParams({ q: query, limit: '4' })}`),
-        api(`/api/todos?${new URLSearchParams({ q: query, done: 'all', limit: '4' })}`)
+        api(`/api/todos?${new URLSearchParams({ q: query, done: 'all', limit: '4' })}`),
+        window.BlueprintStudio?.isReady() ? window.BlueprintStudio.search(query) : Promise.resolve({records: [], total: 0})
       ]);
       if (request !== state.commandRequest) return;
       const items = results[0].status === 'fulfilled' ? results[0].value : { items: [], total: 0 };
       const workdays = results[1].status === 'fulfilled' ? results[1].value : { workdays: [], total: 0 };
       const todos = results[2].status === 'fulfilled' ? results[2].value : { todos: [], total: 0 };
-      const total = (Number(items.total) || 0) + (Number(workdays.total) || 0) + (Number(todos.total) || 0);
+      const studio = results[3].status === 'fulfilled' ? results[3].value : {records: [], total: 0};
+      const total = (Number(items.total) || 0) + (Number(workdays.total) || 0) + (Number(todos.total) || 0) + (Number(studio.total) || 0);
       const failed = results.some((result) => result.status === 'rejected');
       $('command-status').textContent = total ? `找到 ${total} 項資料${failed ? '，部分資料暫時未能搜尋。' : ''}` : failed ? '部分資料暫時未能搜尋，請稍後再試。' : '未找到資料，試試其他名稱或標籤。';
       const nodes = [];
@@ -627,6 +630,7 @@
       appendGroup('文件與收藏', items.items || [], (item) => categoryKey(item.category), (item) => item.title || item.file_name, (item) => `${categoryName(item.category)} · ${collectionName(item.collection_id)}`, (item) => openDetail(item.id));
       appendGroup('每日工作', workdays.workdays || [], () => 'calendar', (item) => item.title || `${item.date} 工作紀錄`, (item) => `${item.date} · ${item.source || '工作紀錄'}`, (item) => workdaysUI?.openReport(item.id));
       appendGroup('待辦事項', todos.todos || [], () => 'document', (item) => item.title, (item) => `${item.done ? '已完成' : '未完成'} · ${item.date} · ${item.workday_title || '每日工作'}`, (item) => workdaysUI?.openReport(item.workday_id));
+      appendGroup('公司與工作內容', studio.records || [], () => 'document', item => item.title, item => item.updated_at.slice(0, 10), item => window.BlueprintStudio.openRecord(item.id));
       $('command-results').replaceChildren(...nodes);
     } catch (error) { if (request === state.commandRequest) $('command-status').textContent = error.message; }
   }
@@ -712,9 +716,15 @@
     refresh: async () => {
       await Promise.all([loadInfo(), loadCollections(true)]);
       if (workspaceBusy()) return false;
-      if (await refresh(false, true) === false) return false;
-      if (state.view === 'dashboard') return workdaysUI?.refreshDashboard(true);
+      if (state.view !== 'studio' && await refresh(false, true) === false) return false;
+      if (state.view === 'dashboard') await workdaysUI?.refreshDashboard(true);
+      await window.BlueprintStudio?.refreshVisible();
     }
   }); }
-  init().then(startWorkspace);
+  init().then(async () => {
+    await window.BlueprintStudio?.init({api, notice, icon, openDialog, closeSidebar, setView, openDetail, openAdd, openCommand,
+      isBusy: workspaceBusy, hideLegacy: () => { state.view = 'studio'; clearSelection(); workdaysUI?.setView('studio'); }
+    });
+    startWorkspace();
+  }).catch(error => notice(error.message, true));
 })();

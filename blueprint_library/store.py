@@ -27,7 +27,7 @@ from .workdays import WorkdayMixin
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
 MAX_TEXT_SIZE = 200 * 1024
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 _SOURCE_ROOT = Path(__file__).resolve().parent.parent
 _SOURCE_TYPES = {"website", "youtube", "code", "document", "image", "video", "other"}
 _SORT_ORDERS = {
@@ -201,7 +201,9 @@ class Store(CompanyMixin, WorkdayMixin):
                 conn.execute(statement)
             self._initialize_workdays(conn)
             self._initialize_company(conn)
-            conn.execute("PRAGMA user_version = 4")
+            from .studio import initialize as initialize_studio
+            initialize_studio(conn)
+            conn.execute("PRAGMA user_version = 5")
 
     def _collection_id(self, conn, value):
         if value is None or value == "":
@@ -223,13 +225,15 @@ class Store(CompanyMixin, WorkdayMixin):
                          (item["id"], name, description, icon, item["created_at"]))
         return item
 
-    def list_collections(self) -> list[dict]:
+    def list_collections(self, member_access=False) -> list[dict]:
         with self._connection() as conn:
             return [dict(row) for row in conn.execute("""
                 SELECT c.*, COUNT(i.id) AS count FROM collections c
                 LEFT JOIN items i ON i.collection_id=c.id AND i.archived=0
+                WHERE NOT EXISTS(SELECT 1 FROM studio_records s WHERE s.id=c.id AND s.archived=1)
+                AND (?=0 OR NOT EXISTS(SELECT 1 FROM studio_records s WHERE s.id=c.id AND s.visibility='admin'))
                 GROUP BY c.id ORDER BY c.created_at,c.id
-            """)]
+            """, (int(member_access),))]
 
     def _classify(self, item, category_override=False, tags_override=False):
         result = classify_item(
@@ -327,7 +331,7 @@ class Store(CompanyMixin, WorkdayMixin):
 
     def list_items(self, q="", kind="", category="", collection_id="", source_type="",
                    archived=False, limit=100, offset=0, pinned=None, unfiled=False,
-                   sort="updated") -> dict:
+                   sort="updated", member_access=False) -> dict:
         q = _text(q, "搜尋內容", 2000)
         archived = _boolean(archived, "封存狀態")
         unfiled = _boolean(unfiled, "未分類收藏夾篩選")
@@ -349,6 +353,9 @@ class Store(CompanyMixin, WorkdayMixin):
         if len(terms) > 32:
             raise LibraryError("每次搜尋最多 32 個關鍵字。")
         where = ["archived=?"]
+        if member_access:
+            where.append("NOT EXISTS(SELECT 1 FROM studio_resource_acl a WHERE a.kind='item' AND a.resource_id=items.id)")
+            where.append("NOT EXISTS(SELECT 1 FROM studio_records s WHERE s.id=items.collection_id AND s.visibility='admin')")
         args = [int(archived)]
         if pinned is not None:
             where.append("pinned=?")
@@ -490,7 +497,7 @@ class Store(CompanyMixin, WorkdayMixin):
                 raise LibraryError("原始檔案遺失，請從完整備份還原。", 404)
             return blob, item["file_name"], item["mime"]
 
-    def stats(self) -> dict:
+    def stats(self, member_access=False) -> dict:
         with self._connection() as conn:
             conn.execute("BEGIN")
             row = conn.execute("""SELECT COUNT(*) AS all_items,
@@ -500,13 +507,17 @@ class Store(CompanyMixin, WorkdayMixin):
                 COALESCE(SUM(archived=0 AND source_type='youtube'),0) AS youtube,
                 COALESCE(SUM(archived=0 AND pinned=1),0) AS pinned,
                 COALESCE(SUM(archived=0 AND collection_id IS NULL),0) AS unfiled,
-                COALESCE(SUM(archived=1),0) AS archived FROM items""").fetchone()
+                COALESCE(SUM(archived=1),0) AS archived FROM items
+                WHERE (?=0 OR (NOT EXISTS(SELECT 1 FROM studio_resource_acl a WHERE a.kind='item' AND a.resource_id=items.id)
+                AND NOT EXISTS(SELECT 1 FROM studio_records s WHERE s.id=items.collection_id AND s.visibility='admin')))
+                """, (int(member_access),)).fetchone()
             result = dict(row)
-            result["collections"] = conn.execute("SELECT COUNT(*) FROM collections").fetchone()[0]
-            result.update(self._workday_stats(conn))
+            result["collections"] = conn.execute("SELECT COUNT(*) FROM collections c WHERE NOT EXISTS(SELECT 1 FROM studio_records s WHERE s.id=c.id AND (s.archived=1 OR (?=1 AND s.visibility='admin')))", (int(member_access),)).fetchone()[0]
+            result.update(self._workday_stats(conn, member_access))
             return result
 
     def export_metadata(self) -> dict:
+        from .studio import _record
         with self._connection() as conn:
             conn.execute("BEGIN")
             items = [self._public(row) for row in conn.execute("SELECT * FROM items ORDER BY created_at,id")]
@@ -522,4 +533,9 @@ class Store(CompanyMixin, WorkdayMixin):
                     "backup_note": "此檔只包含資料索引、文字及修改紀錄。完整備份亦需保存私人資料目錄內的原始檔案。",
                     "items": items, "collections": collections, "history": history,
                     "workdays": self._export_workdays(conn),
-                    "company_profile": self._company_profile(conn)}
+                    "company_profile": self._company_profile(conn),
+                    "studio": {"records": [_record(row) for row in conn.execute('SELECT * FROM studio_records ORDER BY created_at,id')],
+                               "history": [json.loads(row['snapshot']) for row in conn.execute('SELECT snapshot FROM studio_history ORDER BY recorded_at,id')],
+                               "resource_acl": [dict(row) for row in conn.execute('SELECT * FROM studio_resource_acl')],
+                               "preferences": [{**dict(row), 'data': json.loads(row['data'])} for row in conn.execute('SELECT * FROM studio_preferences')],
+                               "users": [dict(row) for row in conn.execute('SELECT username,name,role,enabled,version,created_at FROM studio_users')]}}

@@ -84,6 +84,26 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(listed['items'][0]['id'], link['id'])
         await self.session(work)
 
+    async def test_studio_tools_use_same_backend_and_preserve_human_confirmation(self):
+        async def work(client):
+            state = await self.call(client, 'studio_state', {})
+            self.assertEqual(state['schema_version'], 5)
+            self.assertFalse(state['capabilities']['specialist_runtime'])
+            record = (await self.call(client, 'studio_create', {'kind':'command','title':'MCP 真實工作',
+                'data_json':json.dumps({'instruction':'整理已提供資料'})}))['record']
+            context = await self.call(client, 'studio_context', {'id':record['id']})
+            self.assertEqual(context['record']['id'], record['id'])
+            result = await self.call(client, 'studio_action', {'id':record['id'],'expected_version':record['version'],
+                'action':'complete_command','arguments_json':json.dumps({'result':'已整理提供的測試內容。','source':'真實 MCP 測試客戶端','external_action':True})})
+            reread = await self.call(client, 'studio_get', {'id':record['id']})
+            self.assertEqual(reread['record']['data']['state'], 'needs_confirmation')
+            self.assertFalse(result['external_action_executed'])
+            invalid = await client.call_tool('blueprint_studio_create', {'kind':'project','title':'bad','data_json':'[1]'})
+            self.assertTrue(invalid.isError)
+            forbidden = await client.call_tool('blueprint_studio_action', {'id':record['id'],'expected_version':2,'action':'approve_draft'})
+            self.assertTrue(forbidden.isError)
+        await self.session(work)
+
     async def test_guided_connection_real_readback_retry_and_client_isolation(self):
         old = self.store.import_workday({'date': '2026-10-20', 'source': 'Owner', 'source_key': 'keep',
             'entries': [{'type': 'todo', 'title': 'Existing work'}]})['workday']
@@ -92,7 +112,7 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
         for source in ['Codex', 'Claude Code', 'Gemini CLI']:
             async def work(client):
                 guide = await self.call(client, 'connection_guide', {})
-                self.assertEqual(guide['version'], '2.3.0')
+                self.assertEqual(guide['version'], '2.4.0')
                 self.assertIn('network', guide['troubleshooting'])
                 args = {'challenge': 'a' * 32, 'client': source, 'date': '2026-10-21'}
                 first = await self.call(client, 'verify_connection', args)

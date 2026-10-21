@@ -1,3 +1,32 @@
+# v2.4.0 驗證紀錄
+
+驗證日期：2026-10-21。所有資料使用外部臨時目錄；沒有更新正式私人 Site。
+
+- Python 3.12：177 個測試通過，包括公司工作流程、十進位報價／收款、去重、版本衝突、歷史、財務／人事權限、連帶附件保護、帳戶停用、用量上限及安全匯出。
+- Node：資料包、V2.3 排版、Sites MCP 轉接及接駁測試通過；新增 V2.4 JSON 欄位解析與原身份轉交測試。
+- 真實 MCP stdio：新增 studio_state/create/context/action/get 讀寫同一原生後台，結果回到收件匣；待確認外發草稿不被工具自行批准。既有不同客戶端及錯誤路線測試保留。
+- 官方 MCP SDK 2.3.0 HTTP：2026-07-28 及 2025-11-25 協定均可探索 30 工具及寫入／讀回。
+- Chromium 1440px／390px 真實 HTTP：五組頁面、CRUD、搜尋、指令、報價至發票、主題引用、角色隱藏與伺服器拒絕、草稿保留、窄側欄保存、手機抽屜及舊網址跳轉通過，無 JavaScript 錯誤。
+- 原 V2.3 排版回歸通過：13 模組、24px 格線、無框文字、兩／四格、拖動縮放、鍵盤、三頁上限、重開保存、舊偏好遷移與手機。
+- 真實接駁瀏覽器測試通過：MCP 保存／讀回／待辦更新、右側相同 ID、來源隔離、錯誤恢復、重開及文件寫入後自動同步。
+- 真實 V1/1.5.0 commit e4f6f43 的資料升至 V2.4.0：7 個原表、13 筆原紀錄、2 個檔案及登入逐欄保存；兩次服務重啟後一致。新增 schema 5 表，舊程式回復要求升級前快照。
+
+重做檢查：
+
+```sh
+python -m unittest discover -s tests -v
+node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_connection.cjs
+python tests/check_studio_browser.py /私人測試輸出目錄
+python tests/check_layout_browser.py /私人測試輸出目錄
+python tests/check_connection_browser.py /私人測試輸出目錄
+```
+
+瀏覽器檢查需要 Playwright／Chromium；MCP 互通檢查在 SDK 2.3.0 專用環境執行 `tests/check_mcp_interop.py`。手機為 Chromium 尺寸模擬，不代表所有裝置的 PWA 分享均已實機驗證。
+
+沒有聲稱專員外部服務已接上、正式第三方扣費已受控、瀏覽器擴充套件已提供，或 Sites 公司後台已移植。完成範圍與後續接駁要求見 [docs/V2.4.md](docs/V2.4.md)。下面是歷史版本紀錄，其版本與數量不代表新版。
+
+---
+
 # v2.3.0 驗證紀錄
 
 驗證日期：2026-10-21。所有操作使用臨時資料；未更新正式私人 Site。
