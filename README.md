@@ -6,18 +6,24 @@
 說一句「今日收工」，由你接入的 AI 整合成果、決定、參考與待辦，留下有用內容，逐步累積及修整。
 目前已提供公司設定、文件整理、資料收藏及每日工作；其他功能可按需要擴充。
 
-[下載工具](https://github.com/collieai-g/Blueprint-Studio-Open-Source/archive/refs/heads/main.zip) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
+[下載 V2.2 完整安裝包](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/download/v2.2.0/blueprint-studio-v2.2.0-installer.zip) · [最簡單的 AI 安裝入口](START_HERE.md) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
 
-## 已安裝舊版本？升級到 V2
+## 已安裝舊版本？升級到 V2.2
 
 **[複製保留資料的升級指令](docs/UPGRADE.md)**，貼到你現有工作台的 Codex 對話。
 AI 先備份，再更新同一個網站／本機服務，保留公司資料、附件、登入、待辦及歷史。
 Sites 有獨立的介面更新包及接駁步驟；不需要重新建立工作台。
 
-V2.1 已內置 19 個通用 MCP 讀寫工具，供 Codex、Claude、Gemini 及其他相容客戶端連接同一個後台。
+V2.2 已內置 AI 接駁中心、21 個通用 MCP 工具、每個新對話的工作規則及真實讀寫驗收，供 Codex、Claude、Gemini 及其他相容客戶端連接同一個後台。
 V2 使用白色淡格線背景、原版公司 logo 與可按格仔拖動、縮放、收起的卡片。
 預設由已連接 AI 填入工作內容，工作台自動同步；搜尋、上載、勾選待辦及手動備用操作仍然保留。
 [不同 AI 的 MCP 接駁](docs/AI_CONNECTION.md) · [AI 工作方式](docs/AI_WORKSPACE.md) · [升級與回復](docs/UPGRADE.md)
+
+工作台內置 [AI 接駁中心](docs/CONNECT.md)，會帶你處理授權、工具載入及網絡卡點，按實際讀寫結果顯示進度，再完成第一項工作。
+
+![V2.2 AI 接駁中心](artifacts/connection-v2.2-desktop.png)
+
+以上為本機測試資料；正式工作台會顯示你的實際網址及測試結果。
 
 ## 貼給你的 AI，開始安裝
 
@@ -25,11 +31,11 @@ V2 使用白色淡格線背景、原版公司 logo 與可按格仔拖動、縮�
 一般聊天 AI 亦可按同一份指引，帶你逐步操作。
 
 ```text
-請幫我安裝 Blueprint Studio Open Source，建立我自己的完整原版藍圖工作台。
+請幫我安裝或升級到 Blueprint Studio Open Source V2.2（2.2.0），建立並接通我自己的完整原版藍圖工作台。
 公開工具：
 https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
-先讀 README.md、docs/INSTALL.md 及 AGENTS.md，檢查現有安裝和工具權限，保留已有資料、工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。
+先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。
 
 本機：跟 docs/INSTALL_LOCAL.md，在我自己的電腦檢查 Python、下載完整程式、準備私人資料與管理員，使用 library 指令啟動原版介面，完成登入及重啟保存驗證。辨認遠端 Codex 與我的電腦，不能把遠端 localhost 當成本機入口。
 
@@ -39,7 +45,7 @@ https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
 公司資料及安裝計劃放到程式專案以外的私人位置，由你維護 INSTALL_PROGRESS.md，換對話也能接續。setup 只產生計劃，已有公司資料不可重設。有工具就完成已授權的工作；普通聊天沒有工具時提供當前一步操作及有效公司 JSON 交接。涉及未授權收費先核對費用；密碼和金鑰只在平台秘密設定或本機安全輸入，不貼聊天。
 
-工作台可用後，按 docs/AI_CONNECTION.md 安裝及接通所用 AI 的 MCP 工具，不限 Codex，亦支援 Claude、Gemini 及其他相容客戶端。原生版使用 mcp／mcp-config；Sites 使用同一網站的已驗證外掛。分別檢查安裝、授權、目前對話工具載入、真實寫入及讀回，不能把右側網頁打開當成 AI 已接通。以後我說『今日收工』，請整理目前可見或我提供的對話，只保存有用成果、已確認決定、參考及未完成待辦，去重及精煉，沿用來源識別；修改使用版本檢查並保留可恢復歷史，不用隨機識別繞過衝突。不保存秘密或整段原始聊天，不聲稱能讀取其他平台不可見對話。目前沒有可用連線時，只輸出可匯入 JSON，不聲稱已儲存。先做好公司設定、文件整理、收藏及每日工作，不增加未要求的公司模組。
+工作台可用後，按 docs/AI_CONNECTION.md 安裝及接通所用 AI 的 MCP 工具，不限 Codex，亦支援 Claude、Gemini 及其他相容客戶端。原生版使用 mcp／mcp-config；Sites 使用同一網站的已驗證外掛。分別檢查安裝、授權、目前對話工具載入、真實寫入及讀回，不能把右側網頁打開當成 AI 已接通。開啟工作台內置『AI 接駁中心』，選擇實際客戶端及安裝方式，使用它產生的接駁指令。每個新對話先讀 blueprint_connection_guide 的內置工作規則；將後台地址及規則合併到客戶端支援的私人指引，保留原設定。我授權建立一筆明確標示的接駁測試及測試待辦。透過已載入的 blueprint_verify_connection 完成保存、讀回及待辦更新，讓右側接駁中心讀到同一筆驗收結果。網絡受阻、工具未載入或登入失敗時，按內置卡點指引帶我逐步處理，不繞過平台權限。最後帶我完成第一項真實文件、收藏或工作任務；回報保存 ID、讀回及右側顯示結果。未完成不能只交付網站就停止。以後我說『今日收工』，請整理目前可見或我提供的對話，只保存有用成果、已確認決定、參考及未完成待辦，去重及精煉，沿用來源識別；修改使用版本檢查並保留可恢復歷史，不用隨機識別繞過衝突。不保存秘密或整段原始聊天，不聲稱能讀取其他平台不可見對話。目前沒有可用連線時，只輸出可匯入 JSON，不聲稱已儲存。先做好公司設定、文件整理、收藏及每日工作，不增加未要求的公司模組。
 ```
 
 ## 兩條完整安裝路線
@@ -91,6 +97,6 @@ AI 整理目前可見或你明確提供的對話；工具不會自行讀取各�
 
 ## 開源與參與
 
-目前版本 **2.1.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
+目前版本 **2.2.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
 歡迎提交 [Issues](https://github.com/collieai-g/Blueprint-Studio-Open-Source/issues) 或 Pull Request。
 [更新紀錄](CHANGELOG.md) · [驗證紀錄](VALIDATION.md)

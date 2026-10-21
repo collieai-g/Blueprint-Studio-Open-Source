@@ -2,7 +2,7 @@
 
 [返回首頁](../README.md) · [安裝指南](INSTALL.md) · [AI 工作方式](AI_WORKSPACE.md)
 
-V2 的程式版本是 **2.1.0**。原生資料庫仍使用 schema 4，沿用 V1／1.5 的 API、紀錄 ID、版本、待辦狀態、登入及附件。這次升級加入白色筆記本工作台、原生品牌標誌、可拖動／縮放／收起的卡片，以及 AI 保存後的畫面同步。
+V2 的程式版本是 **2.2.0**。原生資料庫仍使用 schema 4，沿用 V1／1.5 的 API、紀錄 ID、版本、待辦狀態、登入及附件。這次升級加入白色筆記本工作台、原生品牌標誌、可拖動／縮放／收起的卡片，以及 AI 保存後的畫面同步。
 
 更新的是程式與畫面。已有公司資料不重新初始化；新的預設介面不預填示範工作。卡片排列與輸入偏好保存在同一網站的目前瀏覽器，舊有卡片／清單及排序偏好仍沿用。
 
@@ -11,7 +11,7 @@ GitHub 發佈新版後，已安裝的私人工作台不會自動改版。你向�
 ## 把這段指令貼到已安裝工作台的 Codex
 
 ```text
-請將我現有的藍圖工作室工作台升級到 Blueprint Studio Open Source V2（2.1.0）。
+請將我現有的藍圖工作室工作台升級到 Blueprint Studio Open Source V2（2.2.0）。
 上游：https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
 先讀新版 docs/UPGRADE.md、docs/AI_CONNECTION.md、docs/AI_WORKSPACE.md 及 AGENTS.md。
@@ -22,12 +22,14 @@ GitHub 發佈新版後，已安裝的私人工作台不會自動改版。你向�
 
 原生版：用新版 tools/upgrade_workspace.py 備份及驗證；保持原資料路徑／磁碟。
 Sites：用新版 tools/package_workbench.py 產生完整介面包，整合到現有 Site 的來源；
-保留原有登入、資料庫、附件及 AI 工具適配。新增 workspace.js 和 brand.svg 的服務路徑，
+保留原有登入、資料庫、附件及 AI 工具適配。新增 workspace.js、brand.svg、connection.js 和 connection-guide.json 的服務路徑，
 核對所有舊 API 相容。不要把 Python／SQLite 直接覆蓋 Sites 後台。
 補齊真正的 MCP 外掛寫入層，支援我所用的 Codex、Claude、Gemini 或其他相容客戶端。
 原生版安裝 requirements-mcp.txt，配置 mcp／mcp-config 指向原後台；Sites 整合 integrations/mcp
 到原本已驗證身份的 API，保留舊工具相容性並刷新外掛。確認目前對話載入寫入工具，
-不能把「已安裝」當成「能寫入」。用一筆已授權內容實際寫入並讀回同一個 ID。
+不能把「已安裝」當成「能寫入」。開啟 AI 接駁中心，使用它的測試參數呼叫 blueprint_verify_connection；我授權建立一筆明確標示的接駁測試及測試待辦。
+每個新對話讀 blueprint_connection_guide，並將後台地址及如何讀規則合併到客戶端私人指引。
+按 docs/CONNECT.md 處理登入、工具載入或網絡卡點，帶我完成同一紀錄的右側顯示及第一項真實工作。
 保留我的自訂內容；遇到衝突逐項整合，不能強制 reset、刪 volume 或重建資料。
 
 驗證 V2 的白色淡格線、原公司 logo、卡片拖動／縮放／收起及重新開啟後排列保留；
@@ -37,18 +39,24 @@ Sites：用新版 tools/package_workbench.py 產生完整介面包，整合到�
 遇到工具或登入限制，完成可執行部分並指出確切下一步，不聲稱未驗證的升級已完成。
 ```
 
+## V2.2 新增的內置接駁流程
+
+本版加入 AI 接駁中心、共用接入及工作規則、兩個新 MCP 工具、六種卡點處理及第一項工作引導。升級後必須開啟中心，使用本次指令完成工具驗收與畫面確認，詳見 [CONNECT.md](CONNECT.md)。保留原 schema 4；測試只是明確標示的新工作紀錄。
+
+新版新增靜態資產 /connection.js 及 /connection-guide.json；Sites MCP 適配器新增同目錄 connection.mjs。必須同時更新網站、工具層及外掛定義，不能只換前端。原生 MCP 必須執行新版本來源；既有資料路徑及客戶端其他設定不變。
+
 ## 1. 先辨認現有安裝
 
 AI 先讀原 `INSTALL_PROGRESS.md` 或既有部署設定，核對實際使用中的服務。記下舊 commit、部署版本、網址、資料目錄／磁碟、附件儲存及工具連接；記錄不包含密碼或 token。
 
 - 本機／Docker／Render／Railway：使用原生 Python API 和外部 SQLite 資料目錄。
-- Sites：使用現有 Site ID、目前來源、平台資料庫、物件儲存及網站自己的登入／MCP 工具。Sites 的「部署版本 1／2」是平台序號，不等同程式版本 1.5.0／2.1.0。
+- Sites：使用現有 Site ID、目前來源、平台資料庫、物件儲存及網站自己的登入／MCP 工具。Sites 的「部署版本 1／2」是平台序號，不等同程式版本 1.5.0／2.2.0。
 - 私人來源有修改：先保留提交及現有修改，再在分支整合所選上游版本。不要用下載 ZIP 直接蓋過整個私人專案。
 
 AI 先在獨立目錄取得 V2 工具，再備份舊資料。尚未更新舊 checkout 時，其內可能沒有升級工具。
 
 ```sh
-git clone --branch v2.1.0 https://github.com/collieai-g/Blueprint-Studio-Open-Source.git blueprint-v2-source
+git clone --branch v2.2.0 https://github.com/collieai-g/Blueprint-Studio-Open-Source.git blueprint-v2-source
 ```
 
 若有舊版 1.0–1.4，先核對原版的遷移與備份要求；不要套用只適合 schema 4 的「無資料遷移」結論。V2 的既有 Store 仍保留早期版本遷移程式。
@@ -97,7 +105,7 @@ Sites 升級由有 Sites 工具的 AI 在原工作台對話執行。先讀當前
    ```
 
 3. 更新包包含 `library_web/` 全部 V2 必要檔案、圖示及 SHA-256 清單。AI 比對清單後，整合到原 Site 服務靜態資源的位置；保留 Sites 自己的伺服器、登入、資料庫 binding、附件及 AI 工具。
-4. 確保 `/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供。介面沿用原 API；MCP 適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，重新連接外掛並驗證工具。介面定期讀取 `/api/info`、`/api/collections`、資料與工作紀錄，不需要額外建立資料庫。保留原有存取限制。
+4. 確保 `/connection.js`、`/connection-guide.json`、`/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供。介面沿用原 API；MCP 適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，重新連接外掛並驗證工具。介面定期讀取 `/api/info`、`/api/collections`、資料與工作紀錄，不需要額外建立資料庫。保留原有存取限制。
 5. 依原 Site 現有 API 測試與本指南驗收；如有平台適配，對照回應結構，不能省略功能或將 SQLite 程式直接放入 Sites。
 6. 按 Sites 流程提交完整來源、部署至**同一網站**，核對正式網址與使用者登入後結果。更新本機程式／Codex 環境不會自動更新正式 Site。
 

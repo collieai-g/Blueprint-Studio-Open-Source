@@ -84,6 +84,57 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(listed['items'][0]['id'], link['id'])
         await self.session(work)
 
+    async def test_guided_connection_real_readback_retry_and_client_isolation(self):
+        old = self.store.import_workday({'date': '2026-10-20', 'source': 'Owner', 'source_key': 'keep',
+            'entries': [{'type': 'todo', 'title': 'Existing work'}]})['workday']
+        original = self.store.get_workday(old['id'])
+        ids = []
+        for source in ['Codex', 'Claude Code', 'Gemini CLI']:
+            async def work(client):
+                guide = await self.call(client, 'connection_guide', {})
+                self.assertEqual(guide['version'], '2.2.0')
+                self.assertIn('network', guide['troubleshooting'])
+                args = {'challenge': 'a' * 32, 'client': source, 'date': '2026-10-21'}
+                first = await self.call(client, 'verify_connection', args)
+                second = await self.call(client, 'verify_connection', args)
+                self.assertTrue(first['verified'])
+                self.assertEqual(first['workday_id'], second['workday_id'])
+                result = (await self.call(client, 'get_workday', {'id': first['workday_id']}))['workday']
+                self.assertEqual(result['source'], source)
+                self.assertEqual(result['summary'], 'blueprint-connection/1:verified')
+                self.assertTrue(result['entries'][1]['done'])
+                ids.append(result['id'])
+            await self.session(work)
+        self.assertEqual(len(set(ids)), 3)
+        self.assertEqual(self.store.workday_stats()['workdays'], 4)
+        self.assertEqual(self.store.get_workday(old['id']), original)
+        # The evidence is in the original database and survives reopening it.
+        reopened = Store(self.data)
+        self.assertEqual(reopened.get_workday(ids[0])['summary'], 'blueprint-connection/1:verified')
+
+    async def test_connection_rejects_invalid_inputs_and_changed_records(self):
+        args = {'challenge': 'b' * 32, 'client': 'Codex', 'date': '2026-10-21'}
+        async def work(client):
+            for bad in [{**args, 'date': '2026-02-30'}, {**args, 'client': ' '}, {**args, 'challenge': '../data'}]:
+                self.assertTrue((await client.call_tool('blueprint_verify_connection', bad)).isError)
+            self.assertEqual(self.store.workday_stats()['workdays'], 0)
+            saved = await self.call(client, 'verify_connection', args)
+            report = self.store.get_workday(saved['workday_id'])
+            self.store.update_workday(report['id'], {'expected_version': report['version'], 'summary': 'User edited this',
+                'entries': [{k: e[k] for k in ('id', 'type', 'title', 'content')} for e in report['entries']]})
+            result = await client.call_tool('blueprint_verify_connection', args)
+            self.assertTrue(result.isError)
+            self.assertEqual(self.store.get_workday(report['id'])['summary'], 'User edited this')
+        await self.session(work)
+
+    async def test_readonly_connection_cannot_run_acceptance(self):
+        async def work(client):
+            self.assertNotIn('blueprint_verify_connection', [tool.name for tool in (await client.list_tools()).tools])
+            result = await client.call_tool('blueprint_verify_connection', {'challenge': 'c' * 32, 'client': 'Codex', 'date': '2026-10-21'})
+            self.assertTrue(result.isError)
+            self.assertEqual(self.store.workday_stats()['workdays'], 0)
+        await self.session(work, read_only=True)
+
     async def test_completed_todos_and_history_survive_ai_revision(self):
         async def work(client):
             report = (await self.call(client, 'save_workday', {'date': '2026-10-21', 'source': 'Another MCP client', 'source_key': 'shared-day', 'entries': [{'type': 'todo', 'title': 'Finish task'}]}))['workday']

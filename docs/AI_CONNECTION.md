@@ -2,7 +2,7 @@
 
 [安裝指南](INSTALL.md) · [保留資料升級](UPGRADE.md) · [AI 工作方式](AI_WORKSPACE.md)
 
-**V2.1（2.1.0）加入真正的 MCP 工具層。** 模型理解你的要求，由 AI 客戶端呼叫已授權工具，工具將內容存入原來的後台；右側 V2 工作台再同步顯示結果。不是把對話文字自動當成資料，也不是只供 Codex 使用。
+**V2.2（2.2.0）加入真正的 MCP 工具層。** 模型理解你的要求，由 AI 客戶端呼叫已授權工具，工具將內容存入原來的後台；右側 V2 工作台再同步顯示結果。不是把對話文字自動當成資料，也不是只供 Codex 使用。
 
 ```text
 Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
@@ -15,6 +15,13 @@ Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
 ```
 
 模型名稱不決定連接能力：必須使用可安裝 MCP 工具的 AI 客戶端及允許該功能的帳戶。普通聊天頁若沒有工具功能，不能僅靠一段提示詞取得寫入權限。原生版與 Sites 有不同登入方式，按以下路線接駁。
+
+## V2.2 先從內置接駁中心開始
+
+安裝完成後開啟工作台「AI 接駁中心」，按 [CONNECT.md](CONNECT.md) 由選擇客戶端、複製接駁指令、處理卡點一路完成驗收及第一項真實工作。下方技術步驟由安裝 AI 執行，不要求使用者自行拼接設定。
+
+新增 blueprint_connection_guide 直接提供工作台共用規則、各客戶端設定及卡點處理；原生 MCP 初始化亦載入同一份規則。每個新對話先讀取，客戶端支援的私人專案指引亦應記下這一步。
+新增 blueprint_verify_connection 以接駁中心提供的 challenge、client、date 在原後台做真實保存、讀回及測試待辦更新。它不會修改正常工作紀錄；只讀連接不能執行。右側獨立讀回同一筆驗收紀錄才顯示完成。21 個工具的完整參數由 tools/list 提供。
 
 ## 1. 原生後台：Codex、Claude Code、Gemini CLI 共用 MCP
 
@@ -86,7 +93,7 @@ Sites 使用平台登入及原網站的 `/mcp`，不能把原生 Basic 帳密橋
 
 ### Sites 開發者接駁
 
-開源包包含 `integrations/mcp/tools.json`（19 個共用工具定義）及 `integrations/mcp/sites.mjs`（HTTP MCP 適配器）。適配器需要現有網站 API 和平台驗證身份，不是獨立登入服務或一鍵 Sites 部署。
+開源包包含 `integrations/mcp/tools.json`（21 個共用工具定義）、`integrations/mcp/sites.mjs`（HTTP MCP 適配器）及同目錄 `connection.mjs`（驗收流程）。適配器需要現有網站 API 和平台驗證身份，不是獨立登入服務或一鍵 Sites 部署。
 
 ```js
 import { createMcpHandler } from './mcp/sites.mjs';
@@ -94,7 +101,7 @@ import catalog from './mcp/tools.json' with { type: 'json' };
 
 const mcp = createMcpHandler({
   tools: catalog.tools,
-  version: '2.1.0',
+  version: '2.2.0',
   authorize: (request, env) => requireVerifiedPlatformUser(request, env),
   dispatch: (request, env) => existingAuthenticatedApi.fetch(request, env)
 });
@@ -107,6 +114,8 @@ const mcp = createMcpHandler({
 適配器提供傳統 `initialize` 及新版 `server/discover`，以 JSON 回應工具呼叫；沒有進度串流或資源訂閱。直接暴露在沒有身份閘道的服務時，不能信任請求自行帶入的身份標頭。
 
 ## 3. 每個 AI 都要完成的驗收
+
+先在工作台內置接駁中心取得本次 challenge、client、date，呼叫 blueprint_verify_connection，按返回 ID 讀回並等待工作台顯示同一結果；詳見 [CONNECT.md](CONNECT.md)。此工具自動完成測試紀錄及待辦驗收，然後再以第一項真實工作驗證日常使用。
 
 用一項使用者已要求保存的真實內容驗收，或清楚命名測試資料，不混入虛構公司工作。
 
@@ -121,7 +130,7 @@ const mcp = createMcpHandler({
 
 ## 工具範圍與日常指令
 
-19 個工具包括後台身份與狀態、公司資料讀寫、收藏集讀寫、文件／收藏搜尋與讀取、文字文件保存、附件上載、網站與 YouTube 收藏、版本化修改與歷史、工作紀錄保存／修整／歷史，以及待辦讀寫。完整參數由 `tools/list` 提供，不要求使用者手填 JSON。
+21 個工具包括後台身份與狀態、公司資料讀寫、收藏集讀寫、文件／收藏搜尋與讀取、文字文件保存、附件上載、網站與 YouTube 收藏、版本化修改與歷史、工作紀錄保存／修整／歷史，以及待辦讀寫。完整參數由 `tools/list` 提供，不要求使用者手填 JSON。
 
 MCP 附件上載上限為 300 KiB，工具請求總量最多 512 KiB；較大附件沿用工作台原有的上載按鍵。文字文件按 UTF-8 保存；工具不接受任意本機檔案路徑，AI 只傳遞使用者已授權的檔案內容。原檔保持不可變。
 

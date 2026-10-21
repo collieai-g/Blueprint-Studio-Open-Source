@@ -191,7 +191,7 @@
   async function loadInfo() {
     const info = await api('/api/info');
     document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
-    $('version').textContent = '工作台 v2.1.0';
+    $('version').textContent = '工作台 v2.2.0';
     $('version').title = info.version ? `後台 API v${info.version}` : '';
     document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = Number(info.stats?.[node.dataset.count]) || 0; });
     if (info.company_profile) applyCompanyProfile(info.company_profile);
@@ -689,6 +689,7 @@
   $('context-download').addEventListener('click', () => { const blob = new Blob([$('context-markdown').value], { type: 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = element('a'); link.href = url; link.download = 'blueprint-ai-handoff.md'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); });
 
   async function init() {
+    window.BlueprintConnection?.init({ api, openDialog, notice, setView });
     workdaysUI = window.BlueprintWorkdays;
     workdaysUI?.init({ api, element, icon, notice, openDialog, setView, refreshInfo: loadInfo, refreshLibrary: async () => { await loadCollections(); if (!['workdays', 'todos'].includes(state.view)) await refresh(); } });
     workdaysUI?.setView('dashboard');

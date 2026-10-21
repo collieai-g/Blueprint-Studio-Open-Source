@@ -1,3 +1,29 @@
+# v2.2.0 驗證紀錄
+
+驗證日期：2026-10-21。測試使用臨時資料，未讀寫正式公司資料。
+
+- Python 3.12：163 個測試通過，涵蓋原登入、文件、收藏、工作、版本／歷史、備份與升級；新增真實 MCP stdio 驗收、三種來源分開驗證、重試不重複、錯誤參數不寫入、手動改動不覆寫及只讀限制。
+- Node：test_packager.cjs、test_workspace.cjs、test_sites_mcp.mjs、test_connection.cjs 通過。包含身份轉交、保存後讀取失敗不報完成、相同 challenge 接續及 UI 不誤認其他測試結果。
+- 官方 MCP SDK 1.29.0 真實 stdio ClientSession，以及 SDK 2.3.0 HTTP 的 2026-07-28／2025-11-25 探索、寫入讀回通過；工具共 21 個。
+- Chromium 1440px／390px：tests/check_connection_browser.py 使用真實 HTTP 登入、MCP 子程序及臨時 SQLite，驗證客戶端／路線指令、工具讀寫及待辦更新後右側核對同一 ID、客戶端隔離、錯誤恢復、重新開啟、手機無溢出、新文件寫入後自動同步。無瀏覽器程式錯誤。
+- 現有 Sites 後台來源配合本機臨時 D1／R2，新接駁工具、重試及原公司／收藏／文件／工作／歷史操作通過；未修改正式 Site。
+- 真實 V1/1.5.0 commit e4f6f43 建立資料後升到 2.2.0，7 個表共 13 筆原紀錄、2 個檔案及原登入保留，兩次重啟後一致。schema 4 未變。
+- web 產物重建、JavaScript 語法及安裝包檔案清單／SHA-256 檢查。發佈流程在 GitHub 檢查通過後建立完整安裝包與介面更新包。
+
+接駁測試是標示清楚的普通工作紀錄，不是不可竄改審計憑證或持續連線監測。成功紀錄證明當次操作，不代表新對話已載入工具；換對話或帳號需重新核對。
+
+未宣稱本對話已載入使用者私人外掛、正式 Sites 已升級、正式網絡已放行，或每個 AI 產品帳戶均已登入授權。這些由各安裝依內置流程逐項驗證；本次發佈的是開源版本。
+
+重做驗證：
+- python -m unittest discover -s tests -v
+- node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_connection.cjs
+- 在 MCP SDK 2.3.0 專用環境執行 python tests/check_mcp_interop.py
+- 已安裝 Playwright／Chromium 及 requirements-mcp.txt 時執行 python tests/check_connection_browser.py /私人測試輸出目錄
+
+---
+
+以下保留舊版驗證，數量及版本以各段所列為準。
+
 # v2.1.0 驗證紀錄
 
 驗證日期：2026-10-21。

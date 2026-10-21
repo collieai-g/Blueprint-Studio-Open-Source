@@ -206,7 +206,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
                                "company_profile": profile,
                                "product_name": "Blueprint Studio Backend",
                                "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
-                               "classification": "rules", "stats": store.stats()})
+                               "connection_mode": "native", "classification": "rules", "stats": store.stats()})
         if path == "/api/company-profile":
             if method == "GET":
                 return self._json({"company_profile": store.get_company_profile()})
@@ -327,7 +327,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
         if path == "/api/export" and method == "GET":
             return self._json(store.export_metadata(), extra={"Content-Disposition": 'attachment; filename="blueprint-library-metadata.json"'})
         if method == "GET":
-            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/connection-guide.json"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()

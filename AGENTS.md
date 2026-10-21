@@ -51,6 +51,19 @@ contract. Native MCP stdio bridges to the existing authenticated HTTP backend,
 never a separate local database. Sites uses an authenticated MCP adapter to its
 existing API, retaining platform identity and storage. Support Codex, Claude,
 Gemini and other compatible MCP clients; do not hardcode Codex as workday source.
+V2.2 includes an in-workbench AI connection center. Start with INSTALL_AI.txt and
+START_HERE.md; complete docs/CONNECT.md after the selected install/upgrade route.
+Ship connection.js, connection-guide.json and the Sites connection.mjs module.
+Each new chat reads blueprint_connection_guide for client setup and work routing.
+Merge its entrypoint and backend URL into supported private client instructions.
+Use the wizard-provided challenge/client/date for blueprint_verify_connection;
+it creates an explicitly labelled acceptance workday in the same existing store,
+reads back and updates its test todo, then the UI independently checks that record.
+Reuse the challenge on retries. Do not manufacture completion receipts via a
+browser or direct API; do not claim a historical check proves a new chat is loaded.
+Follow the six built-in troubleshooting routes, keep proxy/TLS and use supported
+platform configuration for network changes. Guide necessary user login/actions,
+then finish one real user task. No database reinitialization or schema change.
 Installed plugins, tool discovery and a visible workbench are separate from a
 verified write/readback. Check the actual tools loaded in the current chat.
 Company profiles and versioned daily-work refinements are in scope. Preserve
