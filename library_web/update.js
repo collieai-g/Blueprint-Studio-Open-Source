@@ -1,0 +1,140 @@
+/* Same-site update handoff and browser preference backup; no pretend deployment. */
+'use strict';
+((root) => {
+  const KEYS = ['blueprint-workspace-v2', 'blueprint-workspace-v2.2-backup', 'blueprint-backend-display-v1'];
+  const BACKUP = 'blueprint-update-browser-backup-v1';
+  const REPOSITORY = 'https://github.com/collieai-g/Blueprint-Studio-Open-Source';
+  function origin(value) {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || !['', '/'].includes(url.pathname)) throw new Error('工作台網址不正確。');
+    return url.origin;
+  }
+  function handoff(site, info, storage, route) {
+    const preferences = {};
+    for (const key of KEYS) {
+      const value = storage.getItem(key);
+      if (value !== null) JSON.parse(value);
+      preferences[key] = value;
+    }
+    return { format: 'blueprint-update-handoff', format_version: 1, origin: origin(site),
+      version: String(info.version || '待核對').slice(0, 80),
+      route: ['native', 'sites'].includes(route) ? route : 'unknown',
+      created_at: new Date().toISOString(), preferences,
+      scope: '只有目前瀏覽器的排版與顯示偏好；不包含伺服器資料、附件或登入。' };
+  }
+  function validate(data, site) {
+    if (!data || data.format !== 'blueprint-update-handoff' || data.format_version !== 1 || data.origin !== origin(site) ||
+        !data.preferences || typeof data.preferences !== 'object' || Array.isArray(data.preferences) ||
+        Object.keys(data.preferences).some(key => !KEYS.includes(key))) throw new Error('請使用同一個工作台的排版備份。');
+    for (const value of Object.values(data.preferences)) {
+      if (value !== null) {
+        if (typeof value !== 'string' || value.length > 1024 * 1024) throw new Error('排版備份格式不正確。');
+        JSON.parse(value);
+      }
+    }
+    return data;
+  }
+  function restore(data, site, storage) {
+    validate(data, site);
+    const before = {};
+    for (const key of Object.keys(data.preferences)) before[key] = storage.getItem(key);
+    // Keep the current arrangement before replacing it, including on repeated restores.
+    storage.setItem(BACKUP + ':before-restore:' + Date.now(), JSON.stringify({ ...data, preferences: before }));
+    const set = (key, value) => value === null ? storage.removeItem(key) : storage.setItem(key, value);
+    try {
+      for (const [key, value] of Object.entries(data.preferences)) set(key, value);
+    } catch (error) {
+      for (const [key, value] of Object.entries(before)) set(key, value);
+      throw error;
+    }
+  }
+  function prompt(data) {
+    validate(data, data.origin);
+    return [
+      '請使用藍圖工作台更新助手，將我的原工作台更新至最新正式版本，保留原網址、資料、登入及自訂內容。',
+      '現有工作台：' + data.origin,
+      '目前後台回報版本：' + data.version + '；安裝方式：' + data.route,
+      '先讀 ' + REPOSITORY + '/blob/main/UPDATE_AI.txt 及 docs/UPDATE_ASSISTANT.md；選定確切正式版本。',
+      '沿用已有私人接續包與安裝紀錄；不要重新開始或另建網站。由你執行工具、保存來源與備份、核對環境並完成原站升級。',
+      '瀏覽器排版由更新助手另行保存；伺服器資料庫、附件與登入仍須完整備份。可透過瀏覽器工具取得本頁接續資料；需要跨環境時使用私人接續包。',
+      '先檢查現在對話實際載入的工具。平台外掛與執行環境 HTTP 分別診斷；網域設定已發佈但未套用時，不要叫我重複加入或反覆安裝外掛。',
+      '只有需要我本人登入、授權或按平台按鈕時才交代一個明確動作及入口。完成後繼續，直到正式版本、資料保留及左側寫入／右側讀回都已驗證。'
+    ].join('\n\n');
+  }
+  function init({ api, openDialog, notice }) {
+    const $ = id => document.getElementById(id);
+    let current = null, info = null, generation = 0;
+    const error = message => { $('update-error').textContent = message || ''; $('update-error').hidden = !message; };
+    function refresh() {
+      current = handoff(location.origin, info, localStorage, $('update-route').value);
+      $('update-prompt').value = prompt(current);
+      $('update-copy').disabled = $('update-download').disabled = false;
+    }
+    async function open() {
+      const request = ++generation;
+      current = info = null;
+      $('update-copy').disabled = $('update-download').disabled = true;
+      $('update-prompt').value = '';
+      $('update-backend').textContent = '正在讀取目前工作台…';
+      $('update-backup-status').textContent = '';
+      error('');
+      openDialog('update-dialog');
+      try {
+        const result = await api('/api/info');
+        if (request !== generation) return;
+        info = result;
+        $('update-backend').textContent = location.origin + ' · 目前版本 ' + (info.version || '待核對');
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('blueprint-ai-connection-v1') || '{}'); } catch { /* Optional choice only. */ }
+        const route = info.connection_mode || saved?.route;
+        $('update-route').value = ['native', 'sites'].includes(route) ? route : 'unknown';
+        refresh();
+        const existing = localStorage.getItem(BACKUP);
+        if (!existing) localStorage.setItem(BACKUP, JSON.stringify(current));
+        else validate(JSON.parse(existing), location.origin);
+        $('update-backup-status').textContent = '已在此瀏覽器保留一份更新前排版。下載接續資料可另存目前排版，方便換環境接續。';
+      } catch (e) {
+        if (request !== generation) return;
+        error('未能完整準備更新資料：' + e.message);
+      }
+    }
+    document.querySelectorAll('[data-update-open]').forEach(button => button.addEventListener('click', open));
+    $('update-route').addEventListener('change', () => { if (info) { try { refresh(); error(''); } catch (e) { error(e.message); } } });
+    $('update-copy').addEventListener('click', async () => {
+      if (!current) return;
+      try { await navigator.clipboard.writeText($('update-prompt').value); notice('已複製更新指令，貼給你使用的 AI。'); }
+      catch {
+        $('update-prompt').closest('details').open = true;
+        $('update-prompt').focus(); $('update-prompt').select();
+        error('請按 Ctrl / ⌘ C 複製已選取的更新指令。');
+      }
+    });
+    $('update-download').addEventListener('click', () => {
+      if (!current) return;
+      const url = URL.createObjectURL(new Blob([JSON.stringify(current, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a'); link.href = url; link.download = 'blueprint-update-handoff.json'; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    $('update-restore').addEventListener('click', async () => {
+      try {
+        const file = $('update-backup-file').files[0];
+        if (!file) throw new Error('請先選擇之前下載的排版接續資料。');
+        if (file.size > 2 * 1024 * 1024) throw new Error('排版接續資料過大。');
+        restore(JSON.parse(await file.text()), location.origin, localStorage);
+        location.reload();
+      } catch (e) { error('未能還原排版：' + e.message); }
+    });
+    $('update-restore-local').addEventListener('click', () => {
+      try {
+        const saved = localStorage.getItem(BACKUP);
+        if (!saved) throw new Error('這個瀏覽器尚未保存更新前排版。');
+        restore(JSON.parse(saved), location.origin, localStorage);
+        location.reload();
+      } catch (e) { error('未能還原排版：' + e.message); }
+    });
+    $('update-dialog').addEventListener('close', () => { ++generation; });
+  }
+  const exported = { handoff, validate, restore, prompt, init };
+  if (typeof module !== 'undefined' && module.exports) module.exports = exported;
+  if (root) root.BlueprintUpdate = exported;
+})(typeof window !== 'undefined' ? window : null);

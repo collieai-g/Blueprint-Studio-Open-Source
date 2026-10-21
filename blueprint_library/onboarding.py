@@ -27,10 +27,10 @@ _WORKSPACE_NAME = "藍圖工作室 Blueprint Studio"
 def installation_instruction() -> str:
     """Return a portable prompt usable by an equipped AI or a plain chat."""
     return (
-        "請幫我安裝或升級到 Blueprint Studio Open Source V2.4（2.4.0），建立並接通我自己的完整原版藍圖工作台。\n"
+        "請幫我安裝或升級到 Blueprint Studio Open Source V2.4（2.4.1），建立並接通我自己的完整原版藍圖工作台。\n"
         "公開工具：\n"
         f"{_REPOSITORY}\n\n"
-        "先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、"
+        "先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先讀 UPDATE_AI.txt 及 docs/UPDATE_ASSISTANT.md，用更新助手保存來源及接續進度，再按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、"
         "工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，"
         "行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。\n\n"
         "本機：跟 docs/INSTALL_LOCAL.md，在我自己的電腦檢查 Python、下載完整程式、"

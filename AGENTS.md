@@ -120,3 +120,14 @@ never fabricate replies, screenshots, metrics or external sending. Connection
 registration and recorded budget flags are not a running provider integration.
 Describe pending capture workers, native-only backend availability and Sites
 adaptation truthfully. All new copy uses clear standard written Chinese.
+
+V2.4.1 adds UPDATE_AI.txt, docs/UPDATE_ASSISTANT.md and tools/update_assistant.py.
+Prefer the private resumable upgrade helper over repeatedly asking users to copy
+settings or recreate an already prepared candidate. Ship library_web/update.js
+and preserve the minimal UI. Keep source checkpoints, browser preferences and full
+production backups distinct. Check current runtime observations and actual loaded
+tools; a published environment draft, installed plugin, or local build is not
+production acceptance. The helper performs no deployment and has no generic Sites
+backend or R2 backup. Missing historical scripts require checking the current
+Sites skill/workflow, not declaring every publishing route unavailable.
+Never put private handoffs, source bundles, data backups or tool credentials here.

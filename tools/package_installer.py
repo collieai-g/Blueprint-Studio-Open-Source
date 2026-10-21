@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blueprint_folders import __version__
 
-REQUIRED = {'INSTALL_AI.txt', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
+REQUIRED = {'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'tools/update_assistant.py', 'INSTALL_AI.txt', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
             'library_web/connection.js', 'library_web/connection-guide.json',
             'blueprint_library/connection.py', 'integrations/mcp/connection.mjs',
             'integrations/mcp/tools.json', 'docs/CONNECT.md', 'docs/UPGRADE.md',

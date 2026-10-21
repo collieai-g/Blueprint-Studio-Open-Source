@@ -1,3 +1,24 @@
+# v2.4.1 驗證紀錄
+
+驗證日期：2026-10-21。使用外部臨時資料，沒有部署私人正式 Site。
+
+- Python 3.12：186 個測試通過。新增 9 個情境，涵蓋真實 Git 基準／未提交候選封裝、重複接續、Site 身份隔離、私人備份、封包竄改／路徑拒絕及網絡／工具狀態分辨。
+- Node：25 個測試通過，涵蓋原排版、資料包、Sites MCP 轉接、接駁及更新助手的偏好備份／同站還原。格式檢查及既有離線網頁建置通過。
+- 更新助手真實 Chromium／HTTP：登入後讀取版本、偏好保存與下載、錯站拒絕、同站還原、失敗讀取不保留可用狀態、390px 手機及原公司資料／附件不變，沒有 JavaScript 錯誤。
+- 原公司流程瀏覽器測試通過：CRUD、搜尋、指令、報價至發票、主題、角色、草稿、窄欄、手機與舊網址。
+- 原排版及接駁瀏覽器回歸通過：格線拖動、鍵盤、三頁、重開遷移、真正 MCP 寫入／讀回／待辦更新、右側同一結果、客戶端隔離及自動刷新。本機驗證不等於私人 Sites 的正式驗收。
+- 接續工具不執行部署；完整正式備份與目前對話的真實 AI 寫入仍須在原站完成。沒有聲稱此工具解除了平台網絡／授權限制。
+
+新增可重做檢查：
+
+```sh
+python -m unittest discover -s tests -v
+node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_connection.cjs tests/test_update.cjs
+python tests/check_update_browser.py
+```
+
+以下保留 V2.4.0 原版本的驗證紀錄。
+
 # v2.4.0 驗證紀錄
 
 驗證日期：2026-10-21。所有資料使用外部臨時目錄；沒有更新正式私人 Site。

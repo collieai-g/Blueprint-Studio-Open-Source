@@ -6,7 +6,7 @@
 說一句「今日收工」，由你接入的 AI 整合成果、決定、參考與待辦，留下有用內容，逐步累積及修整。
 目前已提供公司設定、文件整理、資料收藏及每日工作；其他功能可按需要擴充。
 
-[下載 V2.4 完整安裝包](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/download/v2.4.0/blueprint-studio-v2.4.0-installer.zip) · [最簡單的 AI 安裝入口](START_HERE.md) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
+[下載 V2.4.1 完整安裝包](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/download/v2.4.1/blueprint-studio-v2.4.1-installer.zip) · [最簡單的 AI 安裝入口](START_HERE.md) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
 
 V2.4 新增五組側欄：工作項目、AI 專員、公司、靈感庫、自訂主題。原生版提供收件匣、指令、項目、客戶報價至發票、角色權限及主題關聯。[逐項功能與尚未接入部分](docs/V2.4.md)。專員依規格為設定空殼，外部自動化與 Sites 後台適配不會因下載 UI 包而自動完成。
 
@@ -16,7 +16,8 @@ V2.4 新增五組側欄：工作項目、AI 專員、公司、靈感庫、自訂
 
 ## 已安裝舊版本？升級到 V2.4
 
-**[複製保留資料的升級指令](docs/UPGRADE.md)**，貼到你現有工作台的 AI 對話。
+**[複製更新助手指令](UPDATE_AI.txt)**，貼到你現有工作台的 AI 對話。
+2.4.1 新增「偏好設定 → 更新助手」及可執行接續工具，自動保存排版與候選來源，分辨環境未套用及工具未載入，減少反覆操作。[使用方式與實際範圍](docs/UPDATE_ASSISTANT.md)。
 AI 先備份，再更新同一個網站／本機服務，保留公司資料、附件、登入、待辦及歷史。
 Sites 有獨立的介面更新包及接駁步驟；不需要重新建立工作台。
 
@@ -37,11 +38,11 @@ V2.4 保留白色淡格線與原版公司 logo。標題、說明、日期都是�
 一般聊天 AI 亦可按同一份指引，帶你逐步操作。
 
 ```text
-請幫我安裝或升級到 Blueprint Studio Open Source V2.4（2.4.0），建立並接通我自己的完整原版藍圖工作台。
+請幫我安裝或升級到 Blueprint Studio Open Source V2.4（2.4.1），建立並接通我自己的完整原版藍圖工作台。
 公開工具：
 https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
-先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。
+先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先讀 UPDATE_AI.txt 及 docs/UPDATE_ASSISTANT.md，用更新助手保存來源及接續進度，再按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。
 
 本機：跟 docs/INSTALL_LOCAL.md，在我自己的電腦檢查 Python、下載完整程式、準備私人資料與管理員，使用 library 指令啟動原版介面，完成登入及重啟保存驗證。辨認遠端 Codex 與我的電腦，不能把遠端 localhost 當成本機入口。
 
@@ -103,6 +104,6 @@ AI 整理目前可見或你明確提供的對話；工具不會自行讀取各�
 
 ## 開源與參與
 
-目前版本 **2.4.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
+目前版本 **2.4.1**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
 歡迎提交 [Issues](https://github.com/collieai-g/Blueprint-Studio-Open-Source/issues) 或 Pull Request。
 [更新紀錄](CHANGELOG.md) · [驗證紀錄](VALIDATION.md)

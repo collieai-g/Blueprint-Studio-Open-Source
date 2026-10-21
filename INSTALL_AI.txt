@@ -1,8 +1,8 @@
-請幫我安裝或升級到 Blueprint Studio Open Source V2.4（2.4.0），建立並接通我自己的完整原版藍圖工作台。
+請幫我安裝或升級到 Blueprint Studio Open Source V2.4（2.4.1），建立並接通我自己的完整原版藍圖工作台。
 公開工具：
 https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
-先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。
+先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先讀 UPDATE_AI.txt 及 docs/UPDATE_ASSISTANT.md，用更新助手保存來源及接續進度，再按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。
 
 本機：跟 docs/INSTALL_LOCAL.md，在我自己的電腦檢查 Python、下載完整程式、準備私人資料與管理員，使用 library 指令啟動原版介面，完成登入及重啟保存驗證。辨認遠端 Codex 與我的電腦，不能把遠端 localhost 當成本機入口。
 

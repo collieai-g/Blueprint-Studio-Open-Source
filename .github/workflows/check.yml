@@ -15,7 +15,7 @@ jobs:
           node-version: '24'
       - run: python -m pip install -r requirements-mcp.txt
       - run: python -m unittest discover -s tests -v
-      - run: node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_connection.cjs
+      - run: node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_connection.cjs tests/test_update.cjs
       - name: Check HTTP MCP with modern and legacy clients
         run: |
           python -m venv /tmp/blueprint-mcp-interop
@@ -25,6 +25,7 @@ jobs:
       - run: node --check library_web/workdays.js
       - run: node --check library_web/workspace.js
       - run: node --check library_web/connection.js
+      - run: node --check library_web/update.js
       - run: node --check library_web/studio.js
       - run: node --check library_web/navigation.js
       - name: Check real authenticated browser workflows
@@ -33,12 +34,16 @@ jobs:
           python -m playwright install --with-deps chromium
           python tests/check_studio_browser.py
           python tests/check_layout_browser.py
+          python tests/check_update_browser.py
       - run: python tools/build_web.py
       - run: git diff --exit-code -- web/icons.js dist/index.html
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: check
     runs-on: ubuntu-latest
+    concurrency:
+      group: blueprint-release
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
@@ -46,12 +51,49 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Build complete AI installer and same-site update package
-        run: |
-          python tools/package_installer.py --output "$RUNNER_TEMP/blueprint-studio-$GITHUB_REF_NAME-installer.zip"
-          python tools/package_workbench.py --output "$RUNNER_TEMP/blueprint-studio-$GITHUB_REF_NAME-workbench.zip"
-      - name: Publish versioned downloads after checks pass
+      - name: Select the checked version and preserve existing releases
+        id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/blueprint-studio-$GITHUB_REF_NAME-installer.zip" "$RUNNER_TEMP/blueprint-studio-$GITHUB_REF_NAME-workbench.zip" --verify-tag --title "Blueprint Studio Open Source $GITHUB_REF_NAME" --notes-file docs/RELEASE.md
+          python - <<'PY'
+          import json, os, re, subprocess
+          from blueprint_folders import __version__
+          if not re.fullmatch(r'\d+\.\d+\.\d+', __version__):
+              raise SystemExit('Release version must be a stable semantic version.')
+          tag = 'v' + __version__
+          ref = os.environ['GITHUB_REF']
+          if ref.startswith('refs/tags/') and ref != 'refs/tags/' + tag:
+              raise SystemExit('Tag and source version differ.')
+          result = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/releases/tags/' + tag], capture_output=True, text=True)
+          if result.returncode and 'HTTP 404' not in result.stderr:
+              raise SystemExit('Cannot check existing release; refusing to create or overwrite one.')
+          exists = result.returncode == 0
+          if exists and json.loads(result.stdout).get('tag_name') != tag:
+              raise SystemExit('Unexpected release response.')
+          if not exists:
+              tagged = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/git/ref/tags/' + tag], capture_output=True, text=True)
+              if tagged.returncode and 'HTTP 404' not in tagged.stderr:
+                  raise SystemExit('Cannot check existing tag.')
+              if not tagged.returncode:
+                  resolved = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/commits/' + tag], capture_output=True, text=True)
+                  if resolved.returncode or json.loads(resolved.stdout).get('sha') != os.environ['GITHUB_SHA']:
+                      raise SystemExit('Existing tag points to a different commit; refusing to publish mismatched assets.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('tag=' + tag + '\nneeded=' + str(not exists).lower() + '\n')
+          print('Existing release preserved.' if exists else 'Build and publish ' + tag + ' from the checked commit.')
+          PY
+      - name: Build complete AI installer and same-site update package
+        if: steps.version.outputs.needed == 'true'
+        env:
+          BLUEPRINT_RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          python tools/package_installer.py --output "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-installer.zip"
+          python tools/package_workbench.py --output "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-workbench.zip"
+      - name: Publish versioned downloads after checks pass
+        if: steps.version.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BLUEPRINT_RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "$BLUEPRINT_RELEASE_TAG" "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-installer.zip" "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-workbench.zip" --target "$GITHUB_SHA" --title "Blueprint Studio Open Source $BLUEPRINT_RELEASE_TAG" --notes-file docs/RELEASE.md
