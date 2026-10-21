@@ -19,7 +19,7 @@ from .store import LibraryError
 
 _SOURCE_ROOT = Path(__file__).resolve().parents[1]
 _PROVIDERS = {"render", "railway", "server"}
-_REPOSITORY = "https://github.com/collieai-g/blueprint-folder-agent"
+_REPOSITORY = "https://github.com/collieai-g/Blueprint-Studio-Open-Source"
 _RENDER_LAUNCH = "https://render.com/deploy?repo=" + _REPOSITORY
 _WORKSPACE_NAME = "藍圖工作室 Blueprint Studio"
 
@@ -27,21 +27,31 @@ _WORKSPACE_NAME = "藍圖工作室 Blueprint Studio"
 def installation_instruction() -> str:
     """Return a portable prompt usable by an equipped AI or a plain chat."""
     return (
-        "請幫我安裝藍圖工作室（後台），公開工具：\n"
+        "請幫我安裝 Blueprint Studio Open Source，建立我自己的完整原版藍圖工作台。\n"
+        "公開工具：\n"
         f"{_REPOSITORY}\n\n"
-        "先閱讀專案的 docs/INSTALL.md 及 AGENTS.md，檢查現有安裝，保留已有資料、"
-        "工作室及工具修改。先問我的公司名稱；行業、公司簡介及目標可以留空。"
-        "再問使用雲端（預設）或本機，以及是否已有雲端帳戶、偏好哪個平台。"
-        "雲端可選 Render、Railway 或自己的伺服器；未有偏好時介紹 Render，讓我選擇。\n\n"
-        "把公司資料及安裝計劃存到公開程式專案以外的私人目錄，先準備計劃，"
-        "再按我選擇的平台協助開戶／登入、持久儲存、HTTPS 及秘密設定。"
-        "涉及未授權的收費資源時先核對方案費用及預算；已有授權則沿用。密碼和金鑰只由我在平台秘密設定"
-        "或本機安全輸入，不要叫我貼到聊天。公司資料只用於首次設定，已有資料不可重設。\n\n"
-        "有實際指令及部署工具就完成可執行部分；普通聊天沒有工具時，提供逐步操作及"
-        "有效公司 JSON 讓我手動交接，不要假裝自動安裝。雲端必須取得真實 HTTPS 網址，"
-        "完成登入、核對公司設定、保存一筆每日工作並重啟後查回，才可以說安裝完成；"
-        "本機則用實際啟動地址做同樣驗證。未完成時清楚標記待辦，不要用示範網址冒充已連接。\n\n"
-        "完成後連結我的私人工作室。以後我說『今日收工』，請整理目前可見或我提供的"
+        "先讀 README.md、docs/INSTALL.md 及 AGENTS.md，檢查現有安裝和工具權限，保留已有資料、"
+        "工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，"
+        "行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。\n\n"
+        "本機：跟 docs/INSTALL_LOCAL.md，在我自己的電腦檢查 Python、下載完整程式、"
+        "準備私人資料與管理員，使用 library 指令啟動原版介面，完成登入及重啟保存驗證。"
+        "辨認遠端 Codex 與我的電腦，不能把遠端 localhost 當成本機入口。\n\n"
+        "雲端：跟 docs/INSTALL_CLOUD.md，協助沿用或註冊所需帳戶；直接部署原版可沿用公開來源，"
+        "需要私人修改時準備完整的私人 GitHub 倉庫，使用 Codex 雲端時協助授權及接入環境。"
+        "需要我登入、驗證或按 Publish 時，給我確切下一步。"
+        "環境 Publish／Republish 後繼續正式網站部署，直到有 HTTPS 工作台及持久儲存。"
+        "按我的選擇使用 Render、Railway、自己的主機或 Sites。Sites 目前需要實際後台適配，"
+        "公開倉庫未提供一鍵 Sites 部署；不能把 Python Docker 當作可直接部署到 Sites。\n\n"
+        "完整沿用 library_web/ 和 assets/icons/ 的原版介面、導覽及所有既有功能，"
+        "不要另生成排版、簡化功能或用臨時示範代替。平台適配以後台、登入和儲存為主。"
+        "依 docs/INSTALL.md 逐項驗收原版功能，保存一筆工作及待辦並重啟後查回，"
+        "再交付真實網址、資料位置和下次開啟方法；未驗證部分明確標示。\n\n"
+        "公司資料及安裝計劃放到程式專案以外的私人位置，由你維護 INSTALL_PROGRESS.md，"
+        "換對話也能接續。setup 只產生計劃，已有公司資料不可重設。"
+        "有工具就完成已授權的工作；普通聊天沒有工具時提供當前一步操作及有效公司 JSON 交接。"
+        "涉及未授權收費先核對費用；密碼和金鑰只在平台秘密設定或本機安全輸入，不貼聊天。\n\n"
+        "工作台可用後連結我的 AI，實際保存並讀回同一個後台，分別回報工作台及 AI 連接狀態。"
+        "以後我說『今日收工』，請整理目前可見或我提供的"
         "對話，只保存有用成果、已確認決定、參考及未完成待辦，去重及精煉，"
         "沿用來源識別；修改使用版本檢查並保留可恢復歷史，不用隨機識別繞過衝突。"
         "不保存秘密或整段原始聊天，不聲稱能讀取其他平台不可見對話。"
@@ -140,6 +150,13 @@ def _guide(plan: dict) -> bytes:
         "目前只準備好私人公司資料及安裝計劃，尚未部署、建立資料庫或設定登入。"
         "company-profile.json 是你的公司資料；setup.json 是計劃，並非已連線證明。"
         "保留這些檔案在私人位置，不要上傳公開 GitHub。完整說明見公開工具的 docs/INSTALL.md。\n\n"
+        "先沿用已選的本機／雲端路線，檢查現有安裝並在私人 INSTALL_PROGRESS.md 記錄進度。"
+        "完整指南：docs/INSTALL_LOCAL.md 或 docs/INSTALL_CLOUD.md。"
+        "GitHub 倉庫、Codex 工作環境 Publish／Republish 與正式網站部署是不同階段；"
+        "環境準備好後仍要啟動並驗證真正工作台。\n\n"
+        "必須沿用 library_web/ 及 assets/icons/ 的完整原版介面和功能；"
+        "gui、serve 及 dist/index.html 是舊版離線工具。不要重新排版、簡化或交付示範頁。"
+        "正式畫面可用後，按 docs/INSTALL.md 的完整功能清單驗收，再驗證 AI 保存。\n\n"
     )
     if plan["mode"] == "local":
         init = _command("python3", tool, "library-init", plan["data_path"], "--username", plan["username"], "--company-file", plan["company_file"])
@@ -147,18 +164,23 @@ def _guide(plan: dict) -> bytes:
         start = _command("python3", tool, "library", "--data", plan["data_path"])
         body = (
             "## 本機安裝\n\n"
-            "1. 確認 Python 3.10+ 可用；以下用 python3，Windows 如需要可改用 py -3。"
+            "1. 確認 Python 3.10+ 可用；以下指令使用 python3 及 POSIX shell 引號。"
+            "Windows 請跟 docs/INSTALL_LOCAL.md 的 PowerShell 範例，由 AI 轉換實際路徑及引號，"
+            "不要只替換 Python 指令後照貼含特殊字元的路徑。"
             "初始化時在終端機安全提示輸入管理員長密碼，不要把密碼貼到聊天。已有資料庫時"
             "不要重新初始化；先核對資料路徑，按照 docs/INSTALL.md 接續使用。\n\n"
             + _code(init)
-            + "\n2. 初始化成功後，把私人工作室連到這個資料庫：\n\n"
-            + _code(connect)
-            + "\n3. 啟動後台，保持這個終端機運行：\n\n"
+            + "\n2. 啟動後台，保持這個終端機運行：\n\n"
             + _code(start)
-            + "\n4. 開啟啟動輸出的實際地址，通常是 http://127.0.0.1:8787，登入並核對公司名稱、"
+            + "\n3. 在同一部電腦開啟啟動輸出的實際地址，通常是 http://127.0.0.1:8787，"
+            "使用瀏覽器的 HTTP Basic 登入提示，核對公司名稱、"
             "行業、簡介和目標。此模式只供這部電腦使用，並未因此成為外出可用的雲端服務。\n\n"
-            "5. 在每日工作頁保存一筆真實而簡短的紀錄，停止後重新執行啟動指令，"
+            "4. 在每日工作頁保存一筆真實而簡短的紀錄，停止後重新執行啟動指令，"
             "查回同一筆紀錄及公司設定。確實保留才算本機驗證完成。\n"
+            + "\n5. 工作台可用後，在另一個終端機把私人 AI 工作室連到同一個資料庫：\n\n"
+            + _code(connect)
+            + "\n讓同一部電腦的 AI 讀取 WORKDAY.md，實際保存及讀回並在介面確認。"
+            "遠端 AI 無權存取本機資料時，使用每日工作 JSON 匯入，記錄連接仍待完成。\n"
         )
     else:
         provider = plan["provider"]
@@ -204,7 +226,12 @@ def _guide(plan: dict) -> bytes:
             "--username-env", "BLUEPRINT_BACKEND_USERNAME", "--password-env", "BLUEPRINT_BACKEND_PASSWORD",
         )
         body = (
-            "## 雲端部署\n\n" + platform
+            "## 雲端部署\n\n"
+            "先按 docs/INSTALL_CLOUD.md 準備所需帳戶及完整原始碼；"
+            "使用 Codex 雲端時才完成相應環境接入，直接部署原版可使用公開來源。"
+            "已有帳戶、倉庫或工作環境就接續使用。本計劃對應下列已選原生部署平台。"
+            "如改選 Sites，按該指南的 Sites 步驟完成後台適配和完整原版驗收；"
+            "目前 setup 不支援 --provider sites，不能直接套用這份原生部署設定。\n\n" + platform
             + "2. 按 deployment.env.example 在平台的環境變數表單設定管理員名稱、公司資料及"
             "BLUEPRINT_DATA_DIR=/data。使用實際文字值；dotenv 引號及跳脫字元不要原樣貼入表單。"
             "公司資料只在首次初始化使用，已有公司資料不應在重啟或更新時重設。"

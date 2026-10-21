@@ -6,7 +6,7 @@
 說一句「今日收工」，由你接入的 AI 整合成果、決定、參考與待辦，留下有用內容，逐步累積及修整。
 目前已提供公司設定、文件整理、資料收藏及每日工作；其他功能可按需要擴充。
 
-[下載工具](https://github.com/collieai-g/blueprint-folder-agent/archive/refs/heads/main.zip) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
+[下載工具](https://github.com/collieai-g/Blueprint-Studio-Open-Source/archive/refs/heads/main.zip) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
 
 ## 貼給你的 AI，開始安裝
 
@@ -14,36 +14,35 @@
 一般聊天 AI 亦可按同一份指引，帶你逐步操作。
 
 ```text
-請幫我安裝 Blueprint Studio Backend，成為我公司的專屬後台。
-公開工具：https://github.com/collieai-g/blueprint-folder-agent
+請幫我安裝 Blueprint Studio Open Source，建立我自己的完整原版藍圖工作台。
+公開工具：
+https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
-先閱讀 README.md、docs/INSTALL.md 及 AGENTS.md，保留已有安裝、資料和修改。
-1. 先問我的公司／創業名稱，以及行業、簡介、目前目標；後三項可以留空。
-2. 再讓我選雲端（預設）或本機。雲端要問我已有的帳戶及平台偏好；
-   沒有偏好時介紹 Render，亦可選 Railway 或自己的伺服器。
-3. 公司資料與設定放在公開工具目錄以外。按所選模式繼續完成安裝，
-   引導我登入雲端、設定永久儲存、管理員及 HTTPS 網址。
-   涉及未授權收費時先核對方案；不要要求我把密碼或金鑰貼到聊天。
-4. 實際驗證登入、公司資料、保存紀錄及重啟後查回，再說安裝完成。
-   準備部署檔案不等於已上線；缺少工具時逐步指導我完成操作。
-5. 接好我的 AI 工作室。以後我說「今日收工」，整理目前可見或我提供的工作，
-   去掉閒聊、重複及無用內容；保存成果、決定、參考與待辦。
-   合併及修改已有紀錄時保留版本歷史和待辦進度，不要建立重複日報。
+先讀 README.md、docs/INSTALL.md 及 AGENTS.md，檢查現有安裝和工具權限，保留已有資料、工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。
 
-最後告訴我真實使用網址、私人資料位置，以及仍未完成的步驟。
+本機：跟 docs/INSTALL_LOCAL.md，在我自己的電腦檢查 Python、下載完整程式、準備私人資料與管理員，使用 library 指令啟動原版介面，完成登入及重啟保存驗證。辨認遠端 Codex 與我的電腦，不能把遠端 localhost 當成本機入口。
+
+雲端：跟 docs/INSTALL_CLOUD.md，協助沿用或註冊所需帳戶；直接部署原版可沿用公開來源，需要私人修改時準備完整的私人 GitHub 倉庫，使用 Codex 雲端時協助授權及接入環境。需要我登入、驗證或按 Publish 時，給我確切下一步。環境 Publish／Republish 後繼續正式網站部署，直到有 HTTPS 工作台及持久儲存。按我的選擇使用 Render、Railway、自己的主機或 Sites。Sites 目前需要實際後台適配，公開倉庫未提供一鍵 Sites 部署；不能把 Python Docker 當作可直接部署到 Sites。
+
+完整沿用 library_web/ 和 assets/icons/ 的原版介面、導覽及所有既有功能，不要另生成排版、簡化功能或用臨時示範代替。平台適配以後台、登入和儲存為主。依 docs/INSTALL.md 逐項驗收原版功能，保存一筆工作及待辦並重啟後查回，再交付真實網址、資料位置和下次開啟方法；未驗證部分明確標示。
+
+公司資料及安裝計劃放到程式專案以外的私人位置，由你維護 INSTALL_PROGRESS.md，換對話也能接續。setup 只產生計劃，已有公司資料不可重設。有工具就完成已授權的工作；普通聊天沒有工具時提供當前一步操作及有效公司 JSON 交接。涉及未授權收費先核對費用；密碼和金鑰只在平台秘密設定或本機安全輸入，不貼聊天。
+
+工作台可用後連結我的 AI，實際保存並讀回同一個後台，分別回報工作台及 AI 連接狀態。以後我說『今日收工』，請整理目前可見或我提供的對話，只保存有用成果、已確認決定、參考及未完成待辦，去重及精煉，沿用來源識別；修改使用版本檢查並保留可恢復歷史，不用隨機識別繞過衝突。不保存秘密或整段原始聊天，不聲稱能讀取其他平台不可見對話。目前沒有可用連線時，只輸出可匯入 JSON，不聲稱已儲存。先做好公司設定、文件整理、收藏及每日工作，不增加未要求的公司模組。
 ```
 
-## 選擇使用方式
+## 兩條完整安裝路線
 
-| 模式 | 適合誰 | 資料位置 |
+先選本機或雲端，再由 AI 逐步帶到原版工作台可用。已有帳戶、環境或網站會接續使用。
+
+| 模式 | 逐步指南 | 安裝結果 |
 | --- | --- | --- |
-| **雲端（預設）** | 想用手機、外出或換電腦登入 | 你的雲端服務＋永久磁碟 |
-| **本機** | 先在自己的電腦使用 | 工具目錄以外的私人資料庫 |
+| **本機** | [Windows／macOS／Linux](docs/INSTALL_LOCAL.md)：Python → 完整程式 → 私人資料及登入 → 原版介面 → AI | 在自己的電腦啟動及使用，資料保存在私人目錄 |
+| **雲端** | [GitHub／Codex／正式部署](docs/INSTALL_CLOUD.md)：帳戶與程式 → Codex 接入 → 部署選擇 → 原版介面及永久儲存 → AI | 可以登入的 HTTPS 工作台，按需要在 ChatGPT 右側開啟 |
 
-[開始 Render 雲端部署](https://render.com/deploy?repo=https://github.com/collieai-g/blueprint-folder-agent) · [Railway／伺服器步驟](docs/INSTALL.md#雲端使用)
+雲端指南包含 Render、Railway、自己的主機及 Sites。原生平台已有部署設定；Sites 需完成後台適配，目前沒有現成的一鍵 Sites 安裝版本。所有路線保留原版介面及全部既有功能。
 
-雲端需要自己的帳戶及平台資源；由 AI 逐步帶你設定，費用以平台確認為準。
-私人資料獨立保存，公開 GitHub 用來分享及更新工具程式。
+[安裝總覽與完整驗收](docs/INSTALL.md)亦包含中途換對話的接續方法。公司私人資料獨立保存，正式主機費用以所選平台確認為準。
 
 ## 每日一句「今日收工」
 
@@ -82,5 +81,5 @@ AI 整理目前可見或你明確提供的對話；工具不會自行讀取各�
 ## 開源與參與
 
 目前版本 **1.5.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
-歡迎提交 [Issues](https://github.com/collieai-g/blueprint-folder-agent/issues) 或 Pull Request。
+歡迎提交 [Issues](https://github.com/collieai-g/Blueprint-Studio-Open-Source/issues) 或 Pull Request。
 [更新紀錄](CHANGELOG.md) · [驗證紀錄](VALIDATION.md)

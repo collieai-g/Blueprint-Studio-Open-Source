@@ -64,7 +64,7 @@ class OnboardingTests(unittest.TestCase):
                 self.assertIn("重新啟動", guide)
                 self.assertNotIn("已連接成功", guide)
                 if provider == "render":
-                    self.assertIn("https://render.com/deploy?repo=https://github.com/collieai-g/blueprint-folder-agent", guide)
+                    self.assertIn("https://render.com/deploy?repo=https://github.com/collieai-g/Blueprint-Studio-Open-Source", guide)
                 elif provider == "railway":
                     self.assertIn("https://railway.com/new", guide)
                     self.assertIn("Volume", guide)

@@ -1,6 +1,7 @@
-# Blueprint Studio Backend
+# Blueprint Studio Open Source
 
-Public product name: Blueprint Studio Backend. Chinese name: 藍圖工作室（後台）.
+Public repository name: Blueprint Studio Open Source (藍圖工作室開源).
+Backend product name: Blueprint Studio Backend. Chinese name: 藍圖工作室（後台）.
 Default new workspace name: 藍圖工作室 Blueprint Studio. The product is an
 extensible entrepreneurship backend; ship only explicitly requested core features.
 Keep existing CLI/module identifiers, localStorage keys, markers, databases and
@@ -16,11 +17,24 @@ The user also authorizes daily work records and checkable todos. The current AI
 curates its visible conversation into useful outcomes, decisions, references and
 unfinished tasks; the backend stores the curated result. Keep this distinct from
 automatic access to other AI platforms or an unconfigured summarization model.
-The user now authorizes a universal AI installation flow: ask company name and
-basic profile, offer cloud (default) or local mode, then guide provider login,
-persistent storage, HTTPS and verification. Follow `docs/INSTALL.md`. Tool-capable
-AI agents can install and connect; chat-only tools guide users without claiming
-to execute commands. Store the private setup plan outside this public checkout.
+Installation has two explicit routes: first choose local or cloud, then ask the
+workspace/company name; other profile fields are optional. Follow `docs/INSTALL.md`
+and the selected `docs/INSTALL_LOCAL.md` or `docs/INSTALL_CLOUD.md` from the first
+prompt through a usable original workbench. Reuse existing choices and resources.
+Guide required GitHub account/repository setup, complete source import, Codex cloud
+connection and actual hosting as separate cloud stages. Environment Publish is
+development readiness; continue to a real authenticated, persistent application.
+Tool-capable AI agents complete authorized work; for user-only login, verification
+or platform buttons, give the exact next action and resume. Chat-only tools guide
+users without claiming to execute commands. Keep setup and AI-maintained
+INSTALL_PROGRESS.md outside this checkout; resume rather than reinitialize.
+Preserve the original library_web HTML/CSS/JS, icons, layout and all existing
+features during installation, including Sites adaptations. Do not generate a new
+layout, reduce navigation or substitute a demo. gui/serve/dist are legacy tools;
+the original backend uses library or company/Dockerfile. Sites requires an actual
+compatible backend adaptation; this repository has no ready Sites deployment or
+setup --provider sites. Verify the complete original feature checklist in
+docs/INSTALL.md and report workbench readiness separately from verified AI writes.
 Company profiles and versioned daily-work refinements are in scope. Preserve
 completed todo state and retain history when useful records are edited or noise
 is removed. Cloud bindings must use the authenticated remote API, not another

@@ -545,7 +545,7 @@ class LibraryHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200, result)
         self.assertIsInstance(result["instruction"], str)
         self.assertTrue(result["instruction"].strip())
-        self.assertIn("https://github.com/collieai-g/blueprint-folder-agent", result["instruction"])
+        self.assertIn("https://github.com/collieai-g/Blueprint-Studio-Open-Source", result["instruction"])
         self.assertEqual(headers.get("Cache-Control"), "no-store")
         self.assertNotIn(self.password, result["instruction"])
         self.assertNotIn(str(self.data_dir), result["instruction"])

@@ -35,7 +35,7 @@ provides persistent file organization and reference collections.
 需要 Git 和 Python 3.10+。在你準備存放兩個文件夾的位置執行：
 
 ```sh
-git clone https://github.com/collieai-g/blueprint-folder-agent.git
+git clone https://github.com/collieai-g/Blueprint-Studio-Open-Source.git blueprint-folder-agent
 python3 blueprint-folder-agent/blueprint.py link "藍圖工作室 Blueprint Studio"
 python3 "藍圖工作室 Blueprint Studio/blueprint-studio.py" create "第一個專員"
 python3 "藍圖工作室 Blueprint Studio/blueprint-studio.py" --version
@@ -156,8 +156,8 @@ python3 blueprint.py pack "/你的路徑/藍圖工作室 Blueprint Studio/第一
 
 ## GitHub 與手機網址
 
-GitHub 專案：[collieai-g/blueprint-folder-agent](https://github.com/collieai-g/blueprint-folder-agent)。
-可直接[下載完整程式碼 ZIP](https://github.com/collieai-g/blueprint-folder-agent/archive/refs/heads/main.zip)。
+GitHub 專案：[collieai-g/Blueprint-Studio-Open-Source](https://github.com/collieai-g/Blueprint-Studio-Open-Source)。
+可直接[下載完整程式碼 ZIP](https://github.com/collieai-g/Blueprint-Studio-Open-Source/archive/refs/heads/main.zip)。
 把 `dist/` 目錄部署到任何靜態網站服務，就能在手機瀏覽器使用。
 專案附有手動執行的 GitHub Pages workflow：先在 repository 的 Settings → Pages
 選擇 GitHub Actions，再於 Actions 執行「Publish folder app」。這會公開瀏覽器介面；
