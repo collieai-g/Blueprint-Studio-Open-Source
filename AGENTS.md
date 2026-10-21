@@ -45,6 +45,14 @@ The V2 UI package can update a compatible Sites adapter; preserve its authentica
 API implementation, database, object storage and tool binding. Do not replace it
 with native Python code or create another Site. AI writes use real existing tools;
 UI polling is not permission to read conversations or a simulated AI connection.
+The user requires model-independent AI writes through a real plugin/tool layer.
+Follow docs/AI_CONNECTION.md; integrations/mcp/tools.json defines the shared tool
+contract. Native MCP stdio bridges to the existing authenticated HTTP backend,
+never a separate local database. Sites uses an authenticated MCP adapter to its
+existing API, retaining platform identity and storage. Support Codex, Claude,
+Gemini and other compatible MCP clients; do not hardcode Codex as workday source.
+Installed plugins, tool discovery and a visible workbench are separate from a
+verified write/readback. Check the actual tools loaded in the current chat.
 Company profiles and versioned daily-work refinements are in scope. Preserve
 completed todo state and retain history when useful records are edited or noise
 is removed. Cloud bindings must use the authenticated remote API, not another

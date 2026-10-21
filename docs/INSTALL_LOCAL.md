@@ -141,7 +141,11 @@ AI 同時驗證未登入不能讀取公司資料。沒有實際執行的檢查�
 
 **本步完成：** 本機工作台已可日常使用，重啟後資料仍在。
 
-## L6. 連接在同一部電腦工作的 AI
+## L6. 連接所用 AI 的 MCP 工具
+
+依 [AI_CONNECTION.md 的原生路線](AI_CONNECTION.md#1-原生後台codexclaude-codegemini-cli-共用-mcp)，安裝專用 MCP 環境，使用 `mcp-config` 產生 Codex／Claude／Gemini 設定，並完成寫入及讀回驗收。這條路線提供文件、收藏、工作及待辦的完整工具；不是只在對話貼提示詞。
+
+以下 `workday-connect` 是保留的命令列每日工作路線，可供已有終端機綁定的使用者沿用，不能代替 MCP 外掛接駁。
 
 保持後台服務運行，另開一個終端機並進入同一程式目錄。
 Windows PowerShell：

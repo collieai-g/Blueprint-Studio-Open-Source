@@ -13,8 +13,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: python -m pip install -r requirements-mcp.txt
       - run: python -m unittest discover -s tests -v
-      - run: node --test tests/test_packager.cjs tests/test_workspace.cjs
+      - run: node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs
+      - name: Check HTTP MCP with modern and legacy clients
+        run: |
+          python -m venv /tmp/blueprint-mcp-interop
+          /tmp/blueprint-mcp-interop/bin/python -m pip install 'mcp==2.3.0'
+          /tmp/blueprint-mcp-interop/bin/python tests/check_mcp_interop.py
       - run: node --check library_web/app.js
       - run: node --check library_web/workdays.js
       - run: node --check library_web/workspace.js

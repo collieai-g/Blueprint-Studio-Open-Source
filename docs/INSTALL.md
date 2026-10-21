@@ -37,6 +37,8 @@ Codex 雲端是 AI 工作環境；其 Publish／Republish 完成後，繼續雲�
 >
 > 接著：驗證環境，再進入正式工作台部署。
 
+AI 工具接駁必須完成 [不同 AI 的 MCP 接駁指南](AI_CONNECTION.md)，分清外掛安裝、授權、工具載入及實際讀寫。不能把網站已打開當作 AI 已接通。
+
 ## 安裝必須沿用原版介面
 
 正式工作台來源是 `library_web/`：`index.html`、`style.css`、`app.js`、`workdays.js`、`workspace.js`、`brand.svg`，以及 `assets/icons/`。以所選上游版本的這些檔案和功能為基準，保留版面、顏色、圖示、文字、導覽、手機選單及全部既有操作。安裝本身不授權另做簡化版、刪入口或重新設計 UI。

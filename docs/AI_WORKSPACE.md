@@ -1,8 +1,10 @@
 # V2：在對話交代工作，在工作台查看成果
 
-[返回首頁](../README.md) · [保留資料升級](UPGRADE.md)
+[返回首頁](../README.md) · [保留資料升級](UPGRADE.md) · [MCP 接駁指南](AI_CONNECTION.md)
 
-V2 預設收起重複的手動填表入口。你可以直接對已連接的 Codex 說：
+先按 [AI_CONNECTION.md](AI_CONNECTION.md) 接通實際讀寫工具，支援 Codex、Claude、Gemini 等相容 MCP 客戶端。
+
+V2 預設收起重複的手動填表入口。你可以直接對已連接的 AI 說：
 
 - 「將這份文件放進文件庫，按內容加入合適分類。」
 - 「保存這個網站，放進設計參考收藏集。」

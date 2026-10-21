@@ -220,7 +220,11 @@ AI 提供一個**已核對的實際網址**，帶使用者登入並看到原版�
 接著驗證同一網站在新登入工作階段仍可讀取原記錄，並在保留同一資料儲存的服務重啟／部署後再次查回。
 AI 記錄網站、資料庫／磁碟及附件儲存的實際位置。生產網址受網絡或登入限制無法實測時，明確標示尚待使用者配合的驗證項。
 
-## C8. 讓 AI 寫入同一個工作台
+## C8. 讓不同 AI 透過 MCP 寫入同一個工作台
+
+先完成 [AI_CONNECTION.md](AI_CONNECTION.md)：原生雲端使用 MCP stdio 橋接到既有 HTTPS API；Sites 使用平台已驗證身份的 HTTP MCP 外掛。支援相容的 Codex、Claude、Gemini 等客戶端，各自授權並完成寫入與讀回。
+
+以下是原有每日工作 CLI 綁定的補充；外掛工作方式仍要實際安裝及載入 MCP 工具。
 
 **原生 Python 後台**：在 AI 執行環境的安全設定提供 `BLUEPRINT_BACKEND_USERNAME` 及 `BLUEPRINT_BACKEND_PASSWORD`。
 確認後台的實際主機可被該環境存取，再使用：

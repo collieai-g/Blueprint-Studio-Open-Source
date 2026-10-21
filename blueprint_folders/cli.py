@@ -43,6 +43,15 @@ def main(argv=None) -> int:
     library.add_argument("--host", default="127.0.0.1")
     library.add_argument("--port", type=int, default=8787)
     library.add_argument("--no-open", action="store_true")
+    mcp = commands.add_parser("mcp", help="提供通用 MCP 工具，讓不同 AI 讀寫同一個已有後台")
+    mcp.add_argument("--url", help="原生後台網址；也可安全設定 BLUEPRINT_BACKEND_URL")
+    mcp.add_argument("--username-env", default="BLUEPRINT_BACKEND_USERNAME")
+    mcp.add_argument("--password-env", default="BLUEPRINT_BACKEND_PASSWORD")
+    mcp.add_argument("--read-only", action="store_true")
+    mcp.add_argument("--check", action="store_true", help="測試真實連接並顯示公司與版本；不寫入資料")
+    mcp_config = commands.add_parser("mcp-config", help="產生不包含帳密的 AI 客戶端設定片段")
+    mcp_config.add_argument("--client", required=True, choices=["codex", "claude", "gemini"])
+    mcp_config.add_argument("--url", required=True)
     connect_day = commands.add_parser("workday-connect", help="把 AI 工作室接到雲端或本機公司後台")
     connect_day.add_argument("path", help="私人工作室路徑")
     connection = connect_day.add_mutually_exclusive_group(required=True)
@@ -91,6 +100,13 @@ def main(argv=None) -> int:
     package.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "mcp":
+            from blueprint_library.mcp_server import run
+            return run(args)
+        if args.command == "mcp-config":
+            from blueprint_library.mcp_server import client_config
+            print(client_config(args.client, args.url), end="")
+            return 0
         if args.command == "setup":
             from blueprint_library.onboarding import prepare_setup
             interactive = sys.stdin.isatty()
