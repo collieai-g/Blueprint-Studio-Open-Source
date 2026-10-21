@@ -8,6 +8,16 @@
 
 [下載工具](https://github.com/collieai-g/Blueprint-Studio-Open-Source/archive/refs/heads/main.zip) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
 
+## 已安裝舊版本？升級到 V2
+
+**[複製保留資料的升級指令](docs/UPGRADE.md)**，貼到你現有工作台的 Codex 對話。
+AI 先備份，再更新同一個網站／本機服務，保留公司資料、附件、登入、待辦及歷史。
+Sites 有獨立的介面更新包及接駁步驟；不需要重新建立工作台。
+
+V2 使用白色淡格線背景、原版公司 logo 與可按格仔拖動、縮放、收起的卡片。
+預設由已連接 AI 填入工作內容，工作台自動同步；搜尋、上載、勾選待辦及手動備用操作仍然保留。
+[AI 工作方式](docs/AI_WORKSPACE.md) · [升級與回復](docs/UPGRADE.md)
+
 ## 貼給你的 AI，開始安裝
 
 適用於具備專案、終端機或部署工具權限的 AI Agent，例如 Codex、Claude Code、Gemini CLI。
@@ -65,21 +75,21 @@ AI 整理目前可見或你明確提供的對話；工具不會自行讀取各�
 - **資料收藏**：保存網站、UI 參考、YouTube 與學習筆記。
 - **工作管理**：每日紀錄、版本歷史、待辦、星號及快捷搜尋。
 
-![公司後台介面](artifacts/backend-desktop.png)
+![V2 公司後台介面](artifacts/backend-v2-desktop.png)
 
-以上使用示範資料。[手機介面](artifacts/backend-mobile.png) · [公司設定](artifacts/backend-company.png) · [每日工作示例](artifacts/backend-workday.png)。
+以上使用示範資料。[V2 手機介面](artifacts/backend-v2-mobile.png)。公司設定、每日工作及歷史操作完整保留。
 分類目前使用本機規則；收藏網址未有自動讀取網頁全文或影片字幕。
 
 ## 更新工具
 
-在共用工具目錄檢查修改後執行 `git pull --ff-only`，再重新啟動本機服務或重新部署雲端服務。
-保留原本資料路徑／雲端磁碟，公司內容可繼續使用。「今日收工」更新的是工作資料。
+依[升級指南](docs/UPGRADE.md)先備份，再整合新版程式、重新啟動原服務／部署同一網站，最後驗證原資料。
+更新 GitHub 不會自動改動你已安裝的私人工作台。以後每個版本都可沿用這個流程，保留原本資料及自訂內容。「今日收工」更新的是工作資料。
 
 舊版文件夾與離線資料包工具保留，見[詳細用法](docs/USAGE.md)。
 後台儲存、備份及自行部署見[公司後台說明](docs/LIBRARY.md)。
 
 ## 開源與參與
 
-目前版本 **1.5.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
+目前版本 **2.0.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
 歡迎提交 [Issues](https://github.com/collieai-g/Blueprint-Studio-Open-Source/issues) 或 Pull Request。
 [更新紀錄](CHANGELOG.md) · [驗證紀錄](VALIDATION.md)

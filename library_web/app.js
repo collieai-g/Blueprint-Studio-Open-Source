@@ -182,14 +182,17 @@
     $('no-collections').hidden = state.collections.length > 0;
   }
 
-  async function loadCollections() {
-    const data = await api('/api/collections'); state.collections = Array.isArray(data.collections) ? data.collections : [];
+  async function loadCollections(background = false) {
+    const data = await api('/api/collections');
+    if (background && workspaceBusy()) return false;
+    state.collections = Array.isArray(data.collections) ? data.collections : [];
     populateCollectionSelects();
   }
   async function loadInfo() {
     const info = await api('/api/info');
     document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
-    $('version').textContent = info.version ? `v${info.version}` : '';
+    $('version').textContent = '工作台 v2.0.0';
+    $('version').title = info.version ? `後台 API v${info.version}` : '';
     document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = Number(info.stats?.[node.dataset.count]) || 0; });
     if (info.company_profile) applyCompanyProfile(info.company_profile);
   }
@@ -295,7 +298,7 @@
     group.append(title);
     let source = item.kind === 'file' ? `${formatBytes(item.size)} · ${item.file_name?.split('.').pop()?.toUpperCase() || 'FILE'}` : item.source_type === 'youtube' ? 'YouTube' : '網站連結';
     if (item.kind === 'link' && safeUrl(item.url)) source += ` · ${new URL(item.url).hostname.replace(/^www\./, '')}`;
-    group.append(element('p', 'item-source', source)); top.append(image, group); card.append(top, element('p', 'item-notes', item.notes || '加入一點筆記，留給下次的自己。'));
+    group.append(element('p', 'item-source', source)); top.append(image, group); card.append(top, element('p', 'item-notes', item.notes || '已保存，隨時可以交給 AI 繼續整理。'));
     const badges = element('div', 'badges'); badges.append(element('span', 'badge category-badge', categoryName(item.category)));
     const tags = itemTags(item).filter((tag) => tag !== categoryName(item.category));
     tags.slice(0, 2).forEach((tag) => badges.append(element('span', 'badge', tag)));
@@ -328,12 +331,13 @@
   }
   function clearSelection() { state.selected.clear(); document.querySelectorAll('.card-select-checkbox').forEach((node) => { node.checked = false; }); document.querySelectorAll('.item-card.selected').forEach((node) => node.classList.remove('selected')); updateSelection(); }
 
-  async function loadItems() {
+  async function loadItems(background = false) {
     const request = ++state.request;
     $('item-grid').setAttribute('aria-busy', 'true');
     try {
       const data = await api(`/api/items?${viewParams()}`);
       if (request !== state.request) return;
+      if (background && workspaceBusy()) return false;
       state.items = Array.isArray(data.items) ? data.items : []; state.total = Number(data.total) || 0;
       const visible = new Set(state.items.map((item) => item.id)); state.selected.forEach((id) => { if (!visible.has(id)) state.selected.delete(id); });
       $('item-grid').replaceChildren(...state.items.map(makeCard)); updateSelection();
@@ -342,16 +346,17 @@
       const filtered = Boolean($('search').value.trim() || $('category-filter').value || $('collection-filter').value);
       $('clear-filters').hidden = !filtered;
       $('empty-title').textContent = filtered ? '換個關鍵字，再找找。' : state.view === 'archived' ? '目前沒有封存資料。' : state.view === 'pinned' ? '把常用的資料，加一顆星。' : state.view === 'unfiled' ? '資料都已經各就各位。' : '這裏準備好，等你的第一份資料。';
-      $('empty-copy').textContent = filtered ? '試試其他名稱、標籤，或清除篩選。' : state.view === 'pinned' ? '按資料卡上的星號，就能在這裏快速找到。' : state.view === 'unfiled' ? '新增後未分配收藏集的資料，會先放在這裏。' : state.view === 'archived' ? '封存的資料仍然保留，可在詳情內還原。' : '加入文件、網站或學習影片，逐步建立公司的資料庫。';
+      $('empty-copy').textContent = filtered ? '試試其他名稱、標籤，或清除篩選。' : state.view === 'pinned' ? '按資料卡上的星號，就能在這裏快速找到。' : state.view === 'unfiled' ? '新增後未分配收藏集的資料，會先放在這裏。' : state.view === 'archived' ? '封存的資料仍然保留，可在詳情內還原。' : '在左側請 AI 保存文件、網站或學習影片，這裡會同步顯示。';
       $('empty-add').hidden = filtered || ['pinned', 'unfiled', 'archived'].includes(state.view);
       $('previous-page').hidden = state.view === 'dashboard' || state.offset === 0;
       $('next-page').hidden = state.view === 'dashboard' || state.offset + PAGE_SIZE >= state.total;
       $('page-label').textContent = state.view !== 'dashboard' && state.total > PAGE_SIZE ? `${state.offset + 1}–${Math.min(state.offset + PAGE_SIZE, state.total)} / ${state.total}` : '';
-    } catch (error) { if (request === state.request) { $('result-count').textContent = '讀取失敗'; notice(error.message, true); } }
+      return true;
+    } catch (error) { if (request === state.request) { $('result-count').textContent = '讀取失敗'; notice(error.message, true); } if (background) throw error; }
     finally { if (request === state.request) $('item-grid').setAttribute('aria-busy', 'false'); }
   }
 
-  function refresh(resetPage = true) { if (resetPage) state.offset = 0; if (['workdays', 'todos'].includes(state.view)) return workdaysUI?.refreshCurrent?.() || Promise.resolve(); return loadItems(); }
+  function refresh(resetPage = true, background = false) { if (resetPage) state.offset = 0; if (['workdays', 'todos'].includes(state.view)) return workdaysUI?.refreshCurrent?.(background) || Promise.resolve(); return loadItems(background); }
   async function refreshAfterWrite() { await Promise.all([loadCollections(), loadInfo()]); await refresh(); if (state.view === 'dashboard') await workdaysUI?.refreshDashboard(); }
 
   function setView(view, collectionId = '') {
@@ -690,8 +695,22 @@
     renderStaticIcons(); populateCategories('category-filter', false, true); populateCategories('link-category', true); populateCategories('detail-category'); populateCategories('collection-icon');
     try { const preferences = JSON.parse(localStorage.getItem('blueprint-backend-display-v1') || '{}'); if (preferences.layout === 'list') state.layout = 'list'; if (['updated', 'created', 'title'].includes(preferences.sort)) state.sort = preferences.sort; } catch { /* Display preference only; company data remains on server. */ }
     applyDisplayPreferences(); $('library-toolbar').hidden = true; $('sort-order').hidden = true; $('page-date').textContent = new Date().toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' });
-    try { await Promise.all([loadInfo(), loadCollections()]); await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]); if (state.profile && !state.profile.configured && !document.querySelector('dialog[open]')) openCompanyProfile(); }
+    try { await Promise.all([loadInfo(), loadCollections()]); await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]);  }
     catch (error) { $('item-grid').setAttribute('aria-busy', 'false'); $('result-count').textContent = '未能連接資料庫'; notice(error.message, true); }
   }
-  init();
+  function workspaceBusy() {
+    return state.busy || state.profileBusy || !!workdaysUI?.isBusy?.() || state.selected.size > 0 ||
+      !!document.querySelector('dialog[open], .workspace-board.editing') ||
+      !!document.activeElement?.matches('textarea, select, input:not([type=checkbox]):not([type=button])');
+  }
+  function startWorkspace() { window.BlueprintWorkspace?.start({
+    isBusy: workspaceBusy,
+    refresh: async () => {
+      await Promise.all([loadInfo(), loadCollections(true)]);
+      if (workspaceBusy()) return false;
+      if (await refresh(false, true) === false) return false;
+      if (state.view === 'dashboard') return workdaysUI?.refreshDashboard(true);
+    }
+  }); }
+  init().then(startWorkspace);
 })();

@@ -35,6 +35,16 @@ the original backend uses library or company/Dockerfile. Sites requires an actua
 compatible backend adaptation; this repository has no ready Sites deployment or
 setup --provider sites. Verify the complete original feature checklist in
 docs/INSTALL.md and report workbench readiness separately from verified AI writes.
+The user now authorizes the V2 source redesign: AI-first entry with manual fallback,
+white/gray notebook grid, the original Blueprint Studio Identity 05 logo, and
+movable/resizable/collapsible dashboard cards. Installers preserve the selected
+version's full functionality. Keep legacy APIs and schema 4 compatible; never
+reinitialize existing installations on update. Follow docs/UPGRADE.md for full
+private backups, same-site/source upgrades, data-preservation checks and rollback.
+The V2 UI package can update a compatible Sites adapter; preserve its authentication,
+API implementation, database, object storage and tool binding. Do not replace it
+with native Python code or create another Site. AI writes use real existing tools;
+UI polling is not permission to read conversations or a simulated AI connection.
 Company profiles and versioned daily-work refinements are in scope. Preserve
 completed todo state and retain history when useful records are edited or noise
 is removed. Cloud bindings must use the authenticated remote API, not another

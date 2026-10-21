@@ -110,7 +110,7 @@ class LibraryHTTPTests(unittest.TestCase):
         self.assertEqual(health["status"], "ok")
         self.assertNotIn("私人研究", json.dumps(health, ensure_ascii=False))
         self.assertNotIn(self.password, json.dumps(health))
-        for path in ("/", "/api/info", "/api/items", "/api/export"):
+        for path in ("/", "/workspace.js", "/brand.svg", "/api/info", "/api/items", "/api/export"):
             with self.subTest(path=path):
                 status, headers, payload = self.request("GET", path, authenticated=False)
                 self.assertEqual(status, 401)
@@ -121,6 +121,15 @@ class LibraryHTTPTests(unittest.TestCase):
         self.assertEqual(status, 401)
         status, _, _ = self.json_request("GET", "/api/info")
         self.assertEqual(status, 200)
+
+    def test_v2_workbench_assets_are_served_with_existing_login(self):
+        for path, marker in (("/", b'/workspace.js'), ("/workspace.js", b'blueprint-workspace-v2'),
+                             ("/brand.svg", b'M50 38V14H14V50H38')):
+            with self.subTest(path=path):
+                status, headers, payload = self.request("GET", path)
+                self.assertEqual(status, 200)
+                self.assertIn(marker, payload)
+                self.assertIn("nosniff", headers.get("X-Content-Type-Options", ""))
 
     def test_writes_require_json_request_marker_and_matching_origin(self):
         item = {"title": "資料測試", "url": "https://example.com/reference",

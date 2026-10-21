@@ -484,7 +484,7 @@
       }
     }
   }
-  async function loadList() {
+  async function loadList(background = false) {
     if (!['workdays', 'todos'].includes(state.view)) return;
     const view = state.view;
     const request = ++state.request;
@@ -497,12 +497,13 @@
     try {
       const data = await deps.api(`/api/${view}?${params}`);
       if (request !== state.request || state.view !== view) return;
+      if (background === true && (document.querySelector('dialog[open]') || state.pending.size || state.saving || state.reloading)) return false;
       const items = view === 'todos' ? data.todos : data.workdays;
       if (!Array.isArray(items)) throw new Error('未能讀取工作清單，請重新載入。');
       state.items = items; state.total = Math.max(0, Number(data.total) || 0);
       $('work-list').replaceChildren(...items.map((item) => view === 'todos' ? todoRow(item, 'list') : workdayCard(item)));
       $('work-result-count').textContent = `共 ${state.total} ${view === 'todos' ? '項待辦' : '份紀錄'}`;
-      const emptyText = $('work-search').value || $('work-date').value ? '找不到符合條件的內容，試試其他關鍵字或日期。' : view === 'todos' ? ($('todo-status').value === '0' ? '目前沒有未完成待辦。' : '目前沒有符合狀態的待辦。') : '還未有工作紀錄。先匯入一次 AI 整理，或自行填寫。';
+      const emptyText = $('work-search').value || $('work-date').value ? '找不到符合條件的內容，試試其他關鍵字或日期。' : view === 'todos' ? ($('todo-status').value === '0' ? '目前沒有未完成待辦。' : '目前沒有符合狀態的待辦。') : '在左側請 AI 整理並保存今天的成果，這裡會同步顯示。';
       ($('work-empty').querySelector('p') || $('work-empty')).textContent = emptyText;
       const emptyHeading = $('work-empty').querySelector('h3');
       if (emptyHeading) emptyHeading.textContent = view === 'todos' ? '下一步，清楚有序。' : '先留下今天值得保存的工作。';
@@ -512,11 +513,13 @@
       $('work-next').disabled = state.offset + items.length >= state.total;
       $('work-prev').hidden = state.offset === 0;
       $('work-next').hidden = state.offset + items.length >= state.total;
+      return true;
     } catch (error) {
       if (request !== state.request || state.view !== view) return;
       $('work-list').replaceChildren(node('p', 'error-text', message(error)), button('重新載入', loadList));
       $('work-result-count').textContent = '未能載入'; $('work-page').textContent = '';
       $('work-empty').hidden = true;
+      if (background === true) throw error;
     } finally { if (request === state.request) $('work-list').removeAttribute('aria-busy'); }
   }
   function setView(view) {
@@ -530,13 +533,14 @@
     $('work-list').replaceChildren(); $('work-result-count').textContent = '正在載入…';
     loadList();
   }
-  async function refreshDashboard() {
+  async function refreshDashboard(background = false) {
     const request = ++state.dashboardRequest;
     const results = await Promise.allSettled([
       deps.api('/api/workdays?limit=3&offset=0'),
       deps.api('/api/todos?done=0&limit=4&offset=0')
     ]);
     if (request !== state.dashboardRequest) return;
+    if (background === true && (document.querySelector('dialog[open]') || state.pending.size || state.saving || state.reloading)) return false;
     const targets = [$('dashboard-workdays'), $('dashboard-todos')];
     results.forEach((result, index) => {
       const target = targets[index];
@@ -547,8 +551,10 @@
       if (!Array.isArray(items)) { target.replaceChildren(node('p', 'error-text', '未能讀取內容，請重新載入。')); return; }
       if (index === 1) state.dashboardTodos = items;
       target.replaceChildren(...items.map((item) => index === 0 ? workdayCard(item, true) : todoRow(item, 'dashboard', true)));
-      if (!items.length) target.append(node('p', 'muted', index === 0 ? '匯入每日工作，把成果和下一步留低。' : '目前沒有未完成待辦。'));
+      if (!items.length) target.append(node('p', 'muted', index === 0 ? '請左側 AI 保存今天的成果與下一步。' : '目前沒有未完成待辦。'));
     });
+    if (background === true && results.some((result, index) => result.status === 'rejected' || !Array.isArray(index === 0 ? result.value.workdays : result.value.todos))) throw new Error('工作紀錄暫時未能同步。');
+    return true;
   }
   function renderReport() {
     const report = state.report;
@@ -704,5 +710,5 @@
     });
   }
 
-  window.BlueprintWorkdays = { init, setView, refreshDashboard, refreshCurrent: loadList, openImport, openReport, invalidateInstructions, isBusy: () => state.saving || state.reloading };
+  window.BlueprintWorkdays = { init, setView, refreshDashboard, refreshCurrent: loadList, openImport, openReport, invalidateInstructions, isBusy: () => state.saving || state.reloading || state.pending.size > 0 };
 })();
