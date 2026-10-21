@@ -191,7 +191,7 @@
   async function loadInfo() {
     const info = await api('/api/info');
     document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
-    $('version').textContent = '工作台 v2.2.0';
+    $('version').textContent = '工作台 v2.3.0';
     $('version').title = info.version ? `後台 API v${info.version}` : '';
     document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = Number(info.stats?.[node.dataset.count]) || 0; });
     if (info.company_profile) applyCompanyProfile(info.company_profile);
@@ -368,6 +368,8 @@
     $('page-title').replaceChildren(document.createTextNode(title), element('span', 'title-dot', '.'));
     $('breadcrumb-current').textContent = title; $('page-description').textContent = description; $('page-eyebrow').textContent = eyebrow;
     const workView = ['workdays', 'todos'].includes(view);
+    $('view-heading').hidden = view === 'dashboard';
+    $(view === 'dashboard' ? 'dashboard-library-slot' : 'library-view-slot').append($('library-panel'));
     $('dashboard-panel').hidden = view !== 'dashboard'; $('library-toolbar').hidden = view === 'dashboard'; $('library-panel').hidden = workView; $('workdays-panel').hidden = !workView;
     $('work-panel-title').textContent = view === 'todos' ? '待辦清單' : '工作紀錄';
     $('library-heading').textContent = view === 'dashboard' ? '最近更新' : view === 'collection' ? '收藏集內容' : '所有資料';
@@ -695,6 +697,7 @@
     workdaysUI?.setView('dashboard');
     renderStaticIcons(); populateCategories('category-filter', false, true); populateCategories('link-category', true); populateCategories('detail-category'); populateCategories('collection-icon');
     try { const preferences = JSON.parse(localStorage.getItem('blueprint-backend-display-v1') || '{}'); if (preferences.layout === 'list') state.layout = 'list'; if (['updated', 'created', 'title'].includes(preferences.sort)) state.sort = preferences.sort; } catch { /* Display preference only; company data remains on server. */ }
+    $('dashboard-library-slot').append($('library-panel'));
     applyDisplayPreferences(); $('library-toolbar').hidden = true; $('sort-order').hidden = true; $('page-date').textContent = new Date().toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' });
     try { await Promise.all([loadInfo(), loadCollections()]); await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]);  }
     catch (error) { $('item-grid').setAttribute('aria-busy', 'false'); $('result-count').textContent = '未能連接資料庫'; notice(error.message, true); }

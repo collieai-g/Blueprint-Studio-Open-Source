@@ -1,4 +1,4 @@
-請幫我安裝或升級到 Blueprint Studio Open Source V2.2（2.2.0），建立並接通我自己的完整原版藍圖工作台。
+請幫我安裝或升級到 Blueprint Studio Open Source V2.3（2.3.0），建立並接通我自己的完整原版藍圖工作台。
 公開工具：
 https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
@@ -8,7 +8,7 @@ https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
 雲端：跟 docs/INSTALL_CLOUD.md，協助沿用或註冊所需帳戶；直接部署原版可沿用公開來源，需要私人修改時準備完整的私人 GitHub 倉庫，使用 Codex 雲端時協助授權及接入環境。需要我登入、驗證或按 Publish 時，給我確切下一步。環境 Publish／Republish 後繼續正式網站部署，直到有 HTTPS 工作台及持久儲存。按我的選擇使用 Render、Railway、自己的主機或 Sites。Sites 目前需要實際後台適配，公開倉庫未提供一鍵 Sites 部署；不能把 Python Docker 當作可直接部署到 Sites。
 
-完整沿用 library_web/ 和 assets/icons/ 的原版介面、導覽及所有既有功能，不要另生成排版、簡化功能或用臨時示範代替。平台適配以後台、登入和儲存為主。依 docs/INSTALL.md 逐項驗收原版功能，保存一筆工作及待辦並重啟後查回，再交付真實網址、資料位置和下次開啟方法；未驗證部分明確標示。
+完整沿用 library_web/ 和 assets/icons/ 的原版介面、導覽及所有既有功能，不要另生成排版、簡化功能或用臨時示範代替。平台適配以後台、登入和儲存為主。依 docs/INSTALL.md 及 docs/LAYOUT.md 驗收原版功能、無框文字排版及最多三頁的方格版面，保存一筆工作及待辦並重啟後查回，再交付真實網址、資料位置和下次開啟方法；未驗證部分明確標示。
 
 公司資料及安裝計劃放到程式專案以外的私人位置，由你維護 INSTALL_PROGRESS.md，換對話也能接續。setup 只產生計劃，已有公司資料不可重設。有工具就完成已授權的工作；普通聊天沒有工具時提供當前一步操作及有效公司 JSON 交接。涉及未授權收費先核對費用；密碼和金鑰只在平台秘密設定或本機安全輸入，不貼聊天。
 

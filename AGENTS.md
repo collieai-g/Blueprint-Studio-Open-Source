@@ -66,6 +66,16 @@ platform configuration for network changes. Guide necessary user login/actions,
 then finish one real user task. No database reinitialization or schema change.
 Installed plugins, tool discovery and a visible workbench are separate from a
 verified write/readback. Check the actual tools loaded in the current chat.
+V2.3 authorizes grid-aligned personalized layout of all dashboard modules.
+Titles, subtitles and dates are borderless transparent text, including two/four-cell
+sizes. Show their boundaries and layout controls only in edit mode. Content modules
+retain cards and usable minimum sizes. Use clear standard written Chinese suitable
+for an eleven-year-old reader without childish wording. Preserve the original logo,
+white/gray design and pale 24px grid. Pages extend down only on an explicit add-page
+click, maximum three. Keep browser preference key blueprint-workspace-v2; back up
+legacy preferences before first save. Responsive viewing must not overwrite layout.
+See docs/LAYOUT.md; verify geometry and real browser navigation, persistence and
+migration with tests/test_workspace.cjs and tests/check_layout_browser.py.
 Company profiles and versioned daily-work refinements are in scope. Preserve
 completed todo state and retain history when useful records are edited or noise
 is removed. Cloud bindings must use the authenticated remote API, not another

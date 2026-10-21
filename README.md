@@ -6,22 +6,22 @@
 說一句「今日收工」，由你接入的 AI 整合成果、決定、參考與待辦，留下有用內容，逐步累積及修整。
 目前已提供公司設定、文件整理、資料收藏及每日工作；其他功能可按需要擴充。
 
-[下載 V2.2 完整安裝包](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/download/v2.2.0/blueprint-studio-v2.2.0-installer.zip) · [最簡單的 AI 安裝入口](START_HERE.md) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
+[下載 V2.3 完整安裝包](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/download/v2.3.0/blueprint-studio-v2.3.0-installer.zip) · [最簡單的 AI 安裝入口](START_HERE.md) · [安裝指引](docs/INSTALL.md) · [更新紀錄](CHANGELOG.md)
 
-## 已安裝舊版本？升級到 V2.2
+## 已安裝舊版本？升級到 V2.3
 
-**[複製保留資料的升級指令](docs/UPGRADE.md)**，貼到你現有工作台的 Codex 對話。
+**[複製保留資料的升級指令](docs/UPGRADE.md)**，貼到你現有工作台的 AI 對話。
 AI 先備份，再更新同一個網站／本機服務，保留公司資料、附件、登入、待辦及歷史。
 Sites 有獨立的介面更新包及接駁步驟；不需要重新建立工作台。
 
-V2.2 已內置 AI 接駁中心、21 個通用 MCP 工具、每個新對話的工作規則及真實讀寫驗收，供 Codex、Claude、Gemini 及其他相容客戶端連接同一個後台。
-V2 使用白色淡格線背景、原版公司 logo 與可按格仔拖動、縮放、收起的卡片。
+V2.3 已內置 AI 接駁中心、21 個通用 MCP 工具、每個新對話的工作規則及真實讀寫驗收，供 Codex、Claude、Gemini 及其他相容客戶端連接同一個後台。
+V2.3 保留白色淡格線與原版公司 logo。標題、說明、日期都是可移動的無框文字；文件庫等卡片也可沿同一套方格移動和調整大小。平時只顯示內容，按「調整排版」才顯示工具。底部可增加版面，最多三頁。[查看排版說明](docs/LAYOUT.md)。
 預設由已連接 AI 填入工作內容，工作台自動同步；搜尋、上載、勾選待辦及手動備用操作仍然保留。
 [不同 AI 的 MCP 接駁](docs/AI_CONNECTION.md) · [AI 工作方式](docs/AI_WORKSPACE.md) · [升級與回復](docs/UPGRADE.md)
 
 工作台內置 [AI 接駁中心](docs/CONNECT.md)，會帶你處理授權、工具載入及網絡卡點，按實際讀寫結果顯示進度，再完成第一項工作。
 
-![V2.2 AI 接駁中心](artifacts/connection-v2.2-desktop.png)
+![V2.2 AI 接駁中心，V2.3 沿用](artifacts/connection-v2.2-desktop.png)
 
 以上為本機測試資料；正式工作台會顯示你的實際網址及測試結果。
 
@@ -31,7 +31,7 @@ V2 使用白色淡格線背景、原版公司 logo 與可按格仔拖動、縮�
 一般聊天 AI 亦可按同一份指引，帶你逐步操作。
 
 ```text
-請幫我安裝或升級到 Blueprint Studio Open Source V2.2（2.2.0），建立並接通我自己的完整原版藍圖工作台。
+請幫我安裝或升級到 Blueprint Studio Open Source V2.3（2.3.0），建立並接通我自己的完整原版藍圖工作台。
 公開工具：
 https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
@@ -41,7 +41,7 @@ https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
 雲端：跟 docs/INSTALL_CLOUD.md，協助沿用或註冊所需帳戶；直接部署原版可沿用公開來源，需要私人修改時準備完整的私人 GitHub 倉庫，使用 Codex 雲端時協助授權及接入環境。需要我登入、驗證或按 Publish 時，給我確切下一步。環境 Publish／Republish 後繼續正式網站部署，直到有 HTTPS 工作台及持久儲存。按我的選擇使用 Render、Railway、自己的主機或 Sites。Sites 目前需要實際後台適配，公開倉庫未提供一鍵 Sites 部署；不能把 Python Docker 當作可直接部署到 Sites。
 
-完整沿用 library_web/ 和 assets/icons/ 的原版介面、導覽及所有既有功能，不要另生成排版、簡化功能或用臨時示範代替。平台適配以後台、登入和儲存為主。依 docs/INSTALL.md 逐項驗收原版功能，保存一筆工作及待辦並重啟後查回，再交付真實網址、資料位置和下次開啟方法；未驗證部分明確標示。
+完整沿用 library_web/ 和 assets/icons/ 的原版介面、導覽及所有既有功能，不要另生成排版、簡化功能或用臨時示範代替。平台適配以後台、登入和儲存為主。依 docs/INSTALL.md 及 docs/LAYOUT.md 驗收原版功能、無框文字排版及最多三頁的方格版面，保存一筆工作及待辦並重啟後查回，再交付真實網址、資料位置和下次開啟方法；未驗證部分明確標示。
 
 公司資料及安裝計劃放到程式專案以外的私人位置，由你維護 INSTALL_PROGRESS.md，換對話也能接續。setup 只產生計劃，已有公司資料不可重設。有工具就完成已授權的工作；普通聊天沒有工具時提供當前一步操作及有效公司 JSON 交接。涉及未授權收費先核對費用；密碼和金鑰只在平台秘密設定或本機安全輸入，不貼聊天。
 
@@ -82,9 +82,9 @@ AI 整理目前可見或你明確提供的對話；工具不會自行讀取各�
 - **資料收藏**：保存網站、UI 參考、YouTube 與學習筆記。
 - **工作管理**：每日紀錄、版本歷史、待辦、星號及快捷搜尋。
 
-![V2 公司後台介面](artifacts/backend-v2-desktop.png)
+![V2.3 工作台：無框文字與方格排版](artifacts/layout-v2.3-desktop.png)
 
-以上使用示範資料。[V2 手機介面](artifacts/backend-v2-mobile.png)。公司設定、每日工作及歷史操作完整保留。
+以上使用示範資料。[V2.3 手機介面](artifacts/layout-v2.3-mobile.png)。公司設定、每日工作及歷史操作完整保留。
 分類目前使用本機規則；收藏網址未有自動讀取網頁全文或影片字幕。
 
 ## 更新工具
@@ -97,6 +97,6 @@ AI 整理目前可見或你明確提供的對話；工具不會自行讀取各�
 
 ## 開源與參與
 
-目前版本 **2.2.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
+目前版本 **2.3.0**。程式碼、文件及自製圖示採用 [MIT 授權](LICENSE)，可以使用、修改及分享。
 歡迎提交 [Issues](https://github.com/collieai-g/Blueprint-Studio-Open-Source/issues) 或 Pull Request。
 [更新紀錄](CHANGELOG.md) · [驗證紀錄](VALIDATION.md)

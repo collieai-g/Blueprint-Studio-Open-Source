@@ -11,7 +11,7 @@ FILES = ['library_web/index.html', 'library_web/style.css', 'library_web/app.js'
          'library_web/workdays.js', 'library_web/workspace.js', 'library_web/brand.svg',
          'library_web/connection.js', 'library_web/connection-guide.json',
          'integrations/mcp/tools.json', 'integrations/mcp/sites.mjs', 'integrations/mcp/connection.mjs',
-         'docs/CONNECT.md', 'docs/AI_CONNECTION.md', 'docs/UPGRADE.md']
+         'docs/CONNECT.md', 'docs/AI_CONNECTION.md', 'docs/UPGRADE.md', 'docs/LAYOUT.md']
 
 
 def main():
@@ -20,14 +20,14 @@ def main():
     args = parser.parse_args()
     output = Path(args.output).expanduser().absolute()
     paths = FILES + sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / 'assets/icons').glob('*.svg'))
-    manifest = {'product': 'Blueprint Studio Open Source', 'version': '2.2.0', 'database_schema': 4,
+    manifest = {'product': 'Blueprint Studio Open Source', 'version': '2.3.0', 'database_schema': 4,
                 'database_migration': 'none', 'requires': 'Existing authenticated Blueprint API; Sites adapters must preserve their current auth and storage.',
                 'mcp_adapter': 'Integrate with the existing verified platform identity and API; see docs/AI_CONNECTION.md.',
                 'files': {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in paths}}
     with zipfile.ZipFile(output, 'x', compression=zipfile.ZIP_DEFLATED) as archive:
         for name in paths: archive.write(ROOT / name, name)
         archive.writestr('workbench-release.json', json.dumps(manifest, indent=2) + '\n')
-    print(json.dumps({'archive': str(output), 'version': '2.2.0', 'files': len(paths)}, ensure_ascii=False))
+    print(json.dumps({'archive': str(output), 'version': '2.3.0', 'files': len(paths)}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

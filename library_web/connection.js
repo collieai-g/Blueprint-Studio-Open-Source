@@ -28,10 +28,10 @@
       ? '這是 Sites 工作台。先用 Sites get_site(include_mcp_connection=true) 讀取同一網站真正的 plugin_id、mcp_url 及 oauth_resource；不可猜 ID。沿用平台登入，選用該外掛並確認目前對話載入工具。其他客戶端先驗證遠端 MCP 及平台 OAuth 相容；不能套用原生 Basic 帳密。'
       : '這是原生後台。沿用原帳號，在 AI 實際執行環境建立專用 Python venv 並安裝 requirements-mcp.txt，以 blueprint.py mcp-config 產生及合併客戶端設定。秘密只在安全環境填入 BLUEPRINT_BACKEND_USERNAME／BLUEPRINT_BACKEND_PASSWORD。先執行 mcp --url 實際網址 --check，再載入目前對話的 MCP 工具。本機與遠端的 localhost 必須分清。';
     return [
-      '請帶我完成 Blueprint Studio Open Source V2.2 的 AI 接駁，直到真正在同一個工作台使用。',
+      '請帶我完成 Blueprint Studio Open Source V2.3 的 AI 接駁，直到真正在同一個工作台使用。',
       '現有工作台：' + site, 'AI 客戶端：' + session.client,
-      '先讀 https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.2.0/docs/CONNECT.md 及 docs/AI_CONNECTION.md。',
-      '先檢查已有安裝與資料；未到 2.2.0 時先按 docs/UPGRADE.md 備份並升級同一網站，不重建或重設資料庫。完整保留原版介面。',
+      '先讀 https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.3.0/docs/CONNECT.md 及 docs/AI_CONNECTION.md。',
+      '先檢查已有安裝與資料；未到 2.3.0 時先按 docs/UPGRADE.md 備份並升級同一網站，不重建或重設資料庫。完整保留原版介面。',
       setup, guide.clients[clientKey][route],
       '需要我登入、授權或按平台按鈕時，只交代當前入口、動作及成功標誌，完成後繼續。已安裝不代表對話工具已載入。',
       '若雲端直接連線受阻，查看目前生效的網域允許清單，經平台設定加入 ' + url.hostname + '；保持代理與 TLS。平台外掛與執行環境 HTTP 分開診斷，不繞過規則。',
@@ -135,7 +135,7 @@
       } catch (e) {
         ++request; guide = null; backend = null; render(null); $('connection-prompt').value = '';
         $('connection-copy').disabled = $('connection-download').disabled = true;
-        error('接駁中心未完整載入：' + e.message + ' 請按 docs/UPGRADE.md 更新同一網站全部 V2.2 資產，再重開接駁中心。');
+        error('接駁中心未完整載入：' + e.message + ' 請按 docs/UPGRADE.md 更新同一網站全部 V2.3 資產，再重開接駁中心。');
       }
     }
     async function copy(text) {

@@ -27,7 +27,7 @@ _WORKSPACE_NAME = "藍圖工作室 Blueprint Studio"
 def installation_instruction() -> str:
     """Return a portable prompt usable by an equipped AI or a plain chat."""
     return (
-        "請幫我安裝或升級到 Blueprint Studio Open Source V2.2（2.2.0），建立並接通我自己的完整原版藍圖工作台。\n"
+        "請幫我安裝或升級到 Blueprint Studio Open Source V2.3（2.3.0），建立並接通我自己的完整原版藍圖工作台。\n"
         "公開工具：\n"
         f"{_REPOSITORY}\n\n"
         "先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台先按 docs/UPGRADE.md 備份並升級同一服務。檢查現有安裝和工具權限，保留已有資料、"
@@ -44,7 +44,7 @@ def installation_instruction() -> str:
         "公開倉庫未提供一鍵 Sites 部署；不能把 Python Docker 當作可直接部署到 Sites。\n\n"
         "完整沿用 library_web/ 和 assets/icons/ 的原版介面、導覽及所有既有功能，"
         "不要另生成排版、簡化功能或用臨時示範代替。平台適配以後台、登入和儲存為主。"
-        "依 docs/INSTALL.md 逐項驗收原版功能，保存一筆工作及待辦並重啟後查回，"
+        "依 docs/INSTALL.md 及 docs/LAYOUT.md 驗收原版功能、無框文字排版及最多三頁的方格版面，保存一筆工作及待辦並重啟後查回，"
         "再交付真實網址、資料位置和下次開啟方法；未驗證部分明確標示。\n\n"
         "公司資料及安裝計劃放到程式專案以外的私人位置，由你維護 INSTALL_PROGRESS.md，"
         "換對話也能接續。setup 只產生計劃，已有公司資料不可重設。"

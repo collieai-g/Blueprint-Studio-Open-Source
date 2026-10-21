@@ -2,7 +2,7 @@
 
 [安裝指南](INSTALL.md) · [保留資料升級](UPGRADE.md) · [AI 工作方式](AI_WORKSPACE.md)
 
-**V2.2（2.2.0）加入真正的 MCP 工具層。** 模型理解你的要求，由 AI 客戶端呼叫已授權工具，工具將內容存入原來的後台；右側 V2 工作台再同步顯示結果。不是把對話文字自動當成資料，也不是只供 Codex 使用。
+**V2.3（2.3.0）沿用真正的 MCP 工具層及內置接駁中心。** 模型理解你的要求，由 AI 客戶端呼叫已授權工具，工具將內容存入原來的後台；右側 V2 工作台再同步顯示結果。不是把對話文字自動當成資料，也不是只供 Codex 使用。
 
 ```text
 Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
@@ -16,7 +16,7 @@ Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
 
 模型名稱不決定連接能力：必須使用可安裝 MCP 工具的 AI 客戶端及允許該功能的帳戶。普通聊天頁若沒有工具功能，不能僅靠一段提示詞取得寫入權限。原生版與 Sites 有不同登入方式，按以下路線接駁。
 
-## V2.2 先從內置接駁中心開始
+## V2.3 先從內置接駁中心開始
 
 安裝完成後開啟工作台「AI 接駁中心」，按 [CONNECT.md](CONNECT.md) 由選擇客戶端、複製接駁指令、處理卡點一路完成驗收及第一項真實工作。下方技術步驟由安裝 AI 執行，不要求使用者自行拼接設定。
 
@@ -101,7 +101,7 @@ import catalog from './mcp/tools.json' with { type: 'json' };
 
 const mcp = createMcpHandler({
   tools: catalog.tools,
-  version: '2.2.0',
+  version: '2.3.0',
   authorize: (request, env) => requireVerifiedPlatformUser(request, env),
   dispatch: (request, env) => existingAuthenticatedApi.fetch(request, env)
 });

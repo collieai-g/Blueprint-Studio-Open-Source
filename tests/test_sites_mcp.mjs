@@ -93,7 +93,7 @@ test('guided acceptance uses existing API, resumes partial writes and keeps clie
     }
     return Response.json({ error: 'missing' }, { status: 404 });
   };
-  const handler = createMcpHandler({ tools, authorize, version: '2.2.0', dispatch });
+  const handler = createMcpHandler({ tools, authorize, version: '2.3.0', dispatch });
   const args = { challenge: 'd'.repeat(32), client: 'Codex', date: '2026-10-21' };
   const call = async value => (await (await handler(request(rpc('verify_connection', value)), {})).json()).result;
   const first = await call(args);
@@ -115,7 +115,7 @@ test('guided acceptance uses existing API, resumes partial writes and keeps clie
   records.get(resumed.structuredContent.workday_id).summary = 'User edited';
   assert.equal((await call(args)).isError, true);
   assert.equal(records.get(resumed.structuredContent.workday_id).summary, 'User edited');
-  const readonly = createMcpHandler({ tools, authorize, readOnly: true, version: '2.2.0', dispatch });
+  const readonly = createMcpHandler({ tools, authorize, readOnly: true, version: '2.3.0', dispatch });
   assert.equal((await (await readonly(request(rpc('verify_connection', args)), {})).json()).result.isError, true);
   assert.equal(records.size, 2);
 });

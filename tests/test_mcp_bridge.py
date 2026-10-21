@@ -92,7 +92,7 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
         for source in ['Codex', 'Claude Code', 'Gemini CLI']:
             async def work(client):
                 guide = await self.call(client, 'connection_guide', {})
-                self.assertEqual(guide['version'], '2.2.0')
+                self.assertEqual(guide['version'], '2.3.0')
                 self.assertIn('network', guide['troubleshooting'])
                 args = {'challenge': 'a' * 32, 'client': source, 'date': '2026-10-21'}
                 first = await self.call(client, 'verify_connection', args)
