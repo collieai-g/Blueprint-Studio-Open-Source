@@ -26,6 +26,8 @@ Blueprint Studio is an open-source AI workspace for running a company’s daily 
 
 In AI apps that support a split view, chat on the left and view your workspace on the right. You can also open it in a separate browser tab. **AI understands and organizes the work. The workspace stores it and makes it visible.**
 
+A new route under development uses a [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) to keep company data and backups independently manageable while retaining the original UI and MCP entrypoint. Adapter source and isolated tests are included; live hosting and platform acceptance remain installation work. The [FastGPT architecture study](docs/ARCHITECTURE_LEARNING.md) and [customer-service Agent roadmap](docs/AGENT_ROADMAP.md) distinguish implemented foundations from future work. An autonomous customer-service executor is not included.
+
 ## Two instructions: install once, update whenever needed
 
 **V2.5 prepares for the next update during installation.** The native local/cloud backend creates complete backups and rehearses restoration and migration before first startup or changed code. It also backs up periodically while running. Owners can download a private ZIP containing the database, login settings and original attachments from the update assistant. Installation includes a real download and authenticated restore check, restart persistence, and a supported redeployment route. [Lifecycle guide and limits](docs/NATIVE_LIFECYCLE.md).

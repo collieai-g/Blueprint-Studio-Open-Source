@@ -60,6 +60,30 @@ class UpdateAssistantTests(unittest.TestCase):
                                       'origin': 'https://another.example', 'preferences': {}}))
         with self.assertRaises(ValueError): update.prepare(self.project, self.root / 'other-job', 'https://work.example', handoff=browser)
 
+    def test_gateway_handoff_keeps_native_backend_and_rejects_silent_rebinding(self):
+        (self.project / '.openai').mkdir()
+        (self.project / '.openai/hosting.json').write_text('{"project_id":"original-site"}')
+        browser = self.root / 'browser.json'
+        data = {'format': 'blueprint-update-handoff', 'format_version': 1,
+                'origin': 'https://work.example', 'preferences': {}, 'route': 'sites',
+                'deployment_mode': 'sites_native', 'backend_origin': 'https://data.example',
+                'gateway_version': '1.0.0', 'password': 'must-not-copy'}
+        browser.write_text(json.dumps(data))
+        self.prepare(handoff=browser)
+        job = update.load_job(self.job)
+        self.assertEqual(job['backend_origin'], data['backend_origin'])
+        self.assertNotIn('password', job)
+        report = update.assess(job, {})
+        diagnosis = next(c for c in report['checks'] if c['code'] == 'data_backend')
+        self.assertEqual(diagnosis['state'], 'not_verified')
+        self.assertIn('不等待 Sites D1', diagnosis['message'])
+        data['backend_origin'] = 'https://another.example'
+        browser.write_text(json.dumps(data))
+        with self.assertRaises(ValueError): self.prepare(handoff=browser)
+        data['backend_origin'] = data['origin']
+        browser.write_text(json.dumps(data))
+        with self.assertRaises(ValueError): update.handoff_data(browser)
+
     def test_pack_and_unpack_keep_baseline_and_uncommitted_candidate_and_can_resume_again(self):
         self.prepare()
         (self.project / 'blueprint.py').write_text('# Candidate, not deployed\n')

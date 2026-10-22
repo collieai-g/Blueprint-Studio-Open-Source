@@ -32,3 +32,14 @@ test('invalid URL and broken stored JSON do not produce a misleading handoff', (
   assert.throws(() => handoff('https://user:password@studio.example', {}, storage(), 'sites'));
   assert.throws(() => handoff(site, {}, storage({ 'blueprint-workspace-v2': 'broken' }), 'native'));
 });
+test('Sites gateway handoff preserves the real data backend without copying private server fields', () => {
+  const data = handoff(site, { deployment_mode: 'sites_native', backend_origin: 'https://data.example',
+    gateway_version: '1.0.0', version: '2.6.0', password: 'not-exported' }, storage(), 'sites');
+  assert.equal(data.backend_origin, 'https://data.example');
+  assert.ok(prompt(data).includes('SITES_NATIVE_GATEWAY.md'));
+  assert.ok(prompt(data).includes('資料後台：https://data.example'));
+  assert.ok(!JSON.stringify(data).includes('not-exported'));
+  assert.throws(() => validate({ ...data, backend_origin: site }, site));
+  assert.throws(() => validate({ ...data, backend_origin: 'https://user:secret@data.example' }, site));
+  assert.throws(() => validate({ ...data, route: 'native' }, site));
+});

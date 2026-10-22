@@ -16,11 +16,17 @@
       if (value !== null) JSON.parse(value);
       preferences[key] = value;
     }
-    return { format: 'blueprint-update-handoff', format_version: 1, origin: origin(site),
+    const deployment = info.deployment_mode === 'sites_native' ? {
+      deployment_mode: 'sites_native', backend_origin: origin(info.backend_origin),
+      gateway_version: String(info.gateway_version || '待核對').slice(0, 80)
+    } : {};
+    const result = { format: 'blueprint-update-handoff', format_version: 1, origin: origin(site),
       version: String(info.version || '待核對').slice(0, 80),
       route: ['native', 'sites'].includes(route) ? route : 'unknown',
+      ...deployment,
       created_at: new Date().toISOString(), preferences,
       scope: '只有目前瀏覽器的排版與顯示偏好；不包含伺服器資料、附件或登入。' };
+    return validate(result, site);
   }
   function validate(data, site) {
     if (!data || data.format !== 'blueprint-update-handoff' || data.format_version !== 1 || data.origin !== origin(site) ||
@@ -32,6 +38,9 @@
         JSON.parse(value);
       }
     }
+    if (data.deployment_mode !== undefined && (data.deployment_mode !== 'sites_native' || data.route !== 'sites' ||
+        origin(data.backend_origin) !== data.backend_origin || !data.backend_origin.startsWith('https://') ||
+        data.backend_origin === data.origin)) throw new Error('請核對 Sites 入口與獨立原生後台，保留 Sites 接駁方式。');
     return data;
   }
   function restore(data, site, storage) {
@@ -54,6 +63,10 @@
       '請使用藍圖工作台更新助手，將我的原工作台更新至最新正式版本，保留原網址、資料、登入及自訂內容。',
       '現有工作台：' + data.origin,
       '目前後台回報版本：' + data.version + '；安裝方式：' + data.route,
+      ...(data.deployment_mode === 'sites_native' ? [
+        '這是 Sites 入口配原生後台；資料後台：' + data.backend_origin + '；接駁版本：' + data.gateway_version,
+        '先讀 docs/SITES_NATIVE_GATEWAY.md。備份及更新資料後台，保留原生持久磁碟；只有接駁程式或工具合約改變才更新 Sites。不要把這個入口當成 D1／R2 公司資料庫，也不要改回舊 Sites。能力檢查與正式備份、部署驗收分開核對。'
+      ] : []),
       '先讀 ' + REPOSITORY + '/blob/main/UPDATE_AI.txt 及 docs/UPDATE_ASSISTANT.md；選定確切正式版本。',
       '沿用已有私人接續包與安裝紀錄；不要重新開始或另建網站。由你執行工具、保存來源與備份、核對環境並完成原站升級。',
       '開源倉庫只保存通用程式，不能放入我的私人來源、資料、設定、聊天或接續包。跨環境前按 docs/SOURCE_CHECKPOINT.md，把已檢查的候選來源保存至獨立私人倉庫，下載核對後才標示可接續；目前環境內的 ZIP 不等於已交接。',

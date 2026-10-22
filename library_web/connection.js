@@ -130,7 +130,7 @@
         guide = await api('/connection-guide.json');
         if (guide.format !== 1 || !Array.isArray(guide.rules) || !guide.clients) throw new Error('接駁指引格式不相容，請完整升級網站。');
         backend = await api('/api/info');
-        if (!$('connection-route').value && backend.connection_mode === 'native') $('connection-route').value = 'native';
+        if (['native', 'sites'].includes(backend.connection_mode)) $('connection-route').value = backend.connection_mode;
         update(); await check();
       } catch (e) {
         ++request; guide = null; backend = null; render(null); $('connection-prompt').value = '';

@@ -253,6 +253,9 @@ class LibraryHandler(BaseHTTPRequestHandler):
             return
         if method in {"POST", "PATCH"}:
             self._write_allowed()
+        if method == 'GET' and path == '/api/runtime':
+            from .runtime import runtime_contract
+            return self._json(runtime_contract(managed=self.server.maintenance is not None))
         if path.startswith('/api/maintenance'):
             if self.identity.get('role') != 'owner':
                 raise LibraryError('只有工作台擁有人可以管理完整備份。', 403)
