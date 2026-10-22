@@ -191,7 +191,7 @@
   async function loadInfo() {
     const info = await api('/api/info');
     document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
-    $('version').textContent = '工作台 v2.4.1';
+    $('version').textContent = '工作台 v2.4.2';
     $('version').title = info.version ? `後台 API v${info.version}` : '';
     document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = Number(info.stats?.[node.dataset.count]) || 0; });
     if (info.company_profile) applyCompanyProfile(info.company_profile);

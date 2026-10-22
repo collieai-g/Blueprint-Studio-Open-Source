@@ -327,7 +327,9 @@ def pack(directory, output, project=None):
                 archive.write(directory / name, name)
             archive.writestr('resume-manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2))
     return {'status': 'private_resume_package_created', 'archive': str(output),
-            'files': len(files), 'sha256': checksum(output), 'production_status': 'not_verified'}
+            'files': len(files), 'sha256': checksum(output), 'production_status': 'not_verified',
+            'cross_environment_ready': False,
+            'next': 'ZIP 仍只在目前環境。先在獨立私人位置保存並實際取回核對；來源可用 source_checkpoint.py，完整資料備份另存。'}
 
 
 def unpack(archive_path, output):

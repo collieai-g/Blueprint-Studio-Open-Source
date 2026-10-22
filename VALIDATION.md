@@ -1,3 +1,18 @@
+# v2.4.2 驗證紀錄
+
+驗證日期：2026-10-22（香港）。只使用臨時虛構測試資料；沒有上傳私人工作台來源，也沒有改動正式 Site。
+
+- Python 3.12：194 個測試通過。新增 8 個來源接續測試，使用真實 Git／ZIP 與 GitHub API 替身，涵蓋新環境還原、未提交修改／刪除、二進位檔與執行權限、確切提交、公開倉庫拒絕、身份不符、私人檔案拒絕、失敗讀回不產生成功收據、既有分支與目錄不覆寫、損壞／不安全來源拒絕。
+- Node 24.19：5 個測試檔通過（packager、workspace、Sites MCP、connection、update）。修改的 JavaScript 語法檢查及既有離線網頁建置通過。
+- 更新助手 Chromium／真實 HTTP 驗收通過：登入後版本／指令、私人偏好備份、同站還原、手機、失敗讀取及原公司資料不變。
+- 安裝指令與 README 內嵌文字同步，完整安裝包要求包含來源檢查點工具與指南。介面樣式及資料 schema 沒有改動。
+- 遠端 GitHub 保存使用現有 gh 認證；本地 API 替身測試不等於真實私人倉庫已保存。GitHub 外掛路線依指南使用實際可用工具並完整下載核對，不能手工偽造成功收據。
+- 本機測試不證明私人安裝已恢復來源、完成正式附件備份、部署或目前對話工具載入；這些須在各自的私人安裝流程繼續驗收。
+
+重做：`python -m unittest discover -s tests -v`、`node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_connection.cjs tests/test_update.cjs`、`python tests/check_update_browser.py`。
+
+以下保留舊版本驗證紀錄。
+
 # v2.4.1 驗證紀錄
 
 驗證日期：2026-10-21。使用外部臨時資料，沒有部署私人正式 Site。

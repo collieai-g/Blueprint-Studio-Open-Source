@@ -131,3 +131,15 @@ production acceptance. The helper performs no deployment and has no generic Site
 backend or R2 backup. Missing historical scripts require checking the current
 Sites skill/workflow, not declaring every publishing route unavailable.
 Never put private handoffs, source bundles, data backups or tool credentials here.
+
+V2.4.2 adds tools/source_checkpoint.py and docs/SOURCE_CHECKPOINT.md. The public
+repository must remain a clean, reusable product: never save private workbench
+source, conversations, data, deployment settings, progress or handoffs here.
+Use a separately verified private repository explicitly selected for source-only
+checkpoints; never default to the current checkout's remote. Review contents,
+exclude secrets/data/platform settings and keep production backups elsewhere.
+Save a new checkpoint branch, read back the pinned remote commit and verify it
+before declaring cross-environment source handoff ready. A local ZIP is not a
+durable handoff. Do not confuse source recovery with deployment, attachment backup
+or loaded MCP tools. When old source exists only in an inaccessible old environment,
+state the boundary and provide one old-chat save instruction; do not claim recovery.

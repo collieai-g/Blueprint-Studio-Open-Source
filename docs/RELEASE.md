@@ -1,13 +1,11 @@
-# V2.4.1：減少更新時的重複操作
+# V2.4.2：跨環境保存候選來源，保持開源倉庫乾淨
 
-新增「偏好設定 → 更新助手」：自動讀取原工作台網址與版本、保留瀏覽器排版，提供更新指令、私人接續資料及同站排版還原，沿用 V2.4 的白色淡方格風格。
+V2.4.1 的接續 ZIP 仍留在原環境，換對話後可能無法取得。新增 `tools/source_checkpoint.py`：把經檢查的來源工作樹保存到另外核實的私人 GitHub 倉庫，再按確切 commit 下載及逐檔核對，才標記來源可接續。保留未提交修改、刪除效果及執行權限；不覆寫原分支或現有工作台。
 
-新增 tools/update_assistant.py：保存 Git 歷史與未提交來源、分開核對生效網絡設定與已載入工具、執行原生資料快照、封裝候選程式與接續進度，並在新環境校驗後還原。已發佈設定未套用、外掛未載入與部分舊工具會分別說明，避免重複要求相同操作。
+本開源倉庫只提供通用程式、文件及虛構測試資料。工具拒絕把私人檢查點存入本倉庫、公開或未知可見性的倉庫。聊天、公司資料、附件、登入、平台設定、私人進度及完整備份不包含在 GitHub 來源檢查點內，繼續分開私人保存。
 
-已有工作台把 [UPDATE_AI.txt](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.1/UPDATE_AI.txt) 交給 AI；舊版沒有更新助手入口亦可開始。完整步驟見 [更新助手指南](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.1/docs/UPDATE_ASSISTANT.md)。
+已有工作台使用 [UPDATE_AI.txt](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.2/UPDATE_AI.txt)；新工具可在獨立來源目錄執行，不必先升級私人正式站。[私人來源接續指南](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.2/docs/SOURCE_CHECKPOINT.md) 提供 gh 與 GitHub 外掛路線，以及候選仍只留舊環境時的處理方式。本機 ZIP 明確回報尚未完成跨環境交接。
 
-版本號更新至主分支並通過檢查後，GitHub Actions 自動建立正式安裝包及介面包；不改寫已有版本的下載。私人工作台仍須按原平台部署，公開發佈不會自行更新私人網站。
+保留 V2.4 的完整介面、白色淡方格風格及 schema 5。本版修正來源接續，沒有通用 Sites 自動部署、完整 R2 備份或自動載入外掛；來源恢復、正式資料備份、部署及 AI 寫入／讀回仍分開驗收。沒有改動任何私人正式 Site。
 
-此版不新增資料庫 schema，沿用 schema 5。V2.4.0 以前的升級仍按 [UPGRADE.md](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.1/docs/UPGRADE.md) 完整備份。來源／排版接續包不等於完整正式備份，Sites 仍須原後台適配、資料與附件備份及正式發佈；未提供通用 Sites 自動部署或自動授權。
-
-本版以原生 HTTP 與臨時私人資料驗證，沒有改動你的正式私人網站。詳見 [驗證紀錄](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.1/VALIDATION.md)。
+驗證：194 個 Python 測試、5 個 Node 測試檔及更新助手的真實 Chromium／HTTP 驗收通過。新增 GitHub 接續測試使用 API 替身及虛構來源，沒有上傳私人工作台。詳見 [驗證紀錄](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.2/VALIDATION.md)。

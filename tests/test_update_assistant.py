@@ -66,6 +66,7 @@ class UpdateAssistantTests(unittest.TestCase):
         package = self.root / 'resume.zip'
         result = update.pack(self.job, package)
         self.assertEqual(result['production_status'], 'not_verified')
+        self.assertFalse(result['cross_environment_ready'])
         restored = self.root / 'restored'
         result = update.unpack(package, restored)
         with zipfile.ZipFile(restored / result['checkpoint'] / 'working-tree.zip') as archive:

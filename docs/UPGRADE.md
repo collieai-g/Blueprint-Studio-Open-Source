@@ -2,21 +2,22 @@
 
 [返回首頁](../README.md) · [安裝指南](INSTALL.md) · [AI 工作方式](AI_WORKSPACE.md)
 
-目前 V2.4 的修訂版是 **2.4.1**。從 2.4.0 升至 2.4.1 不新增資料表或 schema，新增更新助手及接續工具。原生資料庫由 schema 4 升至 **schema 5**，在同一交易新增公司紀錄、歷史、帳戶、偏好和權限表；保留原表、ID、待辦完成狀態、登入及附件。新增五組側欄與公司工作流程，沿用原品牌與 V2.3 排版。完整範圍及尚未接入的服務見 [V2.4.md](V2.4.md)。
+目前 V2.4 的修訂版是 **2.4.2**。從 2.4.0 升至 2.4.2 不新增資料表或 schema，新增更新助手及接續工具。原生資料庫由 schema 4 升至 **schema 5**，在同一交易新增公司紀錄、歷史、帳戶、偏好和權限表；保留原表、ID、待辦完成狀態、登入及附件。新增五組側欄與公司工作流程，沿用原品牌與 V2.3 排版。完整範圍及尚未接入的服務見 [V2.4.md](V2.4.md)。
 
 更新的是程式與畫面。已有公司資料不重新初始化；新的預設介面不預填示範工作。卡片排列與輸入偏好保存在同一網站的目前瀏覽器，舊有卡片／清單及排序偏好仍沿用。
 
 GitHub 發佈新版後，已安裝的私人工作台不會自動改版。你向該工作台的 AI 發出升級指令，AI 便按此流程完成備份、整合、部署與驗證。日後升級可說「按官方升級指南，把我的現有工作台更新到最新穩定版，保留全部資料及自訂內容」；AI 先讀該版更新及遷移要求，再選定確切版本，不盲目覆蓋。
 
-2.4.1 新增 [更新助手](UPDATE_ASSISTANT.md)：由 AI 自動保存來源、檢查環境及產生私人接續包。使用者可直接貼 [UPDATE_AI.txt](../UPDATE_AI.txt)；舊工作台沒有更新助手入口也可開始，不必先安裝新版。它協助執行下列流程，不代替正式備份、Sites 後台適配或平台授權。
+2.4.1 加入 [更新助手](UPDATE_ASSISTANT.md)；2.4.2 再加入 [私人來源檢查點](SOURCE_CHECKPOINT.md)，修正本機接續包沒有實際交接的缺口。使用者可直接貼 [UPDATE_AI.txt](../UPDATE_AI.txt)；舊工作台沒有更新助手入口也可開始，不必先安裝新版。它協助執行下列流程，不代替正式備份、Sites 後台適配或平台授權。
 
 ## 把這段指令貼到已安裝工作台的 AI
 
 ```text
-請將我現有的藍圖工作室工作台升級到 Blueprint Studio Open Source V2.4（2.4.1）。
+請將我現有的藍圖工作室工作台升級到 Blueprint Studio Open Source V2.4（2.4.2）。
 上游：https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
 先讀新版 docs/UPGRADE.md、docs/AI_CONNECTION.md、docs/AI_WORKSPACE.md 及 AGENTS.md。
+公開開源倉庫只放通用程式，不得保存我的私人來源、聊天、資料、登入設定或接續包。換環境前按 docs/SOURCE_CHECKPOINT.md 將候選來源保存到另外核實的私人倉庫，下載核對後再交接；公司資料及完整備份另外私人保存。
 檢查我目前使用的是本機、原生雲端還是 Sites，確認現有網址、程式來源、版本、
 資料庫、附件儲存、登入、AI 連接及公司自訂內容。沿用現有網站及資料。
 先保存舊程式版本與完整私人備份，再更新同一個工作台，不重新執行 library-init、
@@ -61,13 +62,13 @@ V2.2 起需要靜態資產 /connection.js 及 /connection-guide.json；Sites MCP
 AI 先讀原 `INSTALL_PROGRESS.md` 或既有部署設定，核對實際使用中的服務。記下舊 commit、部署版本、網址、資料目錄／磁碟、附件儲存及工具連接；記錄不包含密碼或 token。
 
 - 本機／Docker／Render／Railway：使用原生 Python API 和外部 SQLite 資料目錄。
-- Sites：使用現有 Site ID、目前來源、平台資料庫、物件儲存及網站自己的登入／MCP 工具。Sites 的「部署版本 1／2」是平台序號，不等同程式版本 1.5.0／2.4.1。
+- Sites：使用現有 Site ID、目前來源、平台資料庫、物件儲存及網站自己的登入／MCP 工具。Sites 的「部署版本 1／2」是平台序號，不等同程式版本 1.5.0／2.4.2。
 - 私人來源有修改：先保留提交及現有修改，再在分支整合所選上游版本。不要用下載 ZIP 直接蓋過整個私人專案。
 
 AI 先在獨立目錄取得 V2 工具，再備份舊資料。尚未更新舊 checkout 時，其內可能沒有升級工具。
 
 ```sh
-git clone --branch v2.4.1 https://github.com/collieai-g/Blueprint-Studio-Open-Source.git blueprint-v2-source
+git clone --branch v2.4.2 https://github.com/collieai-g/Blueprint-Studio-Open-Source.git blueprint-v2-source
 ```
 
 若有舊版 1.0–1.4，先核對原版的遷移與備份要求；不要套用只適合 schema 4 的「無資料遷移」結論。V2 的既有 Store 仍保留早期版本遷移程式。
@@ -116,7 +117,7 @@ Sites 升級由有 Sites 工具的 AI 在原工作台對話執行。先讀當前
    ```
 
 3. 更新包包含 `library_web/` 全部 V2 必要檔案、圖示及 SHA-256 清單。AI 比對清單後，整合到原 Site 服務靜態資源的位置；保留 Sites 自己的伺服器、登入、資料庫 binding、附件及 AI 工具。
-4. 確保 `/connection.js`、`/connection-guide.json`、`/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供。V2.4.1 亦需提供 `/update.js`，更新助手入口位於偏好設定。V2.4 必須新增 `/navigation.js`、`/studio.js`、`/studio.css`、`/manifest.webmanifest` 和 `/service-worker.js`，並按 [STUDIO_API.md](STUDIO_API.md) 在原儲存實作完整 `/api/studio/*`、角色保護及交易。這個後台移植不包含在 UI 包中；原有 API 仍保留。MCP 適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，重新連接外掛並驗證工具。介面定期讀取 `/api/info`、`/api/collections`、資料與工作紀錄，沿用同一個正式資料庫，新增公司功能的資料表，不能另開空資料庫。保留原有存取限制。
+4. 確保 `/connection.js`、`/connection-guide.json`、`/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供。V2.4.2 亦需提供 `/update.js`，更新助手入口位於偏好設定。V2.4 必須新增 `/navigation.js`、`/studio.js`、`/studio.css`、`/manifest.webmanifest` 和 `/service-worker.js`，並按 [STUDIO_API.md](STUDIO_API.md) 在原儲存實作完整 `/api/studio/*`、角色保護及交易。這個後台移植不包含在 UI 包中；原有 API 仍保留。MCP 適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，重新連接外掛並驗證工具。介面定期讀取 `/api/info`、`/api/collections`、資料與工作紀錄，沿用同一個正式資料庫，新增公司功能的資料表，不能另開空資料庫。保留原有存取限制。
 5. 依原 Site 現有 API 測試與本指南驗收；如有平台適配，對照回應結構，不能省略功能或將 SQLite 程式直接放入 Sites。
 6. 按 Sites 流程提交完整來源、部署至**同一網站**，核對正式網址與使用者登入後結果。更新本機程式／Codex 環境不會自動更新正式 Site。
 

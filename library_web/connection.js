@@ -30,8 +30,8 @@
     return [
       '請帶我完成 Blueprint Studio Open Source V2.4 的 AI 接駁，直到真正在同一個工作台使用。',
       '現有工作台：' + site, 'AI 客戶端：' + session.client,
-      '先讀 https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.1/docs/CONNECT.md 及 docs/AI_CONNECTION.md。',
-      '先檢查已有安裝與資料；未到 2.4.1 時先按 docs/UPGRADE.md 備份並升級同一網站，不重建或重設資料庫。完整保留原版介面。',
+      '先讀 https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.4.2/docs/CONNECT.md 及 docs/AI_CONNECTION.md。',
+      '先檢查已有安裝與資料；未到 2.4.2 時先按 docs/UPGRADE.md 備份並升級同一網站，不重建或重設資料庫。完整保留原版介面。',
       setup, guide.clients[clientKey][route],
       '需要我登入、授權或按平台按鈕時，只交代當前入口、動作及成功標誌，完成後繼續。已安裝不代表對話工具已載入。',
       '若雲端直接連線受阻，查看目前生效的網域允許清單，經平台設定加入 ' + url.hostname + '；保持代理與 TLS。平台外掛與執行環境 HTTP 分開診斷，不繞過規則。設定已發佈但目前環境尚未套用時，保存私人接續包，在使用新設定的環境繼續，不要反覆加入同一網域。',
