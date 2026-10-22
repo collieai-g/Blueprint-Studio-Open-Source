@@ -143,3 +143,16 @@ before declaring cross-environment source handoff ready. A local ZIP is not a
 durable handoff. Do not confuse source recovery with deployment, attachment backup
 or loaded MCP tools. When old source exists only in an inaccessible old environment,
 state the boundary and provide one old-chat save instruction; do not claim recovery.
+
+Follow docs/UPDATE_ROUTE.md through same-site production and real AI/UI acceptance
+when the user's goal is an upgrade. A source-checkpoint subtask must not replace
+that goal. Reuse a verified remote candidate; do not ask for the same handoff again.
+Honor explicit save-only requests, and resume deployment when the user requests
+the full upgrade. Separate target release, candidate version, live product version
+and platform sequence number. Integrate an older candidate before deploying once.
+Keep Sites publishing capabilities separate from Blueprint MCP tools: missing new
+MCP tools in an old live version must not become a circular prerequisite for the
+upgrade. Full production backup remains required. State exact missing backup
+capabilities and supported paths checked; do not invent a backup button or mark
+an attachment listing as a complete object backup. Report website deployment and
+AI connection acceptance separately. All private progress stays outside this repo.
