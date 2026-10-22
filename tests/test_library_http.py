@@ -122,6 +122,17 @@ class LibraryHTTPTests(unittest.TestCase):
         status, _, _ = self.json_request("GET", "/api/info")
         self.assertEqual(status, 200)
 
+    def test_runtime_capabilities_do_not_claim_unconfigured_maintenance_or_agent_execution(self):
+        status, _, _ = self.json_request('GET', '/api/runtime', authenticated=False)
+        self.assertEqual(status, 401)
+        status, _, result = self.json_request('GET', '/api/runtime')
+        self.assertEqual(status, 200)
+        self.assertEqual(result['api_contract'], 'blueprint-native/1')
+        self.assertFalse(result['maintenance_available'])
+        self.assertEqual(result['agent_executor'], 'not_configured')
+        self.assertNotIn(self.password, json.dumps(result))
+        self.assertNotIn(str(self.data_dir), json.dumps(result))
+
     def test_v2_workbench_assets_are_served_with_existing_login(self):
         for path, marker in (("/", b'/workspace.js'), ("/workspace.js", b'blueprint-workspace-v2'),
                              ("/brand.svg", b'M50 38V14H14V50H38')):

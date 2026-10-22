@@ -1,5 +1,17 @@
 # Blueprint Studio Open Source
 
+For the optional Sites-to-native gateway, read docs/SITES_NATIVE_GATEWAY.md.
+Sites owns the entrypoint and verified identity; the independently deployed native
+backend owns company data, attachments and backups. Never replace an existing D1/R2
+Site with this gateway as an implicit migration. Keep per-user private account
+mapping, backend role checks, the authenticated API contract probe and no-redirect
+credential boundary. Native and gateway versions are independent. This path has
+32 tools and no D1/R2 company-data backup dependency; it still requires real host,
+platform publication, backup/restore and live client acceptance. Consult
+docs/ARCHITECTURE_LEARNING.md and docs/AGENT_ROADMAP.md for the FastGPT research and
+future Agent design. The Agent runtime and autonomous customer service are not
+implemented; do not infer them from saved specialist settings or MCP availability.
+
 Honor the user's selected task before detecting or resuming an installation.
 An explicit fresh installation that leaves the old workbench untouched uses
 INSTALL_AI.txt, even when an old Site or unfinished upgrade exists. Record the

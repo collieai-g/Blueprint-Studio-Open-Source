@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blueprint_folders import __version__
 
-REQUIRED = {'blueprint_library/maintenance.py', 'blueprint_library/backup.py', 'tools/check_installation.py', 'integrations/mcp/maintenance-tools.json', 'docs/NATIVE_LIFECYCLE.md', 'tools/source_checkpoint.py', 'docs/SOURCE_CHECKPOINT.md', 'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'tools/update_assistant.py', 'INSTALL_AI.txt', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
+REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.mjs', 'tools/build_sites_gateway.py', 'docs/SITES_NATIVE_GATEWAY.md', 'docs/AGENT_ROADMAP.md', 'blueprint_library/maintenance.py', 'blueprint_library/backup.py', 'tools/check_installation.py', 'integrations/mcp/maintenance-tools.json', 'docs/NATIVE_LIFECYCLE.md', 'tools/source_checkpoint.py', 'docs/SOURCE_CHECKPOINT.md', 'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'tools/update_assistant.py', 'INSTALL_AI.txt', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
             'library_web/connection.js', 'library_web/connection-guide.json',
             'blueprint_library/connection.py', 'integrations/mcp/connection.mjs',
             'integrations/mcp/tools.json', 'docs/CONNECT.md', 'docs/UPGRADE.md',

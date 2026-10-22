@@ -82,6 +82,8 @@ Codex 的 `env_vars` 及 Claude／Gemini 的環境參照必須由啟動該客戶
 
 ## 2. Sites：安裝、授權、載入是三個步驟
 
+若使用 [Sites 入口配原生後台](SITES_NATIVE_GATEWAY.md)，由平台登入的 `/mcp` 轉送到同一個原生 API，提供 32 個工具；每個使用者在伺服器秘密中對應自己的後台帳戶。資料與備份屬於原生後台，瀏覽器及 AI 不會取得對應帳密。後台合約、入口版本、目前對話載入及讀寫驗收分開核對。
+
 Sites 使用平台登入及原網站的 `/mcp`，不能把原生 Basic 帳密橋接硬套到 Sites。
 
 1. AI 讀現有 Site 的來源與資料，透過 `get_site(include_mcp_connection=true)` 取得該網站**實際回傳**的 `mcp_url`、`oauth_resource` 及 `plugin_id`，不可猜 ID。

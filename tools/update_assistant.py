@@ -158,10 +158,18 @@ def handoff_data(filename):
             if not isinstance(value, str):
                 raise ValueError('排版備份格式不正確。')
             json.loads(value)
+    deployment = {}
+    if data.get('deployment_mode') is not None:
+        backend = origin(data.get('backend_origin'))
+        if (data['deployment_mode'] != 'sites_native' or data.get('route') != 'sites'
+                or not backend.startswith('https://') or backend == origin(data['origin'])):
+            raise ValueError('Sites 與原生後台接駁資料不一致。')
+        deployment = {'deployment_mode': 'sites_native', 'backend_origin': backend,
+                      'gateway_version': str(data.get('gateway_version', 'unknown'))[:80]}
     return {'format': data['format'], 'format_version': 1, 'origin': origin(data['origin']),
             'version': str(data.get('version', 'unknown'))[:80],
             'route': data.get('route') if data.get('route') in {'native', 'sites'} else 'unknown',
-            'preferences': preferences}
+            'preferences': preferences, **deployment}
 
 
 def prepare(project, output, url=None, handoff=None, site_id=None):
@@ -184,6 +192,9 @@ def prepare(project, output, url=None, handoff=None, site_id=None):
         job = load_job(output)
         if (job['project'], job['origin'], job['site_id']) != (str(project), url, site_id):
             raise ValueError('這個接續目錄屬於另一個專案；未覆寫。')
+        if browser and (job.get('deployment_mode'), job.get('backend_origin')) != (
+                browser.get('deployment_mode'), browser.get('backend_origin')):
+            raise ValueError('接續紀錄的資料後台已改變，請先核對，不自動合併。')
         return {'status': 'resumed', 'job': str(output), 'target_version': job['target_version']}
     output.mkdir(parents=True, mode=0o700)
     # A failed capture is retained for diagnosis, never labelled as a finished job.
@@ -195,6 +206,8 @@ def prepare(project, output, url=None, handoff=None, site_id=None):
            'target_version': __version__, 'baseline_commit': source['commit'],
            'production_status': 'not_verified', 'source_backup': 'before-source',
            'database_backup': None, 'data_path': None}
+    if browser and browser.get('deployment_mode') == 'sites_native':
+        job.update({key: browser[key] for key in ('deployment_mode', 'backend_origin', 'gateway_version')})
     write_json(output / 'job.json', job)
     return {'status': 'prepared', 'job': str(output), 'route': route, 'source_saved': True,
             'target_version': job['target_version'], 'production_status': 'not_verified'}
@@ -257,6 +270,9 @@ def assess(job, observations):
         add('publisher', 'reported_available' if publisher.get('available') is True else 'unknown',
             'AI 回報有可用發佈方式；正式儲存版本及部署仍待執行。' if publisher.get('available') is True else
             '先讀目前 Sites 技能，確認可用的來源推送、儲存版本及部署方式。缺少舊腳本不代表必須重建網站。')
+    if job.get('deployment_mode') == 'sites_native':
+        add('data_backend', 'not_verified', '這是 Sites 入口配原生後台：' + job['backend_origin'] +
+            '。按 docs/SITES_NATIVE_GATEWAY.md 核對 /_blueprint/status、原生服務與持久磁碟；備份及更新在該後台執行，不等待 Sites D1／R2 快照。瀏覽器交接本身不證明綁定正確。')
     add('production_backup', 'not_verified', '程式／排版接續包不等於正式資料備份。由 AI 完成原資料庫、附件及必要設定的備份與還原核對。')
     add('production_acceptance', 'not_verified', '部署後核對同一網址、舊資料、版本及真正工具寫入／讀回；本機測試不代表正式站已更新。')
     return result
