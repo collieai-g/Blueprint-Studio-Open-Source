@@ -1,6 +1,6 @@
 # Agent 架構與客服路線
 
-本頁是後續開發設計，**不是已運行的客服 AI**。目前已有專員設定、工作記錄、資料權限及 MCP 工具；尚未附模型呼叫、常駐 Agent 執行器或自動對外發送。`/api/runtime` 會如實回報 `agent_executor: not_configured`。[參考來源與取捨](ARCHITECTURE_LEARNING.md)說明哪些底層做法參考 FastGPT；下列實作由藍圖獨立設計。
+本頁是藍圖獨立設計的後續開發方案，**不是已運行的客服 AI**。目前已有專員設定、工作記錄、資料權限及 MCP 工具；尚未附模型呼叫、常駐 Agent 執行器或自動對外發送。`/api/runtime` 會如實回報 `agent_executor: not_configured`。模型供應商透過藍圖自己的介面接入，不以另一套 AI 工作台作為必要服務。
 
 ## 使用者看見甚麼
 

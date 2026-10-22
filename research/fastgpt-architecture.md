@@ -1,5 +1,7 @@
 # 參考 FastGPT：把可持續更新及 Agent 能力放在同一個後台
 
+本頁只供維護者研究及追溯參考來源，獨立於藍圖產品文件。安裝包、Git 來源封存及 Docker 建置內容均排除此研究目錄；安裝、更新及運行藍圖不需要 FastGPT 帳戶、套件或服務。
+
 研究來源固定於 FastGPT commit [`9fd604ab860a5cc566f7450ead9fc64dcbc555f1`](https://github.com/labring/FastGPT/tree/9fd604ab860a5cc566f7450ead9fc64dcbc555f1)，研究日期 2026-10-22。另核對 [v4.17.2 發佈說明](https://github.com/labring/FastGPT/releases/tag/v4.17.2)。以下是架構比較及藍圖自己的實作安排，並非宣稱 FastGPT 能替 Sites 解鎖平台權限。
 
 ## 學到甚麼，以及怎樣取捨
@@ -23,4 +25,4 @@ FastGPT 的部署範本與執行器服務較多，適合它的產品範圍。藍
 - 更新助手保留入口與資料後台兩個網址，避免下一次更新又錯誤等待 Sites 的 D1／R2 備份。
 - 測試涵蓋真實原生 API 的工具寫入、畫面讀回、附件、角色限制、完整備份下載與隔離還原；平台驗證身份使用隔離 fixture，不把它當作正式 Sites 登入驗收。
 
-這些變更準備了接駁程式，沒有替使用者購買主機、改動舊站、搬遷資料或完成正式發佈。正式安裝依 [Sites 與原生後台接駁](SITES_NATIVE_GATEWAY.md) 逐項驗收。Agent 的後續範圍、成功條件及未實作部分見 [Agent 架構與客服路線](AGENT_ROADMAP.md)。
+這些變更準備了接駁程式，沒有替使用者購買主機、改動舊站、搬遷資料或完成正式發佈。正式安裝依 [Sites 與原生後台接駁](../docs/SITES_NATIVE_GATEWAY.md) 逐項驗收。Agent 的後續範圍、成功條件及未實作部分見 [Agent 架構與客服路線](../docs/AGENT_ROADMAP.md)。

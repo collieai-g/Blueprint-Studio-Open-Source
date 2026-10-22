@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a complete, reviewable AI installer from public tracked source only."""
+"""Build a complete AI installer from tracked product source, excluding research."""
 import argparse
 import hashlib
 import json
@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blueprint_folders import __version__
 
+EXCLUDED_PREFIXES = ('research/',)
+
 REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.mjs', 'tools/build_sites_gateway.py', 'docs/SITES_NATIVE_GATEWAY.md', 'docs/AGENT_ROADMAP.md', 'blueprint_library/maintenance.py', 'blueprint_library/backup.py', 'tools/check_installation.py', 'integrations/mcp/maintenance-tools.json', 'docs/NATIVE_LIFECYCLE.md', 'tools/source_checkpoint.py', 'docs/SOURCE_CHECKPOINT.md', 'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'tools/update_assistant.py', 'INSTALL_AI.txt', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
             'library_web/connection.js', 'library_web/connection-guide.json',
             'blueprint_library/connection.py', 'integrations/mcp/connection.mjs',
@@ -23,7 +25,7 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
 
 def build(output):
     names = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
-    names = sorted(name for name in names if name)
+    names = sorted(name for name in names if name and not name.startswith(EXCLUDED_PREFIXES))
     if not REQUIRED.issubset(names):
         raise ValueError('安裝來源不完整；先將正式公開來源加入 Git，不能產生部分安裝包。')
     files = {}

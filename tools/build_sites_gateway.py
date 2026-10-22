@@ -2,7 +2,7 @@
 """Build one dependency-free Worker for the official Sites Worker ESM starter.
 
 Only Blueprint source and public tool schemas enter the result. No Site ID,
-credentials, company data, platform settings or FastGPT code are included.
+credentials, company data or platform settings are included.
 """
 import argparse
 import hashlib

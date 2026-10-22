@@ -9,4 +9,5 @@ access.json
 *.zip
 artifacts
 tests
+research
 .sites-runtime

@@ -8,9 +8,11 @@ mapping, backend role checks, the authenticated API contract probe and no-redire
 credential boundary. Native and gateway versions are independent. This path has
 32 tools and no D1/R2 company-data backup dependency; it still requires real host,
 platform publication, backup/restore and live client acceptance. Consult
-docs/ARCHITECTURE_LEARNING.md and docs/AGENT_ROADMAP.md for the FastGPT research and
-future Agent design. The Agent runtime and autonomous customer service are not
-implemented; do not infer them from saved specialist settings or MCP availability.
+docs/AGENT_ROADMAP.md for Blueprint's future Agent design. The Agent runtime and
+autonomous customer service are not implemented; do not infer them from saved
+specialist settings or MCP availability. Maintainer research is kept separately
+under research/ and excluded from product archives and Docker build context.
+Installation and runtime must not require research notes or reference projects.
 
 Honor the user's selected task before detecting or resuming an installation.
 An explicit fresh installation that leaves the old workbench untouched uses
