@@ -47,10 +47,12 @@ https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/INSTALL_AI.
 
 Verify the latest stable release and pin its tag and commit for this run. Check this AI app’s actual tools, then help me choose local or cloud installation; reuse any choices already made.
 Complete the original interface, sign-in, persistent storage, a real AI write and readback, and a matching result in the workspace. Then help me complete one real task. When I need to act, give me the location, action and sign of success for the current step.
-Keep private data and installation progress outside the public repository. If a workspace already exists, follow UPDATE_AI.txt in the same repository to update it while preserving data. Do not reinitialize it.
+Keep private data and installation progress outside the public repository. Follow my selected goal: if I explicitly want a fresh installation while keeping the old site untouched, use a separate service and data location. Do not switch to updating the old site just because it exists, or make its backup a prerequisite for the independent installation. Use UPDATE_AI.txt only when I want to update the existing workspace while preserving its data.
 ```
 
 A local installation runs on your own computer. A cloud installation gives you a website you can sign in to. The AI reuses your existing accounts and resources, then helps with any setup still needed.
+
+If you want a separate installation alongside an old site, add: “Install a fresh native workspace and leave the old site untouched.” The AI uses separate data and a new service. Old records stay on the old site and are not imported automatically. The new installation must still pass its own backup, restore and AI connection checks.
 
 <a id="keep-updated"></a>
 

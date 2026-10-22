@@ -1,5 +1,17 @@
 # Blueprint Studio Open Source
 
+Honor the user's selected task before detecting or resuming an installation.
+An explicit fresh installation that leaves the old workbench untouched uses
+INSTALL_AI.txt, even when an old Site or unfinished upgrade exists. Record the
+old target as protected, create a separate private plan, data path, backup path
+and service, and never reuse its Site ID, volume, credentials or MCP binding.
+Do not make old D1/R2 backups, candidate recovery or old-site publishing a gate
+for an independent fresh native installation. Do not import old data unless
+requested. If the user wants an in-place update or data migration, preserve the
+corresponding backup requirements; never silently substitute a blank new site.
+Read existing choices before asking. A fresh install is not permission to erase
+the old installation, and its completion must not be reported as an old-site update.
+
 V2.5 makes native local/cloud lifecycle the primary fresh-install route. Follow
 docs/NATIVE_LIFECYCLE.md before claiming installation is complete: persistent data
 and backup paths, real backup download and isolated authenticated restore,
