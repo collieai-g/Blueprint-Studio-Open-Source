@@ -6,6 +6,8 @@ services:
     ports:
       - "127.0.0.1:8787:8787"
     environment:
+      BLUEPRINT_DATA_DIR: /data/library
+      BLUEPRINT_BACKUP_DIR: /data/backups
       BLUEPRINT_ADMIN_USERNAME: ${BLUEPRINT_ADMIN_USERNAME:-admin}
       BLUEPRINT_ADMIN_PASSWORD: ${BLUEPRINT_ADMIN_PASSWORD:?請先在本機 .env 設定管理員密碼}
       BLUEPRINT_COMPANY_NAME: ${BLUEPRINT_COMPANY_NAME:-}

@@ -18,6 +18,8 @@ import threading
 import time
 from urllib.parse import parse_qs, quote, urlsplit
 import webbrowser
+import shutil
+import signal
 
 from blueprint_folders import __version__
 from blueprint_folders.core import CATEGORIES, _atomic_json
@@ -33,6 +35,12 @@ PASSWORD_ROUNDS = 310_000
 
 
 def initialize_library(data_dir, username: str, password: str, company_profile=None) -> dict:
+    from .maintenance import DataLease
+    with DataLease(data_dir):
+        return _initialize_library(data_dir, username, password, company_profile)
+
+
+def _initialize_library(data_dir, username: str, password: str, company_profile=None) -> dict:
     """Create a one-owner library. Existing credentials are never overwritten."""
     if (not isinstance(username, str) or not username.strip() or len(username) > 80
             or re.search(r"[:\x00-\x1f\x7f]", username)):
@@ -42,6 +50,10 @@ def initialize_library(data_dir, username: str, password: str, company_profile=N
     if company_profile is not None:
         from .company import _fields
         _fields(company_profile, versioned=False)
+    from .backup import safe_path, external
+    directory = safe_path(data_dir); external(directory)
+    if directory.exists() and any(directory.iterdir()):
+        raise LibraryError('此位置已有資料；請沿用原安裝或修復登入設定，不會重新初始化。', status=409)
     store = Store(data_dir)
     directory = Path(data_dir).expanduser().resolve()
     credential_path = directory / "access.json"
@@ -62,17 +74,47 @@ def initialize_library(data_dir, username: str, password: str, company_profile=N
 
 
 class LibraryHTTPServer(ThreadingHTTPServer):
-    daemon_threads = True
+    daemon_threads = False
+    request_timeout = 30
 
     def __init__(self, address, store: Store, credential: dict):
         self.store = store
         self.credential = credential
         self.failures: dict[str, tuple[int, float]] = {}
         self.auth_lock = threading.Lock()
+        self.maintenance = None
         super().__init__(address, LibraryHandler)
 
+    def finish_request(self, request, client_address):
+        # An idle client must not hold the backup gate or graceful shutdown forever.
+        request.settimeout(self.request_timeout)
+        if self.maintenance:
+            with self.maintenance.gate.request():
+                return super().finish_request(request, client_address)
+        return super().finish_request(request, client_address)
 
-def make_server(data_dir, host="127.0.0.1", port=0) -> LibraryHTTPServer:
+    def server_close(self):
+        # Finish in-flight operations before releasing ownership of the data.
+        super().server_close()
+        if self.maintenance:
+            self.maintenance.close()
+
+
+def make_server(data_dir, host="127.0.0.1", port=0, *, managed=False, backup_dir=None) -> LibraryHTTPServer:
+    maintenance = None
+    if managed:
+        from .maintenance import Maintenance
+        maintenance = Maintenance(data_dir, backup_dir or os.environ.get('BLUEPRINT_BACKUP_DIR'),
+                                  interval=int(os.environ.get('BLUEPRINT_BACKUP_INTERVAL', '86400'))).prepare()
+    try:
+        return _make_server(data_dir, host, port, maintenance)
+    except Exception:
+        if maintenance:
+            maintenance.close()
+        raise
+
+
+def _make_server(data_dir, host, port, maintenance):
     store = Store(data_dir)
     path = Path(data_dir).expanduser().resolve() / "access.json"
     try:
@@ -88,7 +130,11 @@ def make_server(data_dir, host="127.0.0.1", port=0) -> LibraryHTTPServer:
             raise ValueError("登入設定格式不正確。")
     except (OSError, ValueError) as exc:
         raise LibraryError("請先使用 library-init 設定管理員，或修復外部資料目錄內的 access.json。") from exc
-    return LibraryHTTPServer((host, port), store, credential)
+    server = LibraryHTTPServer((host, port), store, credential)
+    server.maintenance = maintenance
+    if maintenance:
+        maintenance.start()
+    return server
 
 
 class LibraryHandler(BaseHTTPRequestHandler):
@@ -207,6 +253,27 @@ class LibraryHandler(BaseHTTPRequestHandler):
             return
         if method in {"POST", "PATCH"}:
             self._write_allowed()
+        if path.startswith('/api/maintenance'):
+            if self.identity.get('role') != 'owner':
+                raise LibraryError('只有工作台擁有人可以管理完整備份。', 403)
+            maintenance = self.server.maintenance
+            if not maintenance:
+                return self._json({'supported': False, 'status': 'not_configured'}, 503)
+            if path == '/api/maintenance' and method == 'GET':
+                return self._json(maintenance.status())
+            if path == '/api/maintenance/backup' and method == 'POST':
+                if self._body():
+                    raise LibraryError('備份操作不接受額外設定。')
+                return self._json(maintenance.request_backup(), 202)
+            download = re.fullmatch(r'/api/maintenance/backups/(\d{8}T\d{6}Z-[0-9a-f]{12})', path)
+            if download and method == 'GET':
+                archive = maintenance.download(download[1])
+                with archive.open('rb') as stream:
+                    self._headers(200, 'application/zip', archive.stat().st_size,
+                                  {'Content-Disposition': 'attachment; filename="blueprint-private-backup-' + download[1] + '.zip"'})
+                    shutil.copyfileobj(stream, self.wfile)
+                return
+            raise LibraryError('找不到此維護操作。', 404)
         store = self.server.store
         actor = self.identity['username']
         from .studio import Studio
@@ -235,7 +302,8 @@ class LibraryHandler(BaseHTTPRequestHandler):
                                "company_profile": profile,
                                "product_name": "Blueprint Studio Backend",
                                "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
-                               "connection_mode": "native", "classification": "rules", "stats": store.stats(member_access=not studio.admin), "account": self.identity, "studio_schema": 5})
+                               "connection_mode": "native", "classification": "rules", "stats": store.stats(member_access=not studio.admin), "account": self.identity, "studio_schema": 5,
+                               "maintenance": self.server.maintenance.status() if self.server.maintenance and self.identity.get('role') == 'owner' else {'supported': False}})
         if path == "/api/company-profile":
             if method == "GET":
                 return self._json({"company_profile": store.get_company_profile()})
@@ -402,15 +470,20 @@ class LibraryHandler(BaseHTTPRequestHandler):
 
 
 def serve_library(data_dir, host="127.0.0.1", port=8787, open_browser=True):
-    server = make_server(data_dir, host=host, port=port)
+    server = make_server(data_dir, host=host, port=port, managed=True)
     url = f"http://{'127.0.0.1' if host in {'0.0.0.0', '::'} else host}:{server.server_port}/"
     print("Blueprint Studio Backend｜藍圖工作室（後台）：" + url, flush=True)
     print("使用 library-init 設定的管理員帳號登入。雲端部署請使用 HTTPS 反向代理。", flush=True)
     if open_browser:
         webbrowser.open(url)
+    previous_term = None
+    if threading.current_thread() is threading.main_thread():
+        previous_term = signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=server.shutdown, daemon=True).start())
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
+        if previous_term is not None:
+            signal.signal(signal.SIGTERM, previous_term)

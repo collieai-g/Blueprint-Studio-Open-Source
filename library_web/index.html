@@ -198,6 +198,11 @@
     <p id="update-backend" class="connection-backend" role="status"></p>
     <label class="field">現有安裝方式<select id="update-route"><option value="unknown">讓 AI 核對</option><option value="native">本機／一般雲端後台</option><option value="sites">Sites 工作台</option></select></label>
     <p id="update-backup-status" class="muted" role="status"></p>
+    <section id="native-backup" hidden>
+      <p id="native-backup-status" class="muted" role="status"></p>
+      <div class="actions"><button id="native-backup-create" class="button secondary" type="button">備份公司資料</button><a id="native-backup-download" class="button secondary" hidden>下載完整私人備份</a></div>
+      <p class="muted">完整備份包含登入設定及原始附件，請保存到自己的私人位置。瀏覽器排版請另外使用下方「下載接續資料」。</p>
+    </section>
     <div class="actions"><button id="update-copy" class="button primary" type="button" disabled>複製更新指令</button><button id="update-download" class="button secondary" type="button" disabled>下載接續資料</button></div>
     <details class="instruction-details"><summary>查看交給 AI 的內容</summary><textarea id="update-prompt" rows="8" readonly aria-label="更新工作台指令"></textarea></details>
     <p class="muted">AI 會核對版本、準備完整備份、更新原網站並實測。這裏保存的是瀏覽器排版；下載或複製指令並不表示網站已更新。</p>

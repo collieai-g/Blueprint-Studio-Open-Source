@@ -1,5 +1,7 @@
 # 雲端安裝：由帳戶設定到自己的完整工作台
 
+V2.5 新安裝優先使用原生後台，先完成 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 的儲存、完整備份下載、還原、重啟保存及再次部署驗收。新容器資料放 `/data/library`，備份放 `/data/backups`，兩者都在持久磁碟；已有安裝保留原路徑。Sites 仍須另行實作及驗證備份還原，不能視為同等完成。
+
 [安裝總入口](INSTALL.md) · [本機路線](INSTALL_LOCAL.md) · [後台功能與 API](LIBRARY.md)
 
 這條路線適合希望在 ChatGPT／Codex 右側或一般瀏覽器，以固定網址使用工作台的人。
@@ -186,7 +188,8 @@ AI 透過已連接的平台工具完成可執行部分。首次登入、身份�
 
 | 變數 | 填寫方式 |
 | --- | --- |
-| `BLUEPRINT_DATA_DIR` | `/data`，平台磁碟必須實際掛載相同位置；Compose 已使用此預設 |
+| `BLUEPRINT_DATA_DIR` | 新安裝使用 `/data/library`；持久磁碟掛載 `/data`，已有安裝沿用原路徑 |
+| `BLUEPRINT_BACKUP_DIR` | 新安裝使用 `/data/backups`，與資料分開並同樣持久保存 |
 | `BLUEPRINT_COMPANY_NAME` | 工作室／公司名稱，可使用個人名稱 |
 | `BLUEPRINT_COMPANY_INDUSTRY`、`BLUEPRINT_COMPANY_DESCRIPTION`、`BLUEPRINT_COMPANY_GOALS` | 選填，可登入後補充 |
 | `BLUEPRINT_ADMIN_USERNAME` | 管理員名稱，例如 `admin` |

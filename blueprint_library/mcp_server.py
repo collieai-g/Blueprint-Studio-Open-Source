@@ -31,7 +31,9 @@ INSTRUCTIONS = (
 
 
 def catalog():
-    return json.loads(CATALOG.read_text(encoding='utf-8'))['tools']
+    common = json.loads(CATALOG.read_text(encoding='utf-8'))['tools']
+    native = CATALOG.with_name('maintenance-tools.json')
+    return common + json.loads(native.read_text(encoding='utf-8'))['tools']
 
 
 class Bridge:

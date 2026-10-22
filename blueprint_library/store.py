@@ -123,6 +123,11 @@ class Store(CompanyMixin, WorkdayMixin):
             raise LibraryError("私人資料目錄必須放喺公開工具專案以外，兩者不能互相包含。")
         self.db_path = self.data_dir / "library.sqlite3"
         self.blobs_dir = self.data_dir / "blobs"
+        from .maintenance import assert_store_access
+        try:
+            assert_store_access(self.data_dir)
+        except ValueError as exc:
+            raise LibraryError('此資料由運行中的工作台管理，請使用其 HTTP／MCP 工具。', 409) from exc
         try:
             self.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
             if self.db_path.is_symlink() or (self.db_path.exists() and not self.db_path.is_file()):

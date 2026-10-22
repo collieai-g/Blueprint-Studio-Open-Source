@@ -1,3 +1,27 @@
+# v2.5.0 驗證紀錄
+
+驗證日期：2026-10-22。使用隔離的虛構公司資料、臨時帳戶及測試 volume，沒有接觸舊私人 Site。
+
+- Python 3.12：208 個測試通過。新增 14 個原生維護情境，涵蓋首次備份、連續版本更新、相同來源重啟、遷移演練失敗、正式遷移失敗回復、更新中斷接續、失敗程式及降版阻擋、空間不足、跨程序資料鎖、請求暫停／恢復、閒置連線逾時、損壞備份、不安全 ZIP、還原不覆寫、擁有人權限與排程備份。
+- 真實 HTTP 驗證完整 ZIP 下載、逐檔雜湊、獨立還原、原帳戶登入及原資料保存。未登入／一般成員無法取得完整私人備份；原生 MCP 列出 32 工具，唯讀連接沒有建立備份工具。
+- Node：5 個測試檔通過；既有離線網頁重新建置通過。更新助手 Chromium 桌面／390px 手機驗收通過，包括實際建立及下載完整備份、排版接續、失敗狀態及原附件保留；原有介面風格保留。
+- Linux Docker：正式 Dockerfile 建置成功；非 root 帳戶首次初始化、32 工具、真實文件寫入、完整備份下載及還原登入、同一網址與持久 volume 停止／重新啟動、原 ID／附件／登入保留均通過。相關檢查已加入發佈前 CI。
+- 檢查安裝／更新入口、指南及完整安裝包所需檔案。所有產生的資料與備份留在來源目錄以外；測試容器及 volume 用後移除。
+
+執行邊界：本次是在 Linux 開發環境測試，沒有在使用者電腦、Windows、Render／Railway 正式帳戶部署，也沒有驗證所有 AI 客戶端。原生備份不涵蓋 Sites 的 D1／R2。異地耐久副本、正式平台部署及目前對話的工具接通須在首次安裝逐項實測，工具不會提前填寫成功狀態。停機回復只涵蓋啟動遷移階段，之後的程式錯誤仍須按私人回復流程處理。
+
+重做：
+
+```sh
+python -m unittest discover -s tests -v
+node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_connection.cjs tests/test_update.cjs
+python tests/check_update_browser.py
+docker build -f company/Dockerfile -t blueprint-native-test .
+python tests/check_native_container.py
+```
+
+以下保留舊版本驗證紀錄。
+
 # v2.4.2 驗證紀錄
 
 驗證日期：2026-10-22（香港）。只使用臨時虛構測試資料；沒有上傳私人工作台來源，也沒有改動正式 Site。

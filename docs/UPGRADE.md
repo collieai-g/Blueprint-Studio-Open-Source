@@ -1,5 +1,7 @@
 # 升級到 V2.4，同時保留原有工作資料
 
+**V2.5 原生安裝改按 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 接續。** 本頁保留舊版遷移與 Sites 適配細節。新版增加自動備份、隔離還原測試及啟動前資料遷移保護，不新增公司資料 schema。舊版沒有維護 API 時仍先完成原資料完整備份。
+
 [返回首頁](../README.md) · [安裝指南](INSTALL.md) · [AI 工作方式](AI_WORKSPACE.md)
 
 [完整更新路線](UPDATE_ROUTE.md) 定義從候選取回到原站部署、右側驗收與 AI 接駁的連續步驟。保存候選不等於部署；已有私人檢查點後直接接續，不重複交接。

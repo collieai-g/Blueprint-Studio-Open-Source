@@ -30,6 +30,7 @@ def installation_instruction() -> str:
         "請幫我首次安裝 Blueprint Studio Open Source 的最新正式版本，建立並接通我自己的完整原版藍圖工作台。\n"
         "公開工具：\n"
         f"{_REPOSITORY}\n\n"
+        "首次安裝必須先讀 docs/NATIVE_LIFECYCLE.md：沒有既定平台時優先使用原生本機／雲端後台。先核對持久資料與備份位置、停止及再次部署能力，再開始使用。原生啟動器會先完整備份、還原演練及資料遷移核對；在正式網址執行 tools/check_installation.py 驗證下載及還原登入，另存私人耐久副本，再驗證重啟保存。Sites 未驗證相同能力前不能標示完整安裝，不以聯絡支援作為標準安裝步驟。\n\n"
         "除非我指定版本，先核實 GitHub Releases 的最新正式發行版，記錄本次 tag 與完整 commit，之後固定使用該版本的完整來源及指南。不要把主分支或預覽版當成正式版；無法連線核實時說明已取得的版本與限制，不宣稱已是最新。\n\n"
         "先核對所用 AI 軟件實際提供的程式執行、部署、持久儲存、登入和工具接駁能力，不憑模型名稱判斷。ChatGPT／Codex、Claude、Gemini、Grok 或其他 AI 均按實際能力選路線；有網頁預覽或類似 Sites 的功能，仍須核對完整後台。只需要我提供尚未取得的資料，使用我指定的語言說明。\n\n"
         "先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；已有工作台改讀主分支 UPDATE_AI.txt 及 docs/UPDATE_ROUTE.md，沿用私人進度與來源檢查點，按更新路線完成備份、整合、原服務部署及 AI 驗收，不再初始化。檢查現有安裝和工具權限，保留已有資料、"
@@ -130,7 +131,8 @@ def _code(command: str) -> str:
 
 def _environment(company: dict, username: str) -> bytes:
     values = {
-        "BLUEPRINT_DATA_DIR": "/data",
+        "BLUEPRINT_DATA_DIR": "/data/library",
+        "BLUEPRINT_BACKUP_DIR": "/data/backups",
         "BLUEPRINT_ADMIN_USERNAME": username,
         "BLUEPRINT_COMPANY_NAME": company["name"],
         "BLUEPRINT_COMPANY_INDUSTRY": company.get("industry", ""),
@@ -163,11 +165,11 @@ def _guide(plan: dict) -> bytes:
         "環境準備好後仍要啟動並驗證真正工作台。\n\n"
         "必須沿用 library_web/ 及 assets/icons/ 的完整原版介面和功能；"
         "gui、serve 及 dist/index.html 是舊版離線工具。不要重新排版、簡化或交付示範頁。"
-        "正式畫面可用後，按 docs/INSTALL.md 的完整功能清單驗收，再驗證 AI 保存。\n\n"
+        "正式畫面可用後，先按 docs/NATIVE_LIFECYCLE.md 驗證完整備份下載、隔離還原、重啟保存及下一次更新路線，再驗證 AI 保存。\n\n"
     )
     if plan["mode"] == "local":
         init = _command("python3", tool, "library-init", plan["data_path"], "--username", plan["username"], "--company-file", plan["company_file"])
-        connect = _command("python3", tool, "workday-connect", workspace, "--data", plan["data_path"])
+        connect = _command("python3", tool, "workday-connect", workspace, "--url", "http://127.0.0.1:8787", "--username-env", "BLUEPRINT_BACKEND_USERNAME", "--password-env", "BLUEPRINT_BACKEND_PASSWORD")
         start = _command("python3", tool, "library", "--data", plan["data_path"])
         body = (
             "## 本機安裝\n\n"
@@ -184,7 +186,7 @@ def _guide(plan: dict) -> bytes:
             "行業、簡介和目標。此模式只供這部電腦使用，並未因此成為外出可用的雲端服務。\n\n"
             "4. 在每日工作頁保存一筆真實而簡短的紀錄，停止後重新執行啟動指令，"
             "查回同一筆紀錄及公司設定。確實保留才算本機驗證完成。\n"
-            + "\n5. 工作台可用後，在另一個終端機把私人 AI 工作室連到同一個資料庫：\n\n"
+            + "\n5. 在安全環境設定既有後台帳密，用 HTTP 連到同一個服務；運行時不要讓另一個程序直接開資料庫：\n\n"
             + _code(connect)
             + "\n讓同一部電腦的 AI 讀取 WORKDAY.md，實際保存及讀回並在介面確認。"
             "遠端 AI 無權存取本機資料時，使用每日工作 JSON 匯入，記錄連接仍待完成。\n"

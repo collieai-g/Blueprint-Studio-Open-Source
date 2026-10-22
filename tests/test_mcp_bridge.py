@@ -12,6 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from blueprint_library.mcp_server import Bridge, client_config
+from blueprint_folders import __version__
 from blueprint_library.server import initialize_library, make_server
 from blueprint_library.store import LibraryError, Store
 
@@ -112,7 +113,7 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
         for source in ['Codex', 'Claude Code', 'Gemini CLI']:
             async def work(client):
                 guide = await self.call(client, 'connection_guide', {})
-                self.assertEqual(guide['version'], '2.4.2')
+                self.assertEqual(guide['version'], __version__)
                 self.assertIn('network', guide['troubleshooting'])
                 args = {'challenge': 'a' * 32, 'client': source, 'date': '2026-10-21'}
                 first = await self.call(client, 'verify_connection', args)

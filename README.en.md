@@ -28,6 +28,8 @@ In AI apps that support a split view, chat on the left and view your workspace o
 
 ## Two instructions: install once, update whenever needed
 
+**V2.5 prepares for the next update during installation.** The native local/cloud backend creates complete backups and rehearses restoration and migration before first startup or changed code. It also backs up periodically while running. Owners can download a private ZIP containing the database, login settings and original attachments from the update assistant. Installation includes a real download and authenticated restore check, restart persistence, and a supported redeployment route. [Lifecycle guide and limits](docs/NATIVE_LIFECYCLE.md).
+
 **Yes—two fixed entry points can cover your first installation and repeated updates.** The instructions below do not name a specific version. Each time, the AI checks the latest stable release and pins the version for that run. You do not need a new prompt for every release.
 
 The AI carries out the steps its tools support. When you need to sign in, grant access or approve a cost, it guides you through the next action. How much it can do depends on the tools available in your AI app. The detailed guides are there for the AI to follow.
@@ -115,7 +117,7 @@ The project started with ChatGPT and Codex workflows, but its connection method 
 | **Grok and other AI apps** | An app with compatible tool connections and the required installation capabilities can follow the same process. Not every product has been individually verified. |
 | **Chat or webpage preview only** | These can explain steps or display a page. A complete workspace also needs a running backend, sign-in, and lasting storage for records and attachments. |
 
-MCP is a shared way for AI apps to call workspace tools. This project provides 30 MCP tools, allowing compatible clients to use the same authorized backend. **A Sites-like feature is a possible deployment route; a complete installation still needs backend execution, storage, sign-in and tool connections.** You can also host the backend elsewhere and connect your AI to it.
+MCP is a shared way for AI apps to call workspace tools. This project provides 30 shared MCP tools. Native V2.5 adds two owner-only backup tools, for 32 in total. Compatible clients can use the same authorized backend. **A Sites-like feature is a possible deployment route; a complete installation still needs backend execution, storage, sign-in and tool connections.** You can also host the backend elsewhere and connect your AI to it.
 
 A runnable Python backend is provided for local and cloud use, with deployment guidance for Docker, Render and Railway. For Sites, the project provides the original interface, tool contracts and backend adaptation specifications; there is no universal one-click full installation yet. External services such as automatic specialist replies, webpage capture and video processing also need to be connected separately. Downloading the interface does not start those services.
 

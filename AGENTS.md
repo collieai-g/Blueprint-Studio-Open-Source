@@ -1,5 +1,19 @@
 # Blueprint Studio Open Source
 
+V2.5 makes native local/cloud lifecycle the primary fresh-install route. Follow
+docs/NATIVE_LIFECYCLE.md before claiming installation is complete: persistent data
+and backup paths, real backup download and isolated authenticated restore,
+restart persistence, supported host redeployment, and actual MCP/UI acceptance.
+serve_library uses Maintenance before Store can migrate live data. Preserve the
+OS data lease, startup journal, rehearsal, previous rows/attachments/credentials,
+and failed-data copies. Never initialize a nonempty directory or roll back code
+by silently lowering a data version. Runtime backup pauses/drains HTTP requests,
+not arbitrary SQLite writers; use one service and HTTP/MCP for active access.
+Offline restore only targets a new directory. Native has 32 MCP tools; Sites keeps
+the 30-tool shared contract and needs its own proven backup/restore adapter. Do not
+promise automatic off-host copying, platform deployment or loaded chat tools from
+native maintenance status. Keep all private runtime files out of Git.
+
 Public repository name: Blueprint Studio Open Source (藍圖工作室開源).
 Backend product name: Blueprint Studio Backend. Chinese name: 藍圖工作室（後台）.
 Default new workspace name: 藍圖工作室 Blueprint Studio. The product is an

@@ -85,7 +85,7 @@ class OnboardingTests(unittest.TestCase):
         self.assertIn("--company-file " + shlex.quote(result["company_file"]), guide)
         self.assertIn("workday-connect " + shlex.quote(result["workspace_path"]), guide)
         self.assertIn("library --data " + shlex.quote(result["data_path"]), guide)
-        self.assertNotIn("--url", guide)
+        self.assertIn("--url http://127.0.0.1:8787", guide)
 
     def test_env_values_are_quoted_without_secrets_or_newline_injection(self):
         company = {"name": "公司\n名字", "description": '一行 "說明"\nBLUEPRINT_ADMIN_PASSWORD=not-a-secret'}
@@ -96,7 +96,8 @@ class OnboardingTests(unittest.TestCase):
         self.assertEqual(json.loads(values["BLUEPRINT_COMPANY_NAME"]), company["name"])
         self.assertEqual(json.loads(values["BLUEPRINT_COMPANY_DESCRIPTION"]), company["description"])
         self.assertNotIn("BLUEPRINT_BACKEND_PASSWORD", values)
-        self.assertEqual(json.loads(values["BLUEPRINT_DATA_DIR"]), "/data")
+        self.assertEqual(json.loads(values["BLUEPRINT_DATA_DIR"]), "/data/library")
+        self.assertEqual(json.loads(values["BLUEPRINT_BACKUP_DIR"]), "/data/backups")
 
     def test_identical_rerun_is_idempotent_but_conflicting_plan_is_not_overwritten(self):
         first = prepare_setup(self.output, self.company)

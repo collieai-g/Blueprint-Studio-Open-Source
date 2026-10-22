@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "platform": "native",
+  "tools": [
+    {
+      "name": "blueprint_backup_status",
+      "title": "核對工作台備份",
+      "description": "Owner-only native V2.5+ maintenance status and the latest verified backup receipt. Reports local restore verification only, not off-host durability, deployment, or loaded chat tools. Do not expose backup contents or credentials. Sites requires its own supported backup adapter.",
+      "inputSchema": {"type": "object", "properties": {}, "required": [], "additionalProperties": false},
+      "annotations": {"readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
+      "route": {"method": "GET", "path": "/api/maintenance"}
+    },
+    {
+      "name": "blueprint_backup_create",
+      "title": "建立完整私人備份",
+      "description": "Queue an owner-only native V2.5+ backup of the database, login settings and original attachments. Briefly pauses requests while creating and testing a consistent copy. Poll blueprint_backup_status for a new receipt; a queued request is not completion. Backups remain private on the host; download and verify a durable second copy before updates. Does not deploy or restore live data.",
+      "inputSchema": {"type": "object", "properties": {}, "required": [], "additionalProperties": false},
+      "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
+      "route": {"method": "POST", "path": "/api/maintenance/backup"}
+    }
+  ]
+}

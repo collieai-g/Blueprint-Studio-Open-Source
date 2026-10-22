@@ -16,7 +16,9 @@ services:
       sizeGB: 1
     envVars:
       - key: BLUEPRINT_DATA_DIR
-        value: /data
+        value: /data/library
+      - key: BLUEPRINT_BACKUP_DIR
+        value: /data/backups
       - key: PORT
         value: "8787"
       - key: BLUEPRINT_COMPANY_NAME

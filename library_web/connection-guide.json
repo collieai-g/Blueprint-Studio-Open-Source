@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "2.4.2",
+  "version": "2.5.0",
   "title": "藍圖工作台 AI 接駁與工作規則",
   "rules": [
     "先呼叫 blueprint_workspace_info 核對實際網址及公司，再讀 blueprint_connection_guide；每個新對話都先檢查目前可呼叫工具，不把已安裝當成已載入。",
@@ -14,7 +14,8 @@
     "V2.4 先讀 blueprint_studio_state 取得身份、能力及欄位定義。項目、收件匣、客戶、報價、發票、成本、靈感、主題使用 studio_list/get/create/update；data_json、refs_json 填 JSON 字串。先搜尋並保留原 ID，修改帶 expected_version。",
     "指揮中樞指令：讀 studio_context，只使用獲授權的選定來源；用 studio_action/plan_command 保存拆解，再執行真正可用的工具。用 complete_command 保存真實結果及來源，對外操作設 external_action=true，最後讀回結果與收件匣。不能把複製指令、待處理或專員空殼當成已完成。",
     "PDF 所列四位專員目前是未接入的設定空間，不會自動對外回覆或生成影片。網頁截圖與摘要需要客戶端實際可用的瀏覽工具；上載真實圖片後把 item ID 與實際摘要來源寫回 inspiration。沒有工具時保留等待狀態。",
-    "財務、人事與接入設定按登入身份授權；金鑰只存在伺服器秘密設定。用量是已回傳的帳單紀錄，工作台暫停標記不等於第三方帳戶已停費。任何外發及收費先取得明確人工確認。"
+    "財務、人事與接入設定按登入身份授權；金鑰只存在伺服器秘密設定。用量是已回傳的帳單紀錄，工作台暫停標記不等於第三方帳戶已停費。任何外發及收費先取得明確人工確認。",
+    "原生 V2.5 提供 blueprint_backup_status 與 blueprint_backup_create，僅擁有人可用。建立請求不代表完成；讀回新備份 ID，下載並核對私人副本。維護驗收與 AI 寫入驗收分開。Sites 不適用原生備份工具。"
   ],
   "clients": {
     "codex": {
@@ -53,7 +54,7 @@
     },
     "old": {
       "title": "找不到新版工具／404",
-      "action": "核對正式網站及 MCP 程式版本，將同一服務完整升級到 2.4.2，包含接駁中心、schema 5 公司功能及 30 個工具；Sites 更新來源及外掛工具定義後重新載入。只更新 GitHub 或前端未算完成。"
+      "action": "核對正式網站及 MCP 程式版本，將同一服務完整升級到 2.5.0，包含接駁中心、schema 5 公司功能及 30 個共通工具；原生版另有 2 個擁有人備份工具。Sites 更新來源及外掛工具定義後重新載入。只更新 GitHub 或前端未算完成。"
     },
     "wrong": {
       "title": "AI 寫入後，這個工作台看不到",

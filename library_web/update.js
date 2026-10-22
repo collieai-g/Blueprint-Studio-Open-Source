@@ -66,6 +66,26 @@
     const $ = id => document.getElementById(id);
     let current = null, info = null, generation = 0;
     const error = message => { $('update-error').textContent = message || ''; $('update-error').hidden = !message; };
+    function backupStatus(status) {
+      $('native-backup').hidden = !status?.supported;
+      if (!status?.supported) return;
+      const last = status.last_backup;
+      $('native-backup-create').disabled = !!status.busy;
+      $('native-backup-status').textContent = status.busy ? '正在備份及測試還原，請稍候。' : (status.error ||
+        (last?.restore_verified ? '最近完整備份已通過還原測試：' + new Date(last.created_at * 1000).toLocaleString() + '。請下載另一份私人保存。' : '尚未完成完整備份驗證。'));
+      const valid = last?.restore_verified && /^\d{8}T\d{6}Z-[0-9a-f]{12}$/.test(last.id);
+      $('native-backup-download').hidden = !valid;
+      if (valid) $('native-backup-download').href = '/api/maintenance/backups/' + last.id;
+    }
+    async function pollBackup(request) {
+      if (request !== generation || !$('update-dialog').open) return;
+      try {
+        const status = await api('/api/maintenance');
+        if (request !== generation) return;
+        backupStatus(status);
+        if (status.busy) setTimeout(() => pollBackup(request), 1500);
+      } catch (e) { if (request === generation) error('未能核對備份：' + e.message); }
+    }
     function refresh() {
       current = handoff(location.origin, info, localStorage, $('update-route').value);
       $('update-prompt').value = prompt(current);
@@ -78,12 +98,14 @@
       $('update-prompt').value = '';
       $('update-backend').textContent = '正在讀取目前工作台…';
       $('update-backup-status').textContent = '';
+      $('native-backup').hidden = true;
       error('');
       openDialog('update-dialog');
       try {
         const result = await api('/api/info');
         if (request !== generation) return;
         info = result;
+        backupStatus(info.maintenance);
         $('update-backend').textContent = location.origin + ' · 目前版本 ' + (info.version || '待核對');
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('blueprint-ai-connection-v1') || '{}'); } catch { /* Optional choice only. */ }
@@ -100,6 +122,14 @@
       }
     }
     document.querySelectorAll('[data-update-open]').forEach(button => button.addEventListener('click', open));
+    $('native-backup-create').addEventListener('click', async () => {
+      const request = generation;
+      $('native-backup-create').disabled = true;
+      try {
+        await api('/api/maintenance/backup', { method: 'POST', body: {} });
+        if (request === generation) { backupStatus({ supported: true, busy: true }); pollBackup(request); }
+      } catch (e) { if (request === generation) { $('native-backup-create').disabled = false; error(e.message); } }
+    });
     $('update-route').addEventListener('change', () => { if (info) { try { refresh(); error(''); } catch (e) { error(e.message); } } });
     $('update-copy').addEventListener('click', async () => {
       if (!current) return;

@@ -7,6 +7,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -28,7 +29,7 @@ def main():
         old = store.add_file('original.txt', b'Preserve original attachment')
         Studio(store, {'username': 'owner', 'role': 'owner', 'name': 'owner'}).state()
         original = store.export_metadata()
-        server = make_server(data)
+        server = make_server(data, managed=True)
         thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
         origin = f'http://127.0.0.1:{server.server_port}'
         try:
@@ -49,6 +50,16 @@ def main():
                 assert page.locator('#update-route').input_value() == 'native'
                 assert 'UPDATE_AI.txt' in page.locator('#update-prompt').input_value()
                 assert '已在此瀏覽器保留' in page.locator('#update-backup-status').inner_text()
+                page.locator('#native-backup-status').filter(has_text='通過還原測試').wait_for()
+                initial_backup = page.locator('#native-backup-download').get_attribute('href')
+                page.locator('#native-backup-create').click()
+                page.wait_for_function("old => { const a=document.getElementById('native-backup-download'); return !a.hidden && a.getAttribute('href')!==old && !document.getElementById('native-backup-create').disabled; }", arg=initial_backup)
+                with page.expect_download() as complete_backup:
+                    page.locator('#native-backup-download').click()
+                with zipfile.ZipFile(complete_backup.value.path()) as archive:
+                    assert 'data/access.json' in archive.namelist()
+                    assert 'data/library.sqlite3' in archive.namelist()
+                    assert any(archive.read(name) == b'Preserve original attachment' for name in archive.namelist() if name.startswith('data/blobs/'))
                 with page.expect_download() as download_event:
                     page.locator('#update-download').click()
                 backup = json.loads(Path(download_event.value.path()).read_text())

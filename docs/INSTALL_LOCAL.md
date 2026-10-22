@@ -1,5 +1,7 @@
 # 本機安裝：由新對話到自己的原版工作台
 
+V2.5 啟動器會先備份、測試還原及核對資料遷移。安裝完成前按 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 驗證完整備份下載、還原登入及重啟保存。預設備份在資料目錄旁的 `<資料目錄名稱>-backups`，可用 `BLUEPRINT_BACKUP_DIR` 指定另一個私人目錄。
+
 [返回安裝總覽](INSTALL.md) · [雲端安裝](INSTALL_CLOUD.md)
 
 選擇本機後，程式及私人資料保存在你指定的電腦。這條路線不需要建立 GitHub 帳戶、
@@ -147,18 +149,18 @@ AI 同時驗證未登入不能讀取公司資料。沒有實際執行的檢查�
 
 以下 `workday-connect` 是保留的命令列每日工作路線，可供已有終端機綁定的使用者沿用，不能代替 MCP 外掛接駁。
 
-保持後台服務運行，另開一個終端機並進入同一程式目錄。
+保持後台服務運行，另開一個終端機並進入同一程式目錄。先在該終端機的安全環境設定 `BLUEPRINT_BACKEND_USERNAME` 及 `BLUEPRINT_BACKEND_PASSWORD`；不要將值貼到對話或寫入公開檔案。
 Windows PowerShell：
 
 ```powershell
-py -3 blueprint.py workday-connect "../blueprint-private/藍圖工作室 Blueprint Studio" --data "../blueprint-private/data"
+py -3 blueprint.py workday-connect "../blueprint-private/藍圖工作室 Blueprint Studio" --url "http://127.0.0.1:8787" --username-env BLUEPRINT_BACKEND_USERNAME --password-env BLUEPRINT_BACKEND_PASSWORD
 py -3 blueprint.py workday-list --workspace "../blueprint-private/藍圖工作室 Blueprint Studio"
 ```
 
 macOS／Linux：
 
 ```sh
-python3 blueprint.py workday-connect "../blueprint-private/藍圖工作室 Blueprint Studio" --data "../blueprint-private/data"
+python3 blueprint.py workday-connect "../blueprint-private/藍圖工作室 Blueprint Studio" --url "http://127.0.0.1:8787" --username-env BLUEPRINT_BACKEND_USERNAME --password-env BLUEPRINT_BACKEND_PASSWORD
 python3 blueprint.py workday-list --workspace "../blueprint-private/藍圖工作室 Blueprint Studio"
 ```
 
@@ -166,7 +168,7 @@ python3 blueprint.py workday-list --workspace "../blueprint-private/藍圖工作
 透過已有連線保存；在瀏覽器確認同一筆紀錄出現，再由 AI 查回。
 已有工作室綁定時先核對其指向，保留自訂指引及資料。
 
-本機連線需要 AI 有權存取這部電腦的同一個資料目錄。Codex 雲端或普通聊天無法僅憑
+本機連線需要 AI 能連到這部電腦正在運行的後台 API。Codex 雲端或普通聊天無法僅憑
 `127.0.0.1` 或本機檔案路徑接上你的電腦；此時先使用後台 JSON 匯入，清楚標記「AI 直接寫入未接通」。
 需要跨裝置直接使用時，按[雲端路線](INSTALL_CLOUD.md)規劃可登入的正式服務及資料遷移，
 不要在另一個環境新建資料庫並宣稱已連到原有後台。
