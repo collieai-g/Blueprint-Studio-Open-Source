@@ -45,6 +45,54 @@ def main():
                 assert page.locator('#studio-navigation .studio-primary .studio-nav-label').all_text_contents()==['總覽','工作','AI','資料']
                 assert page.locator('#legacy-navigation').is_hidden()
                 assert page.locator('#studio-navigation [data-studio-route^="specialist/"]').count()==0
+
+                # Orientation is outside the editable board: its real links
+                # explain the two work areas without migrating saved card data.
+                orientation=page.locator('#collaboration-orientation')
+                assert orientation.is_visible()
+                assert orientation.get_attribute('open') is not None
+                assert page.locator('#workspace-board #collaboration-orientation').count()==0
+                def board_geometry():
+                    return page.evaluate('''() => {
+                      const board=document.getElementById('workspace-board'),box=board.getBoundingClientRect();
+                      return [...board.querySelectorAll('[data-widget]')].map(node=>{
+                        const rect=node.getBoundingClientRect();
+                        return {id:node.dataset.widget,x:rect.x-box.x,y:rect.y-box.y,w:rect.width,h:rect.height};
+                      });
+                    }''')
+                original_cards=board_geometry()
+                assert len(original_cards)==13
+                original_preferences=page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")
+                codex=page.locator('#collaboration-codex-pane').bounding_box()
+                blueprint=page.locator('#collaboration-blueprint-pane').bounding_box()
+                assert abs(codex['y']-blueprint['y'])<2 and codex['x']+codex['width']<=blueprint['x'], (codex,blueprint)
+                orientation.locator('[data-collaboration-route=skills]').click()
+                page.wait_for_selector('#skill-workspace[data-skills-ready=true]')
+                assert page.evaluate('location.hash')=='#/skills'
+                page.locator('#studio-navigation [data-group=overview]').click()
+                page.wait_for_selector('#collaboration-orientation')
+                page.locator('#collaboration-orientation [data-collaboration-route=projects]').click()
+                page.wait_for_selector('#studio-panel h1:text-is("項目")')
+                assert page.evaluate('location.hash')=='#/projects'
+                page.locator('#studio-navigation [data-group=overview]').click()
+                page.wait_for_selector('#collaboration-orientation')
+                assert board_geometry()==original_cards
+                assert page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")==original_preferences
+                page.evaluate('() => window.scrollTo(0,0)')
+                page.screenshot(path=str(output/'studio-orientation-desktop.png'),full_page=True)
+                page.set_viewport_size({'width':390,'height':844})
+                page.wait_for_timeout(200)
+                codex=page.locator('#collaboration-codex-pane').bounding_box()
+                blueprint=page.locator('#collaboration-blueprint-pane').bounding_box()
+                assert abs(codex['x']-blueprint['x'])<2 and codex['y']+codex['height']<=blueprint['y'], (codex,blueprint)
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+                assert page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")==original_preferences
+                page.screenshot(path=str(output/'studio-orientation-mobile.png'),full_page=True)
+                page.set_viewport_size({'width':1440,'height':1050})
+                page.wait_for_timeout(200)
+                assert board_geometry()==original_cards
+                assert page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")==original_preferences
+
                 page.locator('#studio-navigation [data-group=work]').click()
                 page.wait_for_selector('#studio-panel h1:text-is("項目")')
                 assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['項目','收件匣','待辦','工作紀錄']
@@ -158,7 +206,7 @@ def main():
                 browser.close()
         finally:
             server.shutdown();server.server_close()
-    print('V2.4 browser checks passed: CRUD, search, commands, quote-to-invoice, topics, all pages, roles, draft preservation, narrow/sidebar/mobile, old URLs.')
+    print('Workbench browser checks passed: orientation CTAs/responsive layout, preserved board/preferences, CRUD, search, commands, quote-to-invoice, topics, all pages, roles, drafts, narrow/sidebar/mobile, old URLs.')
 
 
 if __name__=='__main__':main()

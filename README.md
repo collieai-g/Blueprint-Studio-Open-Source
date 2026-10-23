@@ -2,73 +2,91 @@
   <a href="https://blueprint-agent-studio.onrender.com/">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="assets/brand/mark-light.svg">
-      <img src="assets/brand/mark-ink.svg" width="112" height="112" alt="Blueprint Studio 官方標誌">
+      <img src="assets/brand/mark-ink.svg" width="88" height="88" alt="Blueprint Studio 官方標誌">
     </picture>
   </a>
 </p>
 
 <h1 align="center">Blueprint Studio Open Source</h1>
 
-<p align="center"><strong>藍圖工作室開源 · Codex 執行工作，藍圖管理資料，Skill 提供專業流程。</strong></p>
+<p align="center"><strong>在左側指揮 Codex，在右側管理公司。</strong></p>
+
+<p align="center"><strong>繁體中文</strong> · <a href="README.en.md">English</a></p>
 
 <p align="center">
-  <strong>繁體中文</strong> · <a href="README.en.md">English</a>
-</p>
-
-<p align="center">
-  <a href="https://blueprint-agent-studio.onrender.com/">官方網站</a> ·
-  <a href="https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/latest">下載最新正式版</a> ·
+  <a href="docs/USER_GUIDE.md">開始使用</a> ·
   <a href="#first-install">首次安裝</a> ·
-  <a href="#keep-updated">更新工作台</a>
+  <a href="#keep-updated">更新工作台</a> ·
+  <a href="https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/latest">下載正式版</a> ·
+  <a href="https://blueprint-agent-studio.onrender.com/">官方網站</a>
 </p>
 
-藍圖工作室是一個與 Codex 等 AI 客戶端配合的開源工作台。左側對話理解要求、執行工作；右側準備素材、整理要求並保存成果。專業流程可以用 Skill 重用，例如影片設計不必先建立另一個常駐 AI 服務。
+**藍圖工作室是一個與 Codex 配合的開源公司工作台。** 你在左側說明目標，指揮 Codex 整理資料和執行工作；右側藍圖保存公司的文件、項目、待辦與成果，讓你查看及接續。
 
-Codex 已具備並獲授權操作工作台的畫面控制工具時，可以直接點擊右側按鈕、填寫表單、保存並讀回，你毋須手動接駁外部 API。MCP 保留為另一條自動化路線；工作台背後的登入、版本檢查及私人儲存仍然存在。只看見分屏不代表目前對話已有控制工具。
+![左右協作示意圖：使用者在左側指揮 Codex，右側藍圖管理公司資料；操作後保存成果並重新查看同一筆紀錄](artifacts/codex-blueprint-workflow.svg)
 
-支援左右分屏的 AI 軟件，可以在左側對話、右側查看工作台；也可以在另一個瀏覽器分頁使用。**AI 負責理解和整理，工作台負責保存和呈現。**
+*示意圖，並非軟件截圖。左右面板由你使用的 AI 軟件或視窗安排提供；藍圖工作台本身不內建 Codex。*
 
-[Sites 入口配原生後台](docs/SITES_NATIVE_GATEWAY.md)讓公司資料與備份獨立管理，保留原版畫面及 AI 工具入口。正式主機及平台接駁仍需安裝驗收。**2.6 加入[獨立 Agent 共用工作台](docs/AGENT_ROADMAP.md)**：每個 Agent 使用自己的倉庫及固定版本，透過藍圖統一設定、準備工作及保存結果，由目前 Codex 或相容 AI 對話處理。沒有自動客服或背景 AI 執行器。
+## 先完成一項真實工作
 
-## 左右配合：專業 Skill、工作要求與素材分開
+1. **把兩邊放在一起。** 在平常使用的 Codex 開啟對話，把已安裝的藍圖工作台開在右側瀏覽器，或放到旁邊的另一個視窗。
+2. **指定這次工作。** 在藍圖上載或選定資料，再向左側 Codex 說明要做甚麼。
+3. **查看保存結果。** Codex 使用目前可用的正式操作保存成果；重新開啟同一筆紀錄，核對文字、待辦及附件。
 
-在「AI → Skill 與交接」選擇影片或一般工作，填寫目標、風格及限制，勾選需要的素材，再產生交接內容。可重用的 `SKILL.md` 保存專業流程；私人工作說明保存本次要求及所選資料引用。你可以複製、下載，或保存工作說明到同一個後台的報告，沿用選定來源的權限；匯出並不會安裝外掛或自動啟動 Codex。
+例如，你可以在左側說：
 
-例如上載品牌素材、說明「30 秒、直式、沉穩風格」，由 Codex 按 Skill 製作腳本、分鏡，再使用目前實際可用的影片工具製作。沒有影片工具時，只回報已完成的腳本及分鏡，不把工作說明當成已生成影片。
+> 根據我選定的會議紀錄，整理決定和三項待辦，放到這個項目。保存後重新開啟同一筆紀錄，讓我核對。
 
-[左右協作完整流程與驗收](docs/LEFT_RIGHT_WORKFLOW.md) · [可重用影片 Skill 範本](templates/skills/personal-video/README.md)
+Codex 若真正具備控制同一個已登入工作台的工具，就可以點擊、填表和上載，你不必另寫 API。MCP 是另一條可選工具路線。**看得到右側網頁、能控制它，以及保存成功，是三件不同的事。** 藍圖後台仍負責登入、權限、版本檢查及私人儲存。
 
-## 主要運作方式：日常保存與程式更新分開
+尚未安裝時，先用下方[首次安裝指令](#first-install)。已可開啟工作台時，跟著[使用指南](docs/USER_GUIDE.md)完成第一項工作；詳細分工見[左右協作流程](docs/LEFT_RIGHT_WORKFLOW.md)。
 
-例如使用「一二三醫療工作室」（示例名稱），你可以在 Codex 說「整理今日研發進度，保存報告並更新待辦」。Codex 讀取獲授權資料，透過工具保存並讀回；工作台顯示同一份結果。**這些日常操作不需要修改 GitHub，也不需要重新部署 Sites。**
+## 右側四個入口，接住每天的工作
 
-| 你要做的事 | GitHub 與部署 |
-| --- | --- |
-| 新增今日工作、更新待辦、保存文件、加入收藏、整理公司報告及日常管理 | 透過現有 API 保存到私人後台，不改程式、不重新部署 |
-| 修改公司或 Agent 現有設定、使用現有拖動排版功能 | 直接保存設定；瀏覽器排版保存在該瀏覽器，不重新部署 |
-| 加入符合已部署規格的 Agent | 核對固定版本後登記、設定及啟用接口，通常不改公司程式、不重新部署 |
-| 修改版面程式、按鈕邏輯、加入尚未支援的 AI 功能或升級 Blueprint | 更新公司使用的程式版本，測試後部署受影響服務 |
+| 入口 | 你在藍圖查看甚麼 | 可以交給左側 Codex 的工作 |
+| --- | --- | --- |
+| **總覽** | 今日焦點、最近成果及公司的工作概況 | 「把今天最重要的三件事整理出來。」 |
+| **工作** | 項目、收件匣、待辦及工作紀錄 | 「整理進度，更新這個項目的待辦。」 |
+| **AI** | Skill 與交接、相容 Agent、工作指令及接入設定 | 「按這份影片 Skill 和選定素材準備製作。」 |
+| **資料** | 文件、收藏、主題及釘選內容 | 「把這份報告和參考網址整理到同一個主題。」 |
 
-長期開發公司專用功能時，建立或沿用自己的**私人 GitHub 程式倉庫**，保存公司版本及專用修改。藍圖發布新版後，由 Codex 整合指定版本、保留自訂內容、測試及備份，再更新原有服務。上游發版不會自動同步私人倉庫；推送 GitHub 也不代表 Sites 已部署。直接使用未修改原版的使用者則不必另建倉庫。
+工作台保留白色、淺灰色及淡方格。總覽卡片可移動、調整大小和收合，排版保存在目前瀏覽器。細分內容放在各頁面，舊紀錄、權限及保留路由繼續可用。
 
-採用 Sites 入口加獨立後台時，畫面及業務功能由後台提供，相容改動可能只需更新後台；Sites 接駁程式或工具合約有改動時，才一併發布原 Sites 入口。客服 Agent 若需要自行持續接收及回覆訊息，還需要另外實作執行服務與渠道接駁。
+閒置或切回視窗時，畫面不會自動重建。工作台內保存後更新相應內容；Codex 從外部工具保存後，按「更新資料」查看。
 
-[完整運作方式：公司倉庫、獨立 Agent 與部署分工](docs/OPERATING_MODEL.md)
+[公司日常管理例子](docs/USER_GUIDE.md#每天可以怎樣使用) · [個人排版](docs/LAYOUT.md) · [功能與實際範圍](docs/V2.4.md)
 
-## 兩個指令，從第一次安裝用到每次更新
+## Skill 提供方法，工具完成製作
 
-**V2.5：首次安裝就準備好下次更新。** 原生本機／雲端後台會在首次啟動及程式更新前完整備份，測試還原與資料遷移；服務運行時定期備份。擁有人可在更新助手下載包含資料庫、登入及原始附件的私人 ZIP。安裝 AI 會驗證下載、還原登入、重啟保存及下一次部署途徑。[查看完整流程與適用範圍](docs/NATIVE_LIFECYCLE.md)。
+例如要做個人化影片：在「AI → Skill 與交接」選擇影片工作，填寫目標、片長及風格，選定品牌素材。Codex 根據 Skill 準備腳本、分鏡，再使用目前真正可用的影片或剪輯工具製作，將實際成果存回藍圖。
 
-**可以，兩個固定入口就能涵蓋首次安裝，以及日後多次更新。** 下方指令不寫死版本號；AI 每次先查核最新正式發行版，再固定本次使用的版本。你不需要每次重新尋找一段升級指令。
+可重用的 `SKILL.md` 保存專業流程；私人交接單保存本次要求及所選資料引用。兩者可以分開下載，交接單也可保存成同一後台的報告，沿用來源權限。匯出來源編號不包含原始附件，仍須經獲授權方式讀取。
 
-AI 會按所用平台完成能執行的操作；需要你本人登入、授權或確認費用時，再帶你做當前一步。能否自動完成，取決於該 AI 軟件實際提供的工具。詳細步驟由 AI 閱讀，不需要你逐份研究。
+下載 Skill 不會自動安裝外掛或啟動 Codex。沒有影片工具時，先交付腳本及分鏡，成片保持待完成；不需要為每種影片另建一個常駐 AI 服務。
+
+[影片工作完整例子](docs/USER_GUIDE.md#製作一段個人化影片) · [可重用影片 Skill 範本](templates/skills/personal-video/README.md)
+
+## 日常保存，不用每次重新部署
+
+整理報告、更新待辦、收藏資料和修改既有設定，使用現有畫面或已授權工具保存即可，不需要 Git 提交或重新發布網站。只有修改藍圖程式、按鈕邏輯、加入尚未支援的能力或升級版本，才需要測試及部署。
+
+這個公開倉庫保存可重用程式與文件。公司資料、附件、私人偏好、憑證及完整備份放在另外的私人位置。一般對話不會整段自動存入，藍圖也不會自行讀取其他平台的私人聊天。
+
+[主要運作方式](docs/OPERATING_MODEL.md)說明日常管理、公司私人程式版本、Skill 與 Agent 的分工。
+
+## 安裝與更新
+
+本機安裝在你自己的電腦運行；雲端安裝提供可登入的網站。AI 每次先核實最新正式版本，沿用已選定的平台和資源。原生安裝須驗證完整備份下載、隔離還原、重啟保存及日後更新途徑；詳細流程由安裝 AI 閱讀。
 
 <a id="first-install"></a>
 <a id="貼給你的-ai開始安裝"></a>
 
 ### 1. 第一次安裝
 
-開啟一個有安裝或部署工具的 AI 對話，複製以下整段：
+開啟有安裝或部署工具的 AI 對話，複製以下指令。
+
+<details>
+<summary>展開首次安裝指令</summary>
 
 ```text
 請幫我首次安裝 Blueprint Studio Open Source，並用繁體中文逐步帶我完成。
@@ -80,15 +98,18 @@ https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/INSTALL_AI.
 私人資料及安裝進度保存在公開倉庫以外。先沿用我已選定的目標：若我明確要求全新安裝並保留舊站，使用獨立服務及資料位置，舊站不動；不要因找到舊站而轉去更新，也不要以舊站備份作為新安裝前置條件。只有我要更新原工作台時，才改按 UPDATE_AI.txt 保留資料更新。
 ```
 
-本機安裝會在你自己的電腦使用；雲端安裝會提供可以登入的網站。AI 會沿用已有帳戶和資源，再按需要帶你完成設定。
+</details>
 
-已有舊站但決定另外安裝時，在這段指令加上「全新安裝原生工作台，保留舊站不動」。AI 會使用獨立資料及新服務；舊資料留在舊站，不會自動搬過來。新站安裝仍須驗證自己的備份、還原與 AI 接駁。
+已有舊站但想另裝時，加上「全新安裝原生工作台，保留舊站不動」。新服務使用獨立資料及備份位置，舊資料不自動匯入。
 
 <a id="keep-updated"></a>
 
 ### 2. 之後每次更新
 
-把以下整段貼給管理你現有工作台的 AI。**每次有新版本，都用同一段。**
+把以下指令貼到管理現有工作台的 AI，保留原網址、登入、資料、附件與自訂內容。
+
+<details>
+<summary>展開更新工作台指令</summary>
 
 ```text
 請幫我把現有 Blueprint Studio Open Source 工作台更新至最新正式版本。
@@ -100,92 +121,44 @@ https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/UPDATE_AI.t
 所有私人來源、資料、設定及備份都保存在公開倉庫以外。缺少必要能力時，說清楚具體缺項與下一步，分開回報網站更新和 AI 接駁的狀態。
 ```
 
-更新 GitHub 上的程式，不會自動更新你正在使用的工作台；第二段指令會帶 AI 接續到原服務的部署和驗收。已是最新正式版時，先核對版本與運作，不必重裝。更新中途換對話，也沿用原目標及已完成進度。
+</details>
 
-若 AI 無法讀取 GitHub，從[最新正式發行版](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/latest)下載檔名以 `-installer.zip` 結尾的完整安裝包，交給 AI 讀取包內的 `INSTALL_AI.txt` 或 `UPDATE_AI.txt`。需要讀取最新入口但無法連線時，AI 應說明限制；介面包 `-workbench.zip` 只包含介面，不能代替完整後台。
+GitHub 發版不會自動更新你的工作台；AI 需完成備份、整合、原服務部署及驗收。跨對話時，沿用既有私人進度及已核實來源，不重建資料。
 
-## 一個工作台，看清公司的日常
+若 AI 不能讀取 GitHub，可下載[最新正式版](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/latest)中以 `-installer.zip` 結尾的完整安裝包，交給 AI 讀取包內入口。`-workbench.zip` 只有介面，不能代替完整後台。
 
-![藍圖工作台：白色淡格線背景、公司導覽及項目進度](artifacts/studio-v2.4-projects.png)
+[完整安裝指南](docs/INSTALL.md) · [本機安裝](docs/INSTALL_LOCAL.md) · [雲端安裝](docs/INSTALL_CLOUD.md) · [備份與更新](docs/NATIVE_LIFECYCLE.md)
 
-*V2.4 工作台的歷史項目畫面，圖中為測試資料；V2.7 已改為四個主要入口。介面目前使用繁體中文。[查看手機介面](artifacts/studio-v2.4-mobile.png)。*
+## 客戶端、接駁與開發
 
-| 區域 | 用來做甚麼 |
-| --- | --- |
-| **總覽** | 查看今天的重點和最近資料，調整卡片排版。 |
-| **工作** | 項目、收件匣、待辦及工作紀錄。 |
-| **AI** | Skill 與交接、相容 Agent、工作指令及外部接入。 |
-| **資料** | 文件、收藏、主題及釘選。 |
+Codex 及其他相容 AI 能做甚麼，取決於目前客戶端實際提供的工具。畫面控制需要能操作正確的已登入分頁；只有聊天或網頁預覽時，可準備指引和檔案，不能宣稱已操作工作台。選用 MCP 時，按[AI 接駁指南](docs/AI_CONNECTION.md)及[接駁中心](docs/CONNECT.md)驗證真實讀寫。
 
-側欄固定四個主入口，細分內容放入頁面；原有紀錄、權限及舊連結保留。工作台在閒置或切回視窗時不會自動重建畫面；按「更新資料」查看外部 AI 新保存的內容，工作台內保存則即時更新。
+本項目提供 40 個共通 MCP 工具；原生及 Sites 原生接駁另有兩個擁有人備份工具，共 42 個。這些是可選的工具接駁能力，不是畫面操作路徑的必裝前置條件。
 
-白色與淺灰色保留閱讀空間，淡方格讓版面容易對齊。總覽中的文字與卡片可沿方格移動、調整大小和收合；標題、說明及日期使用無框文字。需要更多空間時，可向下增加版面，最多三頁。搜尋、上載和勾選待辦等必要操作仍然保留。
+目前有可運行的 Python 本機／雲端後台，以及 Docker、Render、Railway 等部署指引。[Sites 入口配原生後台](docs/SITES_NATIVE_GATEWAY.md)提供另一種接駁方式；Sites 自身儲存資料的路線仍需相應後台及備份適配，沒有無設定的一鍵完整部署。
 
-[完整功能與實際完成範圍](docs/V2.4.md) · [個人排版方式](docs/LAYOUT.md)
+需要固定套件版本、來源摘要及持久工作狀態時，可使用[Agent 工作規格](docs/AGENT_CONTRACT.md)、[開發範本](templates/agent/README.md)及[獨立摘要示範](https://github.com/collieai-g/collieai-g-Blueprint-Agent-Summary)。它不是每份 Skill 的前置條件；登記或連接接口不代表正在運行客服、影片或其他背景 AI。
 
-## 說明工作，讓 AI 幫你整理
+<details>
+<summary>查看歷史工作台畫面</summary>
 
-接通後，你可以向 AI 說：
+![V2.4 工作台歷史項目畫面，使用測試資料](artifacts/studio-v2.4-projects.png)
 
-> 把剛才確認的工作拆成三項待辦，放到這個項目。
+這是 V2.4 的歷史截圖，並非目前四個主入口的畫面。[歷史手機截圖](artifacts/studio-v2.4-mobile.png)。
 
-> 把這個參考網址加入靈感庫，並連到網站改版項目。
-
-> 今日收工，整理今天的成果、決定和未完成工作，保存到公司後台。
-
-AI 根據你的要求，整理目前看得到或你提供的內容，透過已授權工具保存，再讀回核對；工作台顯示同一份資料。一般對話不會自動全部存入，AI 也不會自行取得其他平台的私人聊天。
-
-工作台內置 **AI 接駁中心**，帶你核對登入、工具載入、實際寫入和讀回。看得到網頁、裝了外掛，與「目前對話已能寫入」是不同狀態；接駁中心會以真正的測試結果核對。
-
-「今日收工」整理的是工作資料；更新程式版本使用上方第二段指令。
-
-## 可以使用哪些 AI？
-
-本項目以 ChatGPT／Codex 的使用情境為起點，接駁方式不綁定單一模型。是否能安裝和操作，主要取決於**承載模型的軟件及其工具權限**。
-
-| 使用方式 | 需要具備的能力 |
-| --- | --- |
-| **ChatGPT／Codex** | 安裝時需要程式執行或部署工具；日常操作可用目前客戶端真正提供的同一登入分頁控制，或已授權藍圖工具；畫面路線不要求先裝 MCP。內置 Sites 的路線還需要完成該平台的後台適配。 |
-| **Claude、Gemini 等** | 本項目提供 Claude Code、Gemini CLI 等相容 MCP 客戶端的接駁方式。能否代為安裝，仍視該產品的執行與部署工具而定。 |
-| **Grok 及其他 AI** | 如果所用產品支援相容工具接駁，並具備安裝所需能力，可以按同一流程接入；目前未逐一驗證所有產品。 |
-| **只有聊天或網頁預覽** | 可以解釋步驟或展示畫面；完整工作台還需要可運行的後台、登入，以及長期保存資料和附件的空間。 |
-
-MCP 是讓 AI 呼叫工作台工具的共同接駁方式。本項目提供 40 個共通 MCP 工具，包含 10 個 Agent 操作工具；原生後台另有兩個擁有人備份工具，共 42 個。支援的客戶端可以連到同一個已授權後台。**有類似 Sites 的功能，是一種可能的部署入口；是否能完整安裝，仍需核對後台、儲存、登入和工具接駁。** 也可以把後台部署在外部主機，再由 AI 連接。
-
-目前提供可直接運行的 Python 本機／雲端後台，以及 Docker、Render、Railway 等部署指引。Sites 提供原版介面、工具合約及後台適配規格，尚無通用的一鍵完整安裝版本。AI 專員自動回覆、網站擷取及影片處理等外部服務，也需要另行接入；下載介面不代表這些服務已在運行。
-
-[AI 接駁說明](docs/AI_CONNECTION.md) · [本機安裝](docs/INSTALL_LOCAL.md) · [雲端安裝](docs/INSTALL_CLOUD.md)
-
-## 用同一個工作台管理獨立 Agent
-
-每個 Agent 在自己的 GitHub 倉庫開發，提供[共同規格](docs/AGENT_CONTRACT.md)中的規則、設定、操作及標準介面描述。藍圖使用共用控制項顯示功能，與 Codex 的 MCP 工具操作同一份資料。
-
-一般設定按掣後直接保存；需要 AI 的操作先建立工作，再在 Codex 說「處理 Agent 工作 `<工作編號>`」。Codex 讀取指定資料、完成處理並保存，工作台顯示同一筆結果。加入 GitHub 網址不會安裝程式，連接功能也不等於目前對話已載入工具；按鈕不會自動喚起 Codex。
-
-已部署的藍圖支援該 Agent 規格時，登記後便由現有畫面呈現操作，無需每次重新發布 Sites。把 Agent 檔案放入公司倉庫不會自動完成登記或執行；需要額外程式能力時才整合程式及部署。Agent 更新與 Blueprint 更新分開選定版本，既有工作保留原設定快照。
-
-開發者可從[Agent 範本](templates/agent/README.md)開始，或接入已獨立發佈的[摘要示範 Agent](https://github.com/collieai-g/collieai-g-Blueprint-Agent-Summary)，先用指定資料摘要驗證完整交接。公司資料及工作結果保存在原後台，各 Agent 套件獨立版本管理。
-
-## 你的公司資料，留在自己的工作台
-
-這個公開倉庫只保存可重用的程式與文件。公司資料、附件、帳密、聊天、私人工作台來源及備份，存放在另外的私人位置。
-
-每次更新沿用原工作台，先備份，再整合、部署及核對。需要跨對話保存私人候選程式時，使用另外核實的私人倉庫；來源檢查點與完整資料備份分開保存。[完整更新路線](docs/UPDATE_ROUTE.md)說明從取回程式到正式使用的每一步。
+</details>
 
 ## 文件與參與
 
 | 你想了解 | 文件 |
 | --- | --- |
-| 左右配合、Skill 與影片工作 | [左右協作流程](docs/LEFT_RIGHT_WORKFLOW.md) |
-| 日常操作、公司版本及 Agent 如何分工 | [主要運作方式](docs/OPERATING_MODEL.md) |
-| 安裝及第一次使用 | [開始使用](START_HERE.md) · [完整安裝指南](docs/INSTALL.md) |
-| 接通 AI 及保存每日工作 | [接駁中心](docs/CONNECT.md) · [每日工作](docs/DAILY_WORK.md) |
+| 開啟左右介面，完成第一項日常工作 | [使用指南](docs/USER_GUIDE.md) |
+| 左右協作、Skill 與影片流程 | [協作流程](docs/LEFT_RIGHT_WORKFLOW.md) · [主要運作方式](docs/OPERATING_MODEL.md) |
+| 安裝與每日工作 | [開始使用](START_HERE.md) · [完整安裝](docs/INSTALL.md) · [每日工作](docs/DAILY_WORK.md) |
 | 更新、備份及回復 | [更新路線](docs/UPDATE_ROUTE.md) · [升級指南](docs/UPGRADE.md) |
-| 自行部署或開發 | [後台說明](docs/LIBRARY.md) · [平台適配規格](docs/STUDIO_API.md) · [文件夾工具](docs/USAGE.md) |
+| 自行部署或開發 | [後台說明](docs/LIBRARY.md) · [平台適配](docs/STUDIO_API.md) · [Agent 路線](docs/AGENT_ROADMAP.md) · [文件夾工具](docs/USAGE.md) |
 | 版本與驗證 | [正式發行版](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/latest) · [更新紀錄](CHANGELOG.md) · [驗證紀錄](VALIDATION.md) |
 
-**關於 Blueprint Studio** — 從企業的日常工作出發，把 AI 帶入實際工作。本開源項目提供可自行安裝及擴充的公司工作台；[官方網站](https://blueprint-agent-studio.onrender.com/)介紹品牌與客製化服務方向。首頁沿用官方標誌。
+**關於 Blueprint Studio** — 讓 AI 協助工作，讓公司的日常有序保存。[官方網站](https://blueprint-agent-studio.onrender.com/)介紹品牌及客製化服務。
 
-README 提供繁體中文與英文；詳細指南及工作台介面目前以繁體中文為主。
-
-採用 [MIT 授權](LICENSE)。歡迎透過 [Issues](https://github.com/collieai-g/Blueprint-Studio-Open-Source/issues) 或 Pull Request 提出問題與改進；分享範例時請使用測試資料。
+README 提供繁體中文與英文；詳細指南及工作台介面目前以繁體中文為主。採用 [MIT 授權](LICENSE)。歡迎透過 [Issues](https://github.com/collieai-g/Blueprint-Studio-Open-Source/issues) 或 Pull Request 提出改進，分享例子時請使用測試資料。

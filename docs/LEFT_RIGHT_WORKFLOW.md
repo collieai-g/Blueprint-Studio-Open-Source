@@ -1,8 +1,12 @@
 # 左側 Codex，右側藍圖：同一項工作的協作流程
 
-[主要運作方式](OPERATING_MODEL.md) · [個人化影片 Skill 範本](../templates/skills/personal-video/README.md) · [Agent 工作規格](AGENT_CONTRACT.md)
+[使用指南：先完成一項工作](USER_GUIDE.md) · [主要運作方式](OPERATING_MODEL.md) · [個人化影片 Skill 範本](../templates/skills/personal-video/README.md) · [Agent 工作規格](AGENT_CONTRACT.md)
 
-**藍圖提供材料及工作介面，Skill 提供專業方法，Codex 使用目前可用的工具完成工作，再把結果放回藍圖。** 這三部分各自可以更換；增加一種專業流程，通常不需要再建立一套獨立模型服務。
+**你在左側指揮 Codex，右側藍圖管理公司的資料和成果。** 藍圖提供材料及工作介面，Skill 提供專業方法，Codex 使用目前可用的工具完成工作，再把結果放回藍圖。這三部分各自可以更換；增加一種專業流程，通常不需要再建立一套獨立模型服務。
+
+![你在左側指揮 Codex，右側藍圖保存公司資料；成果保存後重新查看的協作示意圖](../artifacts/codex-blueprint-workflow.svg)
+
+*示意圖，並非軟件截圖。左右面板由你使用的客戶端或視窗安排提供，藍圖本身不內建 Codex。第一次使用可先跟著[使用指南](USER_GUIDE.md)開啟兩邊，完成會議待辦或影片工作；本頁說明背後的交接與驗收規則。*
 
 ## 先分清楚三種東西
 

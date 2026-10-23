@@ -451,6 +451,7 @@
     const bottom=document.querySelector('.sidebar-bottom');bottom.prepend(routeButton('archived','已封存','archive'));
     $('studio-account').addEventListener('click',()=>navigate('account'));
     $('studio-mobile-command').addEventListener('click',()=>openCommand());
+    document.querySelectorAll('[data-collaboration-route]').forEach(control=>control.addEventListener('click',()=>navigate(control.dataset.collaborationRoute).catch(error=>app.notice(error.message,true))));
     document.querySelectorAll('[data-studio-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
     $('studio-form').addEventListener('submit',event=>{event.preventDefault();busy(event.currentTarget,async()=>{
       const data=readFields($('studio-fields')),refs=[...$('studio-refs').selectedOptions].map(o=>JSON.parse(o.value));
