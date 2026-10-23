@@ -56,6 +56,9 @@ try:
     address = docker('port', name, '8787/tcp')
     remote = WorkdayRemote({'url': 'http://' + address})
     ready(remote)
+    instructions = remote._request('GET', '/api/install-instructions')['instruction']
+    assert instructions == (Path(__file__).resolve().parents[1] / 'INSTALL_AI.txt').read_text(encoding='utf-8')
+    assert 'docs/LEFT_RIGHT_WORKFLOW.md' in instructions
     assert docker('exec', name, 'id', '-u') == '10001'
     bridge = Bridge(remote.url)
     assert len(bridge.tools()) == 42
@@ -77,7 +80,8 @@ try:
         assert response.read() == b'Original attachment after restart'
     print(json.dumps({'container_build':True, 'non_root':True, 'fresh_initialization':True,
                       'complete_download_authenticated_restore':True, 'same_url_volume_restart':True,
-                      'original_id_attachment_login_preserved':True, 'native_tools':42}))
+                      'original_id_attachment_login_preserved':True, 'canonical_install_instructions':True,
+                      'native_tools':42}))
 except Exception:
     print(docker('logs', name))
     raise
