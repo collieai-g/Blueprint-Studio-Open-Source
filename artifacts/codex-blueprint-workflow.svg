@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-labelledby="title description">
+  <title id="title">左側指揮 Codex，右側用藍圖管理公司的協作示意圖</title>
+  <desc id="description">這是示意圖，並非實際軟件截圖。使用者在左側交代整理會議與三項待辦，Codex 按要求理解選定資料、使用 Skill 與已授權工具。右側藍圖提供總覽、工作、AI、資料四個入口，保存會議摘要與待辦，再讀回同一筆紀錄。畫面控制須由客戶端實際提供，MCP 是可選路徑。</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#e9edf0" stroke-width="0.7"/>
+    </pattern>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
+      <path d="M1 1L6 4L1 7" fill="none" stroke="#68737e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      text { font-family: "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; fill: #20262c; }
+      .muted { fill: #697480; }
+      .label { font-size: 16px; font-weight: 500; letter-spacing: .5px; }
+      .body { font-size: 18px; }
+      .section { font-size: 23px; font-weight: 700; }
+      .small { font-size: 16px; }
+      .step { font-size: 19px; font-weight: 500; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="900" fill="#f9fafb"/>
+  <rect x="0" y="184" width="1280" height="590" fill="url(#grid)"/>
+
+  <g transform="translate(34 25) scale(.65)">
+    <path d="M50 38V14H14V50H38" fill="none" stroke="#0d0e10" stroke-width="4" stroke-linecap="square"/>
+    <circle cx="50" cy="50" r="4.2" fill="#c9a45c"/>
+  </g>
+  <text x="86" y="56" font-size="21" font-weight="700">Blueprint Studio</text>
+  <text x="1240" y="54" text-anchor="end" class="label muted">左右協作示意</text>
+  <text x="40" y="119" font-size="36" font-weight="700">左側交代工作，右側管理公司。</text>
+  <text x="40" y="157" class="body muted">你決定目標與使用的資料，Codex 協助處理，藍圖保存成果。</text>
+
+  <rect x="40" y="198" width="544" height="568" rx="18" fill="#fff" stroke="#d9dfe4"/>
+  <rect x="696" y="198" width="544" height="568" rx="18" fill="#fff" stroke="#d9dfe4"/>
+  <path d="M40 278H584M696 278H1240" stroke="#e4e8ec"/>
+
+  <text x="64" y="236" class="section">左側｜你指揮 Codex</text>
+  <text x="64" y="260" class="small muted">提出要求、選定材料、決定下一步</text>
+  <text x="720" y="236" class="section">右側｜藍圖管理公司</text>
+  <text x="720" y="260" class="small muted">查看進度、整理資料、核對保存結果</text>
+
+  <rect x="64" y="302" width="496" height="116" rx="12" fill="#f3f5f7"/>
+  <text x="86" y="336" class="label muted">你交代的工作</text>
+  <text x="86" y="372" font-size="22" font-weight="500">整理今天的會議，</text>
+  <text x="86" y="400" font-size="22" font-weight="500">再列出三項待辦。</text>
+
+  <text x="64" y="464" font-size="22" font-weight="700">Codex 按你的要求處理</text>
+  <g>
+    <circle cx="80" cy="502" r="15" fill="#edf0f3"/>
+    <text x="80" y="508" text-anchor="middle" font-size="15" font-weight="700">1</text>
+    <text x="108" y="509" class="step">理解目標，讀取選定資料</text>
+    <circle cx="80" cy="551" r="15" fill="#edf0f3"/>
+    <text x="80" y="557" text-anchor="middle" font-size="15" font-weight="700">2</text>
+    <text x="108" y="558" class="step">運用 Skill 與已授權工具</text>
+    <circle cx="80" cy="600" r="15" fill="#edf0f3"/>
+    <text x="80" y="606" text-anchor="middle" font-size="15" font-weight="700">3</text>
+    <text x="108" y="607" class="step">保存成果，讀回同一筆結果</text>
+  </g>
+  <rect x="64" y="650" width="496" height="92" rx="10" fill="#fafbfc" stroke="#e5e9ed"/>
+  <text x="84" y="685" font-size="18" font-weight="700">Skill 提供方法，工具提供能力</text>
+  <text x="84" y="715" class="small muted">依目前客戶端真正可用的能力執行。</text>
+
+  <g class="body" font-weight="500" text-anchor="middle">
+    <rect x="720" y="302" width="115" height="42" rx="8" fill="#f6f7f9"/>
+    <text x="777.5" y="330">總覽</text>
+    <rect x="847" y="302" width="115" height="42" rx="8" fill="#e9edf1"/>
+    <text x="904.5" y="330" font-weight="700">工作</text>
+    <rect x="974" y="302" width="115" height="42" rx="8" fill="#f6f7f9"/>
+    <text x="1031.5" y="330">AI</text>
+    <rect x="1101" y="302" width="115" height="42" rx="8" fill="#f6f7f9"/>
+    <text x="1158.5" y="330">資料</text>
+  </g>
+
+  <rect x="720" y="366" width="496" height="116" rx="11" fill="#fff" stroke="#dfe4e9"/>
+  <path d="M746 388H765L772 395V418H746ZM765 388V395H772M752 402H765M752 408H765" fill="none" stroke="#697480" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="786" y="409" font-size="21" font-weight="700">會議摘要</text>
+  <rect x="1120" y="387" width="76" height="28" rx="14" fill="#eef1f3"/>
+  <text x="1158" y="406" text-anchor="middle" font-size="14" class="muted">已保存</text>
+  <text x="744" y="451" class="body muted">保留重點、決定與下一步。</text>
+
+  <rect x="720" y="498" width="496" height="150" rx="11" fill="#fff" stroke="#dfe4e9"/>
+  <text x="744" y="534" font-size="21" font-weight="700">三項待辦</text>
+  <text x="1192" y="533" text-anchor="end" font-size="14" class="muted">示意資料</text>
+  <g fill="none" stroke="#98a2ac" stroke-width="1.5">
+    <rect x="744" y="555" width="15" height="15" rx="3"/>
+    <rect x="744" y="585" width="15" height="15" rx="3"/>
+    <rect x="744" y="615" width="15" height="15" rx="3"/>
+  </g>
+  <text x="774" y="569" class="small">確認項目方向</text>
+  <text x="774" y="599" class="small">整理所需資料</text>
+  <text x="774" y="629" class="small">安排下一次跟進</text>
+
+  <rect x="720" y="672" width="496" height="70" rx="10" fill="#fafbfc" stroke="#e5e9ed"/>
+  <text x="744" y="701" font-size="17" font-weight="700">登入與權限 · 版本檢查 · 私人儲存</text>
+  <text x="744" y="727" class="small muted">同一份公司資料，保存後重新查看。</text>
+
+  <path d="M584 448H689" fill="none" stroke="#68737e" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <rect x="611" y="420" width="58" height="23" rx="6" fill="#f9fafb"/>
+  <text x="640" y="437" text-anchor="middle" class="small" font-weight="700">保存</text>
+  <path d="M696 579H591" fill="none" stroke="#68737e" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <rect x="611" y="550" width="58" height="23" rx="6" fill="#f9fafb"/>
+  <text x="640" y="568" text-anchor="middle" class="small" font-weight="700">讀回</text>
+
+  <rect x="40" y="790" width="1200" height="54" rx="10" fill="#eef1f4"/>
+  <text x="640" y="824" text-anchor="middle" font-size="20" font-weight="500">左側是你的工作對話，右側是可重新查閱的公司紀錄。</text>
+  <text x="40" y="877" class="small muted">示意圖（非實際軟件截圖）· 圖中內容為示意資料</text>
+  <text x="1240" y="877" text-anchor="end" class="small muted">畫面控制須由客戶端提供；MCP 為可選路徑。</text>
+</svg>

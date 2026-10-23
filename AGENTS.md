@@ -8,6 +8,10 @@ Refresh on explicit user actions and successful in-workbench writes. Boot throug
 one loading/error shell with retry; never fall back silently to the legacy UI.
 
 Follow docs/LEFT_RIGHT_WORKFLOW.md for client-controlled UI and Skill handoff.
+docs/USER_GUIDE.md is the user-facing starting point. Overview's two-column
+orientation and the README diagram explain the client arrangement; neither embeds
+Codex, opens a model session or grants browser control. Keep the real customizable
+dashboard and its existing saved preferences separate from this guide.
 Blueprint supplies selected materials, brief preparation, authorized persistence
 and results; the active Codex or compatible AI supplies reasoning and execution.
 Prefer genuine browser controls when available and authorized; a visible browser
