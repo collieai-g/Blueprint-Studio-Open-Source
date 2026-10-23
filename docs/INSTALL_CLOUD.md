@@ -1,6 +1,6 @@
 # 雲端安裝：由帳戶設定到自己的完整工作台
 
-V2.5 新安裝優先使用原生後台，先完成 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 的儲存、完整備份下載、還原、重啟保存及再次部署驗收。新容器資料放 `/data/library`，備份放 `/data/backups`，兩者都在持久磁碟；已有安裝保留原路徑。Sites 仍須另行實作及驗證備份還原，不能視為同等完成。
+V2.6 新安裝優先使用原生後台，先完成 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 的儲存、完整備份下載、還原、重啟保存及再次部署驗收。新容器資料放 `/data/library`，備份放 `/data/backups`，兩者都在持久磁碟；已有安裝保留原路徑。Sites 仍須另行實作及驗證備份還原，不能視為同等完成。
 
 [安裝總入口](INSTALL.md) · [本機路線](INSTALL_LOCAL.md) · [後台功能與 API](LIBRARY.md)
 
@@ -33,12 +33,14 @@ AI 應逐步完成可執行的設定，只有登入、驗證、必要授權及�
 
 **GitHub 帳戶**是登入身份；**倉庫**是程式碼的位置。AI 應按用途選擇：
 
-- 直接使用開源原版：可讀取 [Blueprint Studio Open Source](https://github.com/collieai-g/Blueprint-Studio-Open-Source)，不強制另建私人倉庫。
-- 需要公司專用修改或獨立維護：由 AI 在使用者帳戶建立／沿用私人倉庫，例如 `blueprint-studio-private`，匯入完整開源程式，保留 MIT 授權及來源版本。這是獨立私人副本；不要假設公開倉庫的 fork 可以改成私人。
+- 短期試用或直接使用未修改原版：可讀取 [Blueprint Studio Open Source](https://github.com/collieai-g/Blueprint-Studio-Open-Source)，不強制另建私人倉庫。
+- 長期開發公司專用功能：在使用者帳戶建立／沿用已核實為 **Private** 的程式倉庫，例如 `blueprint-studio-private`，保存完整來源及公司自訂程式，保留 MIT 授權及上游來源版本。這是獨立私人副本；不要假設公開倉庫的 fork 可以改成私人。
 
 建立私人倉庫前核對擁有者、名稱及可見性；已有同名倉庫先讀取內容、分支及 Git 狀態。
 匯入時保留現有 README、提交及使用者修改，必要時在分支整合，不強制覆寫。
 只搬程式、文件、測試及授權；公司資料庫、附件、私人安裝記錄與憑證繼續放在倉庫外。
+
+上游發佈新版後，由 AI 在公司的私人程式倉庫整合指定正式版本、解決衝突、保留自訂改動並測試，再明確部署受影響服務。GitHub 提交不代表網站已更新，也沒有預設的上游自動同步或 GitHub 自動發佈至 Sites；部署證據須來自實際平台。日常報告、待辦、文件、收藏及公司資料經 API 保存；既有排版偏好與相容 Agent 登記／設定沿用原保存方式，均不需要 Git 提交或重新部署。見[日常操作與程式更新](OPERATING_MODEL.md)。
 
 若 AI 工具不能建立倉庫，帶使用者開啟 [New repository](https://github.com/new)，核對 Owner、填入約定名稱並選 **Private**。
 全新倉庫可保持空白以便 AI 匯入完整來源；已有內容則保留並整合。使用者建立後提供倉庫網址，AI 負責接著匯入、提交及核對遠端分支，不能停在空白倉庫。
@@ -202,6 +204,8 @@ AI 透過已連接的平台工具完成可執行部分。首次登入、身份�
 ## C6. Sites 部署：保留原版畫面與完整功能
 
 希望使用 Sites 入口而資料由原生後台管理時，改按 [SITES_NATIVE_GATEWAY.md](SITES_NATIVE_GATEWAY.md) 完成 C5 原生部署、身份對應與 Sites 接駁。這是另一種儲存架構；下列步驟專門處理資料放在 Sites D1／R2 的路線。已有舊資料不能自動切換架構。
+
+這條原生接駁路線日後更新時，若只改原生後台或由它提供的介面，而且 Sites 接駁與工具定義保持相容，只需部署受影響的原生服務；若改動 Sites 接駁程式、工具定義或平台資產，須另按平台流程發佈**同一個 Site**。兩邊的來源版本與正式部署結果分開核對，不能由私人 GitHub commit 推斷 Sites 已更新。
 
 Sites 分支由具備 Sites 工具的 AI 執行，先讀當時可用的官方 Sites 技能及部署規格。
 這一節提供完整交付要求；**它不代表目前 Python 倉庫已能一鍵上傳到 Sites 運行。**

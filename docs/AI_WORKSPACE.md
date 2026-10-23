@@ -2,6 +2,8 @@
 
 [返回首頁](../README.md) · [保留資料升級](UPGRADE.md) · [MCP 接駁指南](AI_CONNECTION.md)
 
+日常新增工作、更新待辦、保存文件、加入收藏及整理公司報告，都透過既有工具保存資料，不修改 GitHub、不重新部署 Sites。公司與 Agent 的現有設定亦直接保存；排版偏好保存於目前瀏覽器。只有修改程式或升級版本時才走程式整合與部署，詳見[主要運作方式](OPERATING_MODEL.md)。
+
 先按 [AI_CONNECTION.md](AI_CONNECTION.md) 接通實際讀寫工具，支援 Codex、Claude、Gemini 等相容 MCP 客戶端。
 
 V2.4 已內置「AI 接駁中心」。每個新對話先讀 blueprint_connection_guide 取得工作規則；把此步驟及後台地址合併到客戶端支援的私人指引。初次接駁使用中心產生的參數呼叫 blueprint_verify_connection，讓右側獨立確認結果，見 [CONNECT.md](CONNECT.md)。

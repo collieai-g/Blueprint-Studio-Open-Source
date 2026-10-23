@@ -24,7 +24,7 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
             'blueprint_library/studio_schema.py', 'blueprint_library/studio_http.py', 'docs/V2.4.md',
             'blueprint_library/agents.py', 'blueprint_library/agents_http.py',
             'library_web/agents.js', 'library_web/agents.css', 'docs/AGENT_CONTRACT.md',
-            'templates/agent/agent.json'}
+            'templates/agent/agent.json', 'docs/OPERATING_MODEL.md'}
 
 
 def build(output):

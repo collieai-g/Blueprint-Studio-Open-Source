@@ -1,5 +1,18 @@
 # Blueprint Studio Open Source
 
+Follow docs/OPERATING_MODEL.md when distinguishing daily use from development.
+Daily work, tasks, files, bookmarks and reports use authorized data APIs with
+version checks and readback; do not turn them into Git commits or deployments.
+Existing settings and compatible Agent registration also save directly; browser
+layout preferences stay in the browser. Long-term company customization uses a
+verified private source repository, preserving its customizations when integrating
+selected upstream releases. Upstream publication does not synchronize company
+repositories; GitHub pushes do not deploy Sites. Deploy only affected services:
+compatible native backend changes need not republish the Sites gateway. Blueprint
+ships shared management and contracts, not working business Agents; templates and
+the independent summary demo are development examples. Private runtime data and
+credentials stay outside every source repository, including private repositories.
+
 For the optional Sites-to-native gateway, read docs/SITES_NATIVE_GATEWAY.md.
 Sites owns the entrypoint and verified identity; the independently deployed native
 backend owns company data, attachments and backups. Never replace an existing D1/R2

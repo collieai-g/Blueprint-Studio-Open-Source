@@ -34,14 +34,15 @@ def installation_instruction() -> str:
         "首次安裝必須先讀 docs/NATIVE_LIFECYCLE.md：沒有既定平台時優先使用原生本機／雲端後台。先核對持久資料與備份位置、停止及再次部署能力，再開始使用。原生啟動器會先完整備份、還原演練及資料遷移核對；在正式網址執行 tools/check_installation.py 驗證下載及還原登入，另存私人耐久副本，再驗證重啟保存。Sites 未驗證相同能力前不能標示完整安裝，不以聯絡支援作為標準安裝步驟。\n\n"
         "除非我指定版本，先核實 GitHub Releases 的最新正式發行版，記錄本次 tag 與完整 commit，之後固定使用該版本的完整來源及指南。不要把主分支或預覽版當成正式版；無法連線核實時說明已取得的版本與限制，不宣稱已是最新。\n\n"
         "先核對所用 AI 軟件實際提供的程式執行、部署、持久儲存、登入和工具接駁能力，不憑模型名稱判斷。ChatGPT／Codex、Claude、Gemini、Grok 或其他 AI 均按實際能力選路線；有網頁預覽或類似 Sites 的功能，仍須核對完整後台。只需要我提供尚未取得的資料，使用我指定的語言說明。\n\n"
-        "先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md 及 AGENTS.md；只有本次目標是更新原工作台時，才改讀主分支 UPDATE_AI.txt 及 docs/UPDATE_ROUTE.md，沿用該目標的私人進度與來源檢查點，完成備份、整合、原服務部署及 AI 驗收，不再初始化。獨立新安裝使用自己的進度；檢查現有安裝和工具權限，保留已有資料、"
+        "先讀 START_HERE.md、docs/INSTALL.md、docs/CONNECT.md、docs/OPERATING_MODEL.md 及 AGENTS.md；只有本次目標是更新原工作台程式版本時，才改讀主分支 UPDATE_AI.txt 及 docs/UPDATE_ROUTE.md，沿用該目標的私人進度與來源檢查點，完成備份、整合、原服務部署及 AI 驗收，不再初始化。獨立新安裝使用自己的進度；檢查現有安裝和工具權限，保留已有資料、"
         "工作室及工具修改。先讓我選本機或雲端，已有選擇就沿用；再問工作室／公司名稱，"
         "行業、簡介及目標可以留空。每次帶我完成目前一步，不要只交付計劃就停止。\n\n"
+        "先建立正確分工：藍圖提供共用介面、公司資料及操作工具；Codex 或目前相容 AI 客戶端負責理解和推進工作。安裝工作台不會附送已運行的客服、影片或其他業務 Agent；範本與既有專員設定不是已接通服務。獨立 Agent 按共同規格開發，已相容的套件經審核後可直接用共用 API 登記、連接及設定，不需要為每次加入套件修改 GitHub 程式或重新部署。\n\n"
         "本機：跟 docs/INSTALL_LOCAL.md，在我自己的電腦檢查 Python、下載完整程式、"
         "準備私人資料與管理員，使用 library 指令啟動原版介面，完成登入及重啟保存驗證。"
         "辨認遠端 Codex 與我的電腦，不能把遠端 localhost 當成本機入口。\n\n"
         "雲端：跟 docs/INSTALL_CLOUD.md，協助沿用或註冊所需帳戶；直接部署原版可沿用公開來源，"
-        "需要私人修改時準備完整的私人 GitHub 倉庫，使用 Codex 雲端時協助授權及接入環境。"
+        "需要長期公司客製化時，準備或沿用已核實的公司私人 GitHub 倉庫，保存完整程式及客製修改，記錄上游版本、私人來源 commit、實際部署來源與服務。日後整合正式更新時保留公司修改；原版使用者不必為日常操作另建私人程式倉庫。公司資料、附件、憑證及備份仍放程式倉庫以外。使用 Codex 雲端時協助授權及接入環境。"
         "需要我登入、驗證或按 Publish 時，給我確切下一步。"
         "環境 Publish／Republish 後繼續正式網站部署，直到有 HTTPS 工作台及持久儲存。"
         "按我的選擇使用 Render、Railway、自己的主機或 Sites。需要 Sites 入口而資料由原生後台管理時，按 docs/SITES_NATIVE_GATEWAY.md 使用接駁層，先部署及驗證獨立原生後台，再設定 Sites 身份對應及發佈。這不是舊 Sites 資料搬遷，不需要該入口的 D1／R2 公司資料備份。"
@@ -69,7 +70,8 @@ def installation_instruction() -> str:
         f"原生版以完整備份及還原演練升至 schema {SCHEMA_VERSION}，追加 Agent 登記、工作及歷史表，保留所有舊紀錄、ID、登入、附件及設定；回復舊版須使用匹配的完整舊資料快照，不能只退回程式或降低資料版本。"
         "Sites 先按 docs/STUDIO_API.md 及 docs/AGENT_CONTRACT.md 在原後台完成適配，單換 UI 不能完成升級。"
         "如本次需要接入 Agent，沿用已選定的獨立倉庫，審核固定 commit 的套件後才登記及連接功能；由工作台建立指定來源的工作，再在目前已載入工具的 AI 對話處理、保存及讀回相同結果。"
-        "加入套件、連接接口及目前對話通過實測是不同狀態，按鈕不會自動喚起 Codex。既有專員及外部截圖／影片服務未接入時保留等待狀態，不宣稱已自動執行；本版沒有模型 API、背景 AI、WhatsApp 或排程服務。\n"
+        "加入套件、連接接口及目前對話通過實測是不同狀態，按鈕不會自動喚起 Codex。既有專員及外部截圖／影片服務未接入時保留等待狀態，不宣稱已自動執行；本版沒有模型 API、背景 AI、WhatsApp 或排程服務。\n\n"
+        "日常操作按 docs/OPERATING_MODEL.md 分流：報告、待辦、文件、收藏、公司資料及工作台支援的設定，使用已授權 API／MCP 保存，修改帶版本並讀回核對；不要為這類資料保存建立 Git commit 或重新部署 Sites。修改介面原始碼、按鈕邏輯、加入尚未支援的能力或升級藍圖程式，才在公司私人程式來源修改、測試並部署受影響的服務。GitHub 推送及上游發行不等於私人修改已同步或正式工作台已更新。Sites 入口配原生後台時，只改後台且接駁合約相容，可以只部署後台；Sites Worker、工具定義或平台設定有改動時才更新相應 Sites 入口，完成後驗證真正受影響的路徑。\n"
     )
 
 
@@ -168,6 +170,10 @@ def _guide(plan: dict) -> bytes:
         "完整指南：docs/INSTALL_LOCAL.md 或 docs/INSTALL_CLOUD.md。"
         "GitHub 倉庫、Codex 工作環境 Publish／Republish 與正式網站部署是不同階段；"
         "環境準備好後仍要啟動並驗證真正工作台。\n\n"
+        "按 docs/OPERATING_MODEL.md 分清日常資料與程式來源：藍圖提供共用工具，AI 客戶端處理工作，獨立業務 Agent 需要另行接入。"
+        "已符合共同規格的 Agent 可經 API 登記及設定；新增登記本身不要求修改程式或部署。"
+        "需要長期客製化時，沿用或建立公司私人程式倉庫，記錄上游版本與實際部署來源，更新時保留客製修改。"
+        "直接使用原版可沿用公開正式來源；兩種方式都把公司資料、憑證及備份放在程式倉庫以外。\n\n"
         "必須沿用 library_web/ 及 assets/icons/ 的完整原版介面和功能；"
         "gui、serve 及 dist/index.html 是舊版離線工具。不要重新排版、簡化或交付示範頁。"
         "正式畫面可用後，先按 docs/NATIVE_LIFECYCLE.md 驗證完整備份下載、隔離還原、重啟保存及下一次更新路線，再驗證 AI 保存。\n\n"
@@ -200,7 +206,7 @@ def _guide(plan: dict) -> bytes:
         provider = plan["provider"]
         if provider == "render":
             platform = (
-                "1. 登入或建立 Render 帳戶，使用官方部署入口：\n\n"
+                "1. 登入或建立 Render 帳戶。已選公司私人客製倉庫時，從該倉庫及已核實的分支／commit 部署，保留客製內容；直接使用原版才使用以下官方部署入口：\n\n"
                 f"{_RENDER_LAUNCH}\n\n"
                 "核對 repo 的 render.yaml，Dockerfile 為 company/Dockerfile，持久磁碟掛載 /data，"
                 "並啟用平台 HTTPS。在平台核對服務及磁碟費用，確認接受後才建立收費資源。\n\n"
@@ -209,6 +215,7 @@ def _guide(plan: dict) -> bytes:
             platform = (
                 "1. 登入或建立 Railway 帳戶，在 https://railway.com/new 從 GitHub repo 部署：\n\n"
                 f"{_REPOSITORY}\n\n"
+                "上方是直接使用原版的來源。已選公司私人客製倉庫時，使用該倉庫及已核實的分支／commit，不能改回公開來源而遺失客製內容。"
                 "在服務設定指定 company/Dockerfile；建立並掛載持久 Volume 到 /data。"
                 "服務跟隨平台 PORT，未指定時為 8787；設定對外網域和 HTTPS。"
                 "如非 root 的 Volume 權限有問題，按 Railway 官方說明設定 RAILWAY_RUN_UID=0。"
@@ -226,7 +233,7 @@ def _guide(plan: dict) -> bytes:
             )
             platform = (
                 "1. 登入自己的伺服器，確認 Docker、持久儲存及備份方案可用，先核對主機及磁碟費用。"
-                "將公開工具放到主機並按實際 checkout 位置調整以下路徑。先在主機安全環境設定第 2 步"
+                "將已選的公開正式版本或公司私人客製程式放到主機，核對來源 commit 並按實際 checkout 位置調整以下路徑。先在主機安全環境設定第 2 步"
                 "的環境變數，再建置及啟動：\n\n"
                 + _code(build)
                 + "\n" + _code("docker volume create company-data")
@@ -265,8 +272,11 @@ def _guide(plan: dict) -> bytes:
         "\n## 日後使用\n\n"
         "說『今日收工』時，AI 只整理目前可見或你提供的對話，保存有用成果、決定、參考及待辦。"
         "先去重、沿用穩定來源識別，再按版本檢查更新並保留可恢復歷史；不保存秘密或全部原始聊天。"
+        "報告、待辦、文件、收藏、公司資料及已支援設定均經 API／MCP 保存並讀回，不為日常保存建立 Git commit 或部署 Sites。"
         "它不會自動讀取其他 AI 平台的不可見對話。沒有實際儲存成功就不能聲稱已存檔。\n\n"
         "更新公開工具時保留私人公司資料、同一個資料目錄／volume、工作室及既有工具修改。"
+        "介面原始碼、按鈕邏輯、尚未支援能力或程式版本改動，經私人來源修改、測試後部署受影響的服務；GitHub 推送與上游發行不會自動完成同步或正式部署。"
+        "Sites／原生後台分開判斷：相容的後台修改只部署後台；Sites Worker、工具定義或平台設定有變更才更新該入口。"
         "此計劃只準備文件；完成與否以實際登入、保存及重啟後的結果為準。\n"
     )
     return (common + body + ending).encode("utf-8")
