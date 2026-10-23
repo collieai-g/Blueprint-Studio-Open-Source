@@ -18,7 +18,7 @@
 
 | 方法／路徑 | 回應或用途 |
 | --- | --- |
-| GET `/api/studio/state` | identity、schemas、catalog、preferences、summary、templates、capabilities、schema_version |
+| GET `/api/studio/state` | identity、schemas、catalog、preferences、summary、templates、specialist_presets、capabilities、schema_version |
 | GET `/api/studio/summary?month=YYYY-MM` | 真實正式對話、提醒、分貨幣財務小計；員工 finance=null |
 | GET/PATCH `/api/studio/preferences` | `{version,data}`；PATCH `{expected_version,data}`，按身份保存 |
 | GET/POST `/api/studio/records` | GET kind/q/category/relation/archived/limit/offset → `{records,total,offset,limit}`；POST → `{record,created}` |
@@ -29,7 +29,7 @@
 | POST `/api/studio/records/ID/actions` | `{expected_version,action,arguments}` → `{record,created,external_action_executed:false}` |
 | GET `/api/studio/records/ID/download` | 報價 HTML／內容 Markdown 附件，跳脫文字並檢查權限 |
 | GET `/api/studio/media/ITEM_ID` | 原附件庫 PNG/JPEG/WebP，先檢查原檔權限 |
-| POST `/api/studio/templates` | `{template_id}` → 新專員 `{record,created}` |
+| POST `/api/studio/templates` | `{template_id}` → 新專員 `{record,created}`；管理員明確選用 templates 或 specialist_presets 中的編號，例如 `preset:email` |
 | GET/POST `/api/studio/users` | 人員帳戶清單／新增修改，不回傳密碼或雜湊 |
 | POST `/api/studio/financial-report` | `{month}` → 真實計算月報，管理員限定 |
 
@@ -37,7 +37,9 @@
 
 ## 流程與平台驗收
 
-MCP 動作：`to_task/ask_ai/create_quote/create_invoice/plan_command/complete_command/record_usage`。人工動作 `quote_state/record_payment/approve_draft/specialist_state/resume_budget` 由登入介面送出，仍受伺服器角色與狀態檢查。
+MCP 動作：`to_task/ask_ai/capture_request/create_quote/create_invoice/plan_command/complete_command/record_usage`。人工動作 `quote_state/record_payment/approve_draft/specialist_state/resume_budget` 由登入介面送出，仍受伺服器角色與狀態檢查。
+
+新安裝不預建專員。`specialist_presets` 是可選描述，不是正在運行的服務；新增後仍是未接駁設定。既有專員、固定編號及歷史保留。保存網址或靈感只保存資料，不自動建立截圖工作；使用者要求後，對靈感送出 `capture_request`，`arguments` 為空物件。動作沿用 `capture:<靈感編號>` 去重，既有指令及結果不被重設；工作仍由已授權 AI 使用真正可用的工具處理。
 
 報價按順序前進；發送與簽署需 `confirmed:true`，只記錄外部完成的事。確認內容不能直接改寫，建立發票須先簽署，在同一交易帶入客戶和金額。任何路徑均不會自動外發、代簽或付款。
 
@@ -63,6 +65,12 @@ Skill 工作台整理可重用指引及單次工作說明，沿用既有資料�
 一般畫面不定時刷新，也不在 focus、visibilitychange 或瀏覽器歷史還原時更新公司資料。工作台內保存後更新相應結果；外部修改由使用者按「更新資料」讀取。非同步請求返回後，仍需核對目前頁面及編輯狀態，避免較早請求覆蓋新選擇或草稿。靜態介面資產應使用一致來源並正確處理快取，避免交錯使用不同部署的程式。
 
 ## Sites／Workers 請求生命週期
+
+可重用的 [D1 儲存模組](SITES_D1_STORAGE.md)提供明確的唯讀快照與寫入交易。
+只有真正寫入才取得寫入租約；不能只按 GET／POST 判斷，因 MCP 讀取也使用 POST，
+而舊有 GET 可能包含首次初始化或收藏同步。先隔離這些寫動作，再讓純查詢並行。
+資料及歷史按聲明的範圍查詢，身份與權限必須在同一快照中核對。
+此模組需要整合到平台後台，不會因更新公開來源就改變任何已部署的 Sites。
 
 自行把公司後台移植到有請求取消機制的 Workers 平台時，若一次請求會取得資料租約或鎖，需讓整個受保護交易持續至提交或清理結束。使用者關閉或切換畫面，不應令尚未完成的鎖清理隨前景請求一起被取消。
 

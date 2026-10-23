@@ -5,7 +5,7 @@
   const node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
   const button=(label,run,cls='button secondary small')=>{const e=node('button',cls,label);e.type='button';e.addEventListener('click',()=>Promise.resolve().then(run).catch(error=>app.notice(error.message,true)));return e;};
   let app,state,route='overview',activeTab='',request=0,editing=null,actionSubmit=null,activeRecord=null,navigating=false,ready=false,initialized=false,navigationRequest=0;
-  let choices=[],searchText='',pageOffset=0,lastNav='',dragTopic=null;
+  let choices=[],searchText='',pageOffset=0,lastNav='',dragTopic=null,overviewRequest=0;
   const pageNames={leads:'潛在客戶分析',quotes:'智能報價單與合約流水線',customers:'現有客戶檔案庫',feedback:'客戶反饋與客訴追蹤表',suppliers:'供應商與合作夥伴',revenue:'公司營收與發票',costs:'雲端伺服器與 AI 算力成本'};
   const icons={project:'checklist',inbox:'inbox',command:'automation',task:'checklist',lead:'search',quote:'document',customer:'folder',feedback:'chat',member:'settings',supplier:'link',invoice:'document',cost:'automation',specialist:'chat',conversation:'chat',scenario:'checklist',topic:'folder',inspiration:'bookmark',report:'document'};
   const admin=()=>['owner','admin'].includes(state?.identity.role);
@@ -113,18 +113,18 @@
     const transition=++navigationRequest;++request;
     if(value.startsWith('collection/'))value='topic/'+value.split('/')[1];
     value=NAV.aliases[value]||value;
-    let record=null;
-    try{if(value.startsWith('record/'))record=(await api(recordUrl(value.split('/')[1]))).record;}
+    let recordContext=null;
+    try{if(value.startsWith('record/'))recordContext=await api(recordUrl(value.split('/')[1])+'/context');}
     catch(error){if(transition!==navigationRequest)return;throw error;}
     if(transition!==navigationRequest)return;
-    activeRecord=record;
+    activeRecord=recordContext?.record||null;
     const page=definition(value);if(page.access==='admin'&&!admin()){const error=new Error('你的帳戶沒有這項權限。');error.status=403;throw error;}
     route=value;activeTab='';pageOffset=0;searchText='';
     const url='#/'+value;if(location.hash!==url)history[replace?'replaceState':'pushState'](null,'',url);
     $('breadcrumb-current').textContent=page.label;app.closeSidebar();renderNavigation(true);
-    await renderPage();
+    await renderPage(recordContext);
   }
-  async function renderPage(){
+  async function renderPage(recordContext=null){
     const seq=++request;
     if(route==='overview'||route==='overview/workdays'||route==='overview/todos'||route==='documents'){
       navigating=true;app.setView(route==='documents'?'files':route.endsWith('/workdays')?'workdays':route.endsWith('/todos')?'todos':'dashboard');navigating=false;
@@ -132,14 +132,14 @@
       const bar=$('studio-view-tabs');bar.hidden=route!=='documents'&&route!=='overview/todos';bar.replaceChildren();
       if(route==='documents')bar.append(tabs([['documents','文件'],['reports','報告與交付物']],v=>v==='documents'?navigate(v):navigate('reports'),'documents'));
       if(route==='overview/todos'){const wrap=node('div','studio-inline-tasks');const data=await api('/records?kind=task&limit=100');if(seq!==request)return;wrap.append(header('其他待辦','由收件匣、靈感和項目加入。',[button('新增待辦',()=>editRecord('task'))]),...data.records.map(recordCard));bar.append(wrap);}
-      renderOverview();return;
+      await renderOverview();return;
     }
     hideLegacy();const panel=$('studio-panel');panel.replaceChildren(node('p','muted','正在讀取…'));
     if(route==='skills')return root.BlueprintSkills.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request});
     if(route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))return root.BlueprintAgents.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request});
     if(route.startsWith('specialist/'))return specialistPage(route.split('/')[1],seq);
     if(route.startsWith('topic/'))return topicPage(route.split('/')[1],seq);
-    if(route.startsWith('record/'))return detailPage(route.split('/')[1],seq);
+    if(route.startsWith('record/'))return detailPage(route.split('/')[1],seq,recordContext);
     if(route==='templates')return templatePage();
     if(route==='connections')return connectionPage(seq);
     if(route==='account')return accountPage();
@@ -174,8 +174,8 @@
     Object.entries(state.summary.finance||{}).forEach(([currency,total])=>{const row=node('div','studio-summary-row');row.append(node('strong','',currency),node('span','',`實收 ${total.received}`),node('span','',`應收未收 ${total.outstanding}`),node('span','',`成本 ${total.cost}`));wrap.append(row);});
     wrap.append(button('建立本月報告',async()=>{const result=await api('/financial-report',{method:'POST',body:{month:state.summary.month}});await refresh();await openRecord(result.record.id);}));return wrap;
   }
-  async function patch(record,body){await api(recordUrl(record.id),{method:'PATCH',body:{expected_version:record.version,...body}});await refresh();await renderPage();}
-  async function run(record,action,args={}){const result=await api(recordUrl(record.id)+'/actions',{method:'POST',body:{expected_version:record.version,action,arguments:args}});await refresh();if(action==='ask_ai'){const command=result.created.find(r=>r.kind==='command');if(command)await handoff(command);}else{app.notice('已保存。');await renderPage();}return result;}
+  async function patch(record,body){await api(recordUrl(record.id),{method:'PATCH',body:{expected_version:record.version,...body}});await refresh({renderCurrent:true});}
+  async function run(record,action,args={}){const result=await api(recordUrl(record.id)+'/actions',{method:'POST',body:{expected_version:record.version,action,arguments:args}});const needsHandoff=['ask_ai','capture_request'].includes(action);await refresh({renderCurrent:!needsHandoff});if(needsHandoff){const command=result.created.find(r=>r.kind==='command');if(command)await handoff(command);}else app.notice('已保存。');return result;}
   async function openRecord(id){await navigate('record/'+id);}
   function referenceLabel(ref){return choices.find(r=>r.kind===ref.kind&&r.id===ref.id)?.title||state.catalog.find(r=>r.kind===ref.kind&&r.id===ref.id)?.title||ref.id;}
   function fieldDisplay(record){
@@ -195,8 +195,8 @@
       wrap.append(content);
     });return wrap;
   }
-  async function detailPage(id,seq){
-    const [{record},context]=await Promise.all([api(recordUrl(id)),api(recordUrl(id)+'/context')]);if(seq!==request)return;activeRecord=record;
+  async function detailPage(id,seq,loadedContext=null){
+    const context=loadedContext||await api(recordUrl(id)+'/context');if(seq!==request)return;const {record}=context;activeRecord=record;mergeChoices(context.sources);
     const panel=$('studio-panel'),actions=[button('修改',()=>editRecord(record.kind,record)),button('交給 AI',()=>run(record,'ask_ai')),button('釘選',()=>pinRecord(record))];
     if(record.archived)actions.push(button('還原',()=>patch(record,{archived:false})));else actions.push(button('封存',()=>patch(record,{archived:true})));
     panel.replaceChildren(header(record.title,schema(record.kind)?.label||'內容',actions),badges(record));
@@ -204,8 +204,8 @@
       const bar=node('div','actions');bar.append(button('歸入項目',()=>editRecord('inbox',record)),button('轉成待辦',()=>run(record,'to_task')));panel.append(bar);
     }
     if(record.kind==='inspiration'){
-      const bar=node('div','actions');bar.append(button('找相似',async()=>{const result=await api(recordUrl(id)+'/similar');const section=node('section','studio-related');section.append(node('h2','','相似靈感'),node('p','muted',result.note),...result.matches.map(m=>recordCard(m.record)));panel.append(section);}),button('轉成待辦',()=>run(record,'to_task')),button('擷取截圖與摘要',()=>run(record,'ask_ai',{instruction:'使用真實瀏覽工具讀取來源，擷取整頁截圖並整理摘要。先確認可以使用的工具，沒有連接時清楚交代。'})));panel.append(bar);
-      if(record.data.screenshot_id){const image=node('img','studio-full-preview');image.src='/api/studio/media/'+record.data.screenshot_id;image.alt=record.title;panel.append(image);}else panel.append(node('p','studio-callout','尚未有截圖。收藏已保存，截圖與摘要等待具備瀏覽工具的 AI 處理。'));
+      const bar=node('div','actions');bar.append(button('找相似',async()=>{const result=await api(recordUrl(id)+'/similar');const section=node('section','studio-related');section.append(node('h2','','相似靈感'),node('p','muted',result.note),...result.matches.map(m=>recordCard(m.record)));panel.append(section);}),button('轉成待辦',()=>run(record,'to_task')),button('擷取截圖與摘要',()=>run(record,'capture_request')));panel.append(bar);
+      if(record.data.screenshot_id){const image=node('img','studio-full-preview');image.src='/api/studio/media/'+record.data.screenshot_id;image.alt=record.title;panel.append(image);}else panel.append(node('p','studio-callout','尚未有截圖。可按「擷取截圖與摘要」建立工作，再交給具備瀏覽工具的 AI 處理。'));
     }
     if(record.kind==='lead')panel.append(button('建立報價草稿',async()=>{const result=await run(record,'create_quote');await openRecord(result.created[0].id);}));
     if(record.kind==='quote')panel.append(quoteActions(record));
@@ -252,7 +252,7 @@
     };
     let bar;function makeBar(){bar=tabs(views,select,activeTab||'overview');return bar;}panel.append(makeBar(),body);await select(activeTab||'overview');
   }
-  function templatePage(){const panel=$('studio-panel');panel.replaceChildren(header('從範本新增','範本只帶入角色和規則，其他設定由你決定。'));const grid=node('div','studio-grid');state.templates.forEach(template=>{const card=node('article','studio-card');card.append(node('h2','',template.title),node('p','muted',template.role),node('p','',template.rules),button('使用範本',async()=>{const result=await api('/templates',{method:'POST',body:{template_id:template.id}});await refresh();await navigate('specialist/'+result.record.id);}));grid.append(card);});panel.append(grid);}
+  function templatePage(){const panel=$('studio-panel');panel.replaceChildren(header('從範本新增','範本只帶入角色和規則，其他設定由你決定。'));const grid=node('div','studio-grid');[...(state.specialist_presets||[]),...state.templates].forEach(template=>{const card=node('article','studio-card');card.append(node('h2','',template.title),node('p','muted',template.role),node('p','',template.rules),button('使用範本',async()=>{const result=await api('/templates',{method:'POST',body:{template_id:template.id}});await refresh();await navigate('specialist/'+result.record.id);}));grid.append(card);});panel.append(grid);}
   async function connectionPage(seq){
     const panel=$('studio-panel');panel.replaceChildren(header('雲端與外部接入','統一管理專員可以使用的能力。',[button('連接左側 AI',()=>document.querySelector('[data-connection-open]').click()),button('新增接入',()=>editRecord('integration'))]));
     const body=node('div'),views=[['model','模型 API'],['connector','外掛與連接器'],['skill','技能庫'],['channel','渠道帳戶'],['usage','用量與上限']];let bar;
@@ -292,9 +292,10 @@
     if(ref.kind==='topic')return navigate('topic/'+ref.id);
     return openRecord(ref.id);
   }
-  async function loadChoices(){
-    const [records,items,workdays,todos]=await Promise.all([api('/records?limit=100'),app.api('/api/items?limit=200'),app.api('/api/workdays?limit=50'),app.api('/api/todos?limit=50&done=all')]);
-    choices=[...records.records,...state.catalog,...items.items.map(r=>({...r,kind:'item'})),...workdays.workdays.map(r=>({...r,kind:'workday'})),...todos.todos.map(r=>({...r,kind:'todo'}))].filter((r,i,all)=>all.findIndex(v=>v.kind===r.kind&&v.id===r.id)===i);
+  function mergeChoices(records){choices=[...new Map([...choices,...records].map(record=>[record.kind+':'+record.id,record])).values()];}
+  async function loadChoices({studioOnly=false}={}){
+    const [records,items,workdays,todos]=await Promise.all([api('/records?limit=100'),...(studioOnly?[]:[app.api('/api/items?limit=200'),app.api('/api/workdays?limit=50'),app.api('/api/todos?limit=50&done=all')])]);
+    choices=[...records.records,...state.catalog,...(items?.items||[]).map(r=>({...r,kind:'item'})),...(workdays?.workdays||[]).map(r=>({...r,kind:'workday'})),...(todos?.todos||[]).map(r=>({...r,kind:'todo'}))].filter((r,i,all)=>all.findIndex(v=>v.kind===r.kind&&v.id===r.id)===i);
   }
   function fieldControl(key,spec,value){
     const grouped=['checklist','line_items','work_logs'].includes(spec.type);
@@ -367,7 +368,8 @@
     try{await fn();}catch(error){errorAt(errorId,error);}finally{delete form.dataset.busy;buttons.forEach(b=>b.disabled=false);}
   }
   async function actionDialog(title,copy,fields,submit){
-    await loadChoices();$('studio-action-title').textContent=title;$('studio-action-copy').textContent=copy;$('studio-action-fields').replaceChildren(...fields.map(([key,spec])=>fieldControl(key,spec,spec.default)));actionSubmit=submit;errorAt('studio-action-error',null);showDialog('studio-action-dialog');
+    if(fields.some(([,spec])=>['reference','references'].includes(spec.type)))await loadChoices();
+    $('studio-action-title').textContent=title;$('studio-action-copy').textContent=copy;$('studio-action-fields').replaceChildren(...fields.map(([key,spec])=>fieldControl(key,spec,spec.default)));actionSubmit=submit;errorAt('studio-action-error',null);showDialog('studio-action-dialog');
   }
   function openCommand(text=''){$('studio-command-input').value=text;errorAt('studio-command-error',null);showDialog('studio-command-dialog');}
   async function handoff(record){
@@ -408,7 +410,15 @@
     state.preferences.data.workspaces.forEach(workspace=>{const a=node('a','studio-related-link',workspace.name);a.href=workspace.url;a.rel='noreferrer';list.append(a);});holder.prepend(list);
   }
   async function renderOverview(){
-    if(!state)return;
+    if(!state||route!=='overview'||$('dashboard-panel').hidden)return;
+    const generation=++overviewRequest,transition=navigationRequest;
+    const tasks=await api('/records?kind=task&limit=100');
+    if(generation!==overviewRequest||transition!==navigationRequest||route!=='overview'||$('dashboard-panel').hidden)return;
+    mergeChoices(tasks.records);
+    const missing=(state.preferences.data.focus||[]).filter(ref=>schema(ref.kind)&&!state.catalog.some(r=>r.kind===ref.kind&&r.id===ref.id)&&!tasks.records.some(r=>r.kind===ref.kind&&r.id===ref.id));
+    const focused=await Promise.allSettled(missing.map(ref=>api(recordUrl(ref.id))));
+    if(generation!==overviewRequest||transition!==navigationRequest||route!=='overview'||$('dashboard-panel').hidden)return;
+    mergeChoices(focused.filter(result=>result.status==='fulfilled').map(result=>result.value.record));
     const holder=$('studio-focus');if(holder){holder.replaceChildren();
       for(const ref of state.preferences.data.focus||[]){const label=referenceLabel(ref);holder.append(button(label,()=>activateReference(ref),'studio-focus-line'));}
       if(!state.preferences.data.focus?.length)holder.append(node('p','muted','選擇最多三件今天要完成的事。'));
@@ -417,10 +427,10 @@
     const reminders=$('studio-reminders');if(reminders){reminders.replaceChildren();if(state.preferences.data.notifications&&state.summary.reminders.length){reminders.append(node('h4','','公司提醒'));state.summary.reminders.slice(0,3).forEach(r=>reminders.append(button(r.reason+' · '+r.title,()=>openRecord(r.id),'studio-focus-line')));}}
     const metrics=state.summary.specialists.reduce((all,m)=>({conversations:all.conversations+m.conversations,automatic:all.automatic+m.automatic,human:all.human+m.human,errors:all.errors+m.errors}),{conversations:0,automatic:0,human:0,errors:0});
     $('studio-specialist-summary').textContent=metrics.conversations?`今日 ${metrics.conversations} 則 · 自動 ${metrics.automatic} · 人手 ${metrics.human} · 出錯 ${metrics.errors}`:`${state.summary.specialists.length} 位專員 · 尚無正式對話`;
-    const tasks=await api('/records?kind=task&limit=100');const holderTasks=$('studio-dashboard-tasks');holderTasks.replaceChildren();tasks.records.filter(r=>!r.data.done).slice(0,5).forEach(r=>{const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.addEventListener('change',()=>patch(r,{data:{done:true}}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',r.title));holderTasks.append(label);});
+    const holderTasks=$('studio-dashboard-tasks');holderTasks.replaceChildren();tasks.records.filter(r=>!r.data.done).slice(0,5).forEach(r=>{const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.addEventListener('change',()=>patch(r,{data:{done:true}}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',r.title));holderTasks.append(label);});
   }
   async function editFocus(){
-    await loadChoices();await actionDialog('今日焦點','選擇最多三件今天要完成的事。',[],()=>{
+    await loadChoices({studioOnly:true});await actionDialog('今日焦點','選擇最多三件今天要完成的事。',[],()=>{
       const selected=[...$('studio-focus-options').selectedOptions].map(o=>JSON.parse(o.value));if(selected.length>3)throw new Error('今日焦點最多三件。');return savePrefs({focus:selected}).then(renderOverview);
     });
     const select=node('select');select.id='studio-focus-options';select.multiple=true;select.size=8;select.setAttribute('aria-label','今日焦點');choices.filter(r=>['task','project','inbox'].includes(r.kind)).forEach(r=>{const o=node('option','',r.title);o.value=JSON.stringify({kind:r.kind,id:r.id});o.selected=state.preferences.data.focus?.some(ref=>ref.kind===r.kind&&ref.id===r.id);select.append(o);});$('studio-action-fields').append(select);
@@ -430,8 +440,8 @@
     const next=await api('/state');
     if(background&&(app.isBusy()||transition!==navigationRequest))return false;
     if(state.preferences.version>next.preferences.version)next.preferences=state.preferences;
-    state=next;renderNavigation();preferencesPanel();await renderOverview();
-    if(renderCurrent&&transition===navigationRequest&&!route.startsWith('overview')&&route!=='documents'&&!(route==='skills'&&root.BlueprintSkills?.isBusy()))await renderPage();
+    state=next;mergeChoices(state.catalog);renderNavigation();preferencesPanel();
+    if(renderCurrent&&transition===navigationRequest&&!(route==='skills'&&root.BlueprintSkills?.isBusy()))await renderPage();else await renderOverview();
     return true;
   }
   async function search(query){const result=await api('/records?'+new URLSearchParams({q:query,limit:12}));return result;}
@@ -466,7 +476,7 @@
     $('studio-handoff-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('studio-handoff-text').value);$('studio-handoff-status').textContent='已複製。';}catch{$('studio-handoff-text').select();$('studio-handoff-status').textContent='請複製已選取的文字。';}});
     window.addEventListener('popstate',()=>navigate(location.hash.replace(/^#\/?/,'')||'overview',{replace:true}).catch(e=>app.notice(e.message,true)));
     document.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='j'){event.preventDefault();openCommand();}});
-    preferencesPanel();await loadChoices();
+    preferencesPanel();
     const params=new URLSearchParams(location.search),old=params.get('view');let initial=location.hash.replace(/^#\/?/,'')||old||'overview';if(old==='collection'&&params.get('collection_id'))initial='topic/'+params.get('collection_id');
     try{await navigate(initial,{replace:true});}
     catch(error){

@@ -27,7 +27,8 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
             'library_web/skills.js', 'library_web/skills.css', 'docs/LEFT_RIGHT_WORKFLOW.md',
             'docs/USER_GUIDE.md', 'artifacts/codex-blueprint-workflow.svg',
             'templates/skills/personal-video/SKILL.md', 'templates/skills/personal-video/README.md',
-            'templates/agent/agent.json', 'docs/OPERATING_MODEL.md'}
+            'templates/agent/agent.json', 'docs/OPERATING_MODEL.md',
+            'integrations/sites/d1-store.mjs', 'docs/SITES_D1_STORAGE.md'}
 
 
 def build(output):

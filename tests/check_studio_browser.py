@@ -24,6 +24,13 @@ def main():
         data = Path(temp)/'private'
         initialize_library(data, 'owner', password, company_profile={'name':'Blueprint Studio'})
         store = Store(data); studio = Studio(store)
+        # Simulate existing installations to retain their historical deep links.
+        with store._connection() as conn:
+            for slug, title in [('website', '網站客服 AI'), ('whatsapp', 'WhatsApp 客服 AI'),
+                                ('email', '電郵 AI'), ('video', '宣傳影片 AI')]:
+                studio._make(conn, {'id': 'specialist-' + slug, 'kind': 'specialist',
+                    'title': title, 'data': {'role': '既有專員設定'},
+                    'source_key': 'default:' + slug}, internal=True)
         project = studio.create({'kind':'project','title':'整理新季度網站','data':{'stage':'development','progress':40,'summary':'示範內容：保持簡單清楚的網站。','milestones':[{'title':'確認內容','done':True},{'title':'檢查手機版','done':False}]}})['record']
         store.create_item({'kind':'link','title':'學習參考（示範）','url':'https://example.com/learning'})
         store.add_file('設計方向（示範）.md', '# 保持簡潔\n沿用白色與淺灰色。'.encode())

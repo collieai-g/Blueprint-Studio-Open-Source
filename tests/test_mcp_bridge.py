@@ -11,13 +11,26 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from blueprint_library.mcp_server import Bridge, client_config
+from blueprint_library.mcp_server import Bridge, INSTRUCTIONS, client_config
 from blueprint_folders import __version__
 from blueprint_library.server import initialize_library, make_server
 from blueprint_library.store import LibraryError, Store, SCHEMA_VERSION
 
 HAS_MCP = importlib.util.find_spec('mcp') is not None
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class GuidanceBootstrapTests(unittest.TestCase):
+    def test_initialize_routes_to_the_full_backend_guide(self):
+        guide = json.loads((ROOT / 'library_web/connection-guide.json').read_text())
+        self.assertIn('blueprint_workspace_info', INSTRUCTIONS)
+        self.assertIn('blueprint_connection_guide', INSTRUCTIONS)
+        self.assertIn('preserve IDs, versions, completed todos and history', INSTRUCTIONS)
+        self.assertTrue(all(rule not in INSTRUCTIONS for rule in guide['rules']))
+        # Full Agent state/authorization rules remain in the canonical response.
+        self.assertTrue(any('context_digest' in rule and 'started_by_client' in rule
+                            for rule in guide['rules']))
+        self.assertIn('agent', guide['workflows'])
 
 
 @unittest.skipUnless(HAS_MCP, 'Optional MCP SDK: install requirements-mcp.txt')
@@ -38,11 +51,12 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.server.shutdown(); self.server.server_close(); self.thread.join()
         self.temp.cleanup()
 
-    async def session(self, callback, *, read_only=False, password=None):
+    async def session(self, callback, *, read_only=False, password=None, username=None):
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
         env = {**self.env}
         if password is not None: env['BLUEPRINT_BACKEND_PASSWORD'] = password
+        if username is not None: env['BLUEPRINT_BACKEND_USERNAME'] = username
         params = StdioServerParameters(command=sys.executable,
             args=[str(ROOT / 'blueprint.py'), 'mcp', '--url', self.url] + (['--read-only'] if read_only else []), env=env)
         async with stdio_client(params) as (read, write):
@@ -135,6 +149,54 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
             forbidden = await client.call_tool('blueprint_studio_action', {'id':record['id'],'expected_version':2,'action':'approve_draft'})
             self.assertTrue(forbidden.isError)
         await self.session(work)
+
+    async def test_explicit_capture_is_exposed_by_mcp_and_preserves_private_readback(self):
+        from blueprint_library.studio import Studio
+        Studio(self.store).save_user({'username': 'capture-member', 'role': 'member',
+                                     'password': 'test-member-capture-password'})
+        saved = {}
+
+        async def owner_work(client):
+            action = next(tool for tool in (await client.list_tools()).tools
+                          if tool.name == 'blueprint_studio_action')
+            self.assertIn('capture_request', action.inputSchema['properties']['action']['enum'])
+            item = (await self.call(client, 'save_bookmark', {
+                'title': 'Capture only on request', 'url': 'https://example.com/capture-request'}))['item']
+            await self.call(client, 'studio_state', {})
+            commands = await self.call(client, 'studio_list', {'kind': 'command'})
+            self.assertEqual(commands['total'], 0)
+            inspiration = (await self.call(client, 'studio_create', {
+                'kind': 'inspiration', 'title': 'Private capture request', 'visibility': 'admin',
+                'data_json': json.dumps({'item_id': item['id']})}))['record']
+            args = {'id': inspiration['id'], 'expected_version': inspiration['version'],
+                    'action': 'capture_request', 'arguments_json': '{}'}
+            first = await self.call(client, 'studio_action', args)
+            second = await self.call(client, 'studio_action', args)
+            self.assertEqual(first['created'], second['created'])
+            command = first['created'][0]
+            reread = (await self.call(client, 'studio_get', {'id': command['id']}))['record']
+            self.assertEqual(reread, command)
+            self.assertEqual(reread['data']['state'], 'awaiting_ai')
+            self.assertEqual(reread['data']['purpose'], 'capture_inspiration')
+            self.assertEqual(reread['visibility'], 'admin')
+            self.assertFalse(first['external_action_executed'])
+            self.assertEqual((await self.call(client, 'studio_list', {'kind': 'command'}))['total'], 1)
+            saved.update(inspiration=inspiration, command=command)
+
+        await self.session(owner_work)
+
+        async def member_work(client):
+            for name, args in [
+                ('blueprint_studio_get', {'id': saved['command']['id']}),
+                ('blueprint_studio_context', {'id': saved['command']['id']}),
+                ('blueprint_studio_action', {'id': saved['inspiration']['id'],
+                    'expected_version': saved['inspiration']['version'], 'action': 'capture_request'})
+            ]:
+                result = await client.call_tool(name, args)
+                self.assertTrue(result.isError, (name, result))
+            self.assertEqual((await self.call(client, 'studio_list', {'kind': 'command'}))['total'], 0)
+
+        await self.session(member_work, username='capture-member', password='test-member-capture-password')
 
     async def test_guided_connection_real_readback_retry_and_client_isolation(self):
         old = self.store.import_workday({'date': '2026-10-20', 'source': 'Owner', 'source_key': 'keep',

@@ -130,6 +130,8 @@ If the AI cannot read GitHub, download the full `-installer.zip` package from th
 
 ## Clients, connections and development
 
+The development version makes specialist presets opt-in and stops automatically queuing capture jobs when bookmarks are saved. Pages and forms load reference data on demand and reuse reads within an operation. The reusable [D1 storage module](docs/SITES_D1_STORAGE.md) separates read snapshots from writes; platform adapters must integrate it explicitly. Updating public source does not update private workspaces.
+
 Codex and other compatible AI apps can only use the tools the active client actually provides. Browser control must reach the correct signed-in tab. Chat or preview alone can prepare instructions and files but cannot prove workbench operation. For MCP, use the [connection guide](docs/AI_CONNECTION.md) and [connection center](docs/CONNECT.md) to verify real writes and readback.
 
 The project provides 40 shared MCP tools. Native and Sites-to-native deployments add two owner-only backup tools, for 42 in total. These tools are an optional integration route, not a prerequisite for browser-based operation.

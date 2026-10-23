@@ -21,7 +21,8 @@ FILES = ['UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', '
          'library_web/manifest.webmanifest', 'library_web/service-worker.js',
          'docs/V2.4.md', 'docs/STUDIO_API.md', 'library_web/connection.js', 'library_web/connection-guide.json',
          'integrations/mcp/tools.json', 'integrations/mcp/sites.mjs', 'integrations/mcp/connection.mjs',
-         'docs/CONNECT.md', 'docs/AI_CONNECTION.md', 'docs/OPERATING_MODEL.md', 'docs/UPGRADE.md', 'docs/LAYOUT.md']
+         'docs/CONNECT.md', 'docs/AI_CONNECTION.md', 'docs/OPERATING_MODEL.md', 'docs/UPGRADE.md', 'docs/LAYOUT.md',
+         'integrations/sites/d1-store.mjs', 'docs/SITES_D1_STORAGE.md']
 
 
 def main():
