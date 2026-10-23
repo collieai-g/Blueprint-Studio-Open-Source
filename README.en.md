@@ -23,6 +23,10 @@
 
 **Blueprint Studio is an open-source workspace for founders and small companies that use Codex for daily work.** Give instructions in Codex's own interface on the left. On the right, open your company's actual Blueprint workspace to review documents, projects, tasks and results.
 
+![Redrawn from an actual two-pane interface reference: Codex on the left and a company Blueprint workspace on the right, with demonstration content](artifacts/codex-blueprint-workspace-redraw.png)
+
+*Redrawn from the user’s actual interface reference; demonstration content. Codex’s original interface is on the left and the company Blueprint workspace on the right. Text, records and result states are illustrative, not evidence of saved work or deployment acceptance.*
+
 Two real interfaces work together:
 
 | Left: the existing Codex interface | Right: your company's Blueprint workspace |
