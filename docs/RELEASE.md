@@ -2,8 +2,8 @@
 
 本版新增 Agent 接駁規格、工作台介面及共用 API／MCP 操作。管理員接入已核對固定版本的 Agent 設定檔，在工作台準備工作，再由目前已連接的 Codex 對話讀取資料、處理及保存結果。
 
-- [主要運作方式](OPERATING_MODEL.md)區分日常資料、Agent 登記與程式更新：日常管理直接保存；長期公司專用版本在私人倉庫維護，由 Codex 整合上游、保留自訂內容並部署受影響服務。GitHub 提交不代表 Sites 已更新。
-- Agent 以獨立倉庫開發，使用藍圖的共用表單、操作及結果版面。公開開發範本位於 `templates/agent/`，完整約定見 [Agent 接駁規格](AGENT_CONTRACT.md)。
+- [主要運作方式](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.6.0/docs/OPERATING_MODEL.md)區分日常資料、Agent 登記與程式更新：日常管理直接保存；長期公司專用版本在私人倉庫維護，由 Codex 整合上游、保留自訂內容並部署受影響服務。GitHub 提交不代表 Sites 已更新。
+- Agent 以獨立倉庫開發，使用藍圖的共用表單、操作及結果版面。公開開發範本位於 `templates/agent/`，完整約定見 [Agent 接駁規格](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.6.0/docs/AGENT_CONTRACT.md)。
 - 工作固定建立時的 Agent 版本及設定。來源範圍、開始、完成、失敗與取消由伺服器檢查；結果保留實際客戶端名稱及引用來源。
 - UI 與 MCP 使用相同身份、版本檢查及資料庫。新增 10 個共用工具，合共 40 個；原生及 Sites 原生接駁加上備份工具，共 42 個。
 - schema 5 → 6 追加 Agent 登記、工作及歷史資料表，保留原公司資料、附件與登入。原有備份與還原包含新表；舊版程式不能直接讀取 schema 6。
@@ -11,4 +11,4 @@
 
 此版本不會按網頁按鈕自動喚起 Codex，沒有新增模型 API 呼叫、常駐執行器、WhatsApp 接駁或對外自動發送。Agent「已連接功能」表示後台已啟用相容接駁方式，不代表目前 Codex 對話已載入工具。
 
-完整安裝使用 `-installer.zip`；`-workbench.zip` 只包含介面及接駁來源，需要相容的新後台。[驗證紀錄](../VALIDATION.md)另列測試證據與正式部署邊界。
+完整安裝使用 `-installer.zip`；`-workbench.zip` 只包含介面及接駁來源，需要相容的新後台。[驗證紀錄](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.6.0/VALIDATION.md)另列測試證據與正式部署邊界。
