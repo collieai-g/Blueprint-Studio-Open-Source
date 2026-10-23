@@ -8,10 +8,16 @@ Refresh on explicit user actions and successful in-workbench writes. Boot throug
 one loading/error shell with retry; never fall back silently to the legacy UI.
 
 Follow docs/LEFT_RIGHT_WORKFLOW.md for client-controlled UI and Skill handoff.
-docs/USER_GUIDE.md is the user-facing starting point. Overview's two-column
-orientation and the README diagram explain the client arrangement; neither embeds
-Codex, opens a model session or grants browser control. Keep the real customizable
-dashboard and its existing saved preferences separate from this guide.
+docs/USER_GUIDE.md is the user-facing starting point. Product documentation must
+identify image provenance and distinguish authentic captures from illustrations.
+When the user explicitly requests a redraw based on their actual interface
+reference, it may show the native Codex interface and company Blueprint side by
+side. Label it as a redraw with demonstration content; illustrated records and
+result states are never evidence of actual saved work or deployment acceptance.
+Do not present concept drawings, redraws or automated-test screenshots as the
+user's authentic company capture. Overview's orientation explains the arrangement;
+it does not embed Codex, open a model session or grant browser control. Keep the
+real customizable dashboard and its saved preferences separate from this guide.
 Blueprint supplies selected materials, brief preparation, authorized persistence
 and results; the active Codex or compatible AI supplies reasoning and execution.
 Prefer genuine browser controls when available and authorized; a visible browser
