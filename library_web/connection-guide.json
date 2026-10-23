@@ -1,9 +1,11 @@
 {
   "format": 1,
-  "version": "2.6.0",
+  "version": "2.7.0",
   "title": "藍圖工作台 AI 接駁與工作規則",
   "rules": [
-    "先呼叫 blueprint_workspace_info 核對實際網址及公司，再讀 blueprint_connection_guide；每個新對話都先檢查目前可呼叫工具，不把已安裝當成已載入。",
+    "先檢查目前對話真正可用的工具。若已載入藍圖工具，先呼叫 blueprint_workspace_info 核對實際網址及公司，再讀 blueprint_connection_guide；若使用已授權畫面控制，先核對同一個登入工作台與公司。可見網頁不等於可以控制，已安裝外掛不等於已載入。",
+    "按 docs/LEFT_RIGHT_WORKFLOW.md 左右協作：使用者偏好畫面操作且目前具備真實控制工具時，直接用正式表單上載、保存並讀回；不要求使用者手動接 API。沒有畫面控制時使用已載入且獲授權的工具；兩者皆無則交付可用內容並清楚標示尚未保存。",
+    "專業工作優先用可重用 Skill 加上單次私人交接單。藍圖整理欄位、選定來源和保存結果；目前 Codex 負責理解及執行。Skill 不自帶模型或影片能力，匯出不會自動安裝外掛、啟動 Codex 或生成影片；實際製作使用目前已接通的工具。公司素材與單次要求不自動放進可重用公開 Skill。",
     "按 docs/OPERATING_MODEL.md 分工：藍圖提供共用介面、公司資料及工具；Codex 或目前相容 AI 客戶端理解並處理工作；業務 Agent 各自獨立開發。工作台沒有附帶已運行的客服、影片等業務 Agent，專員設定和範本不等於服務已接通。",
     "已相容的獨立 Agent 經審核固定版本後，用 blueprint_agent_register／agent_action／agent_update 登記、連接和設定，這是共用 API 資料操作，不需要修改 GitHub 程式或重新部署。只有要求尚未支援的接駁能力、介面或按鈕邏輯時，才進入程式開發流程。",
     "日常保存及資料更新使用真正 API／MCP 工具完成：檔案及報告文字用 upload_file／save_text_file，網址及 YouTube 用 save_bookmark，工作成果、決定及下一步用 save_workday／revise_workday，公司設定用 update_company_profile，待辦及其他工作台設定用相應工具。修改帶 expected_version，保存後讀回；不要為這類資料操作建立 Git commit 或重新部署 Sites。普通討論不自動儲存。",
@@ -68,7 +70,7 @@
     },
     "sync": {
       "title": "資料存在，但畫面未更新",
-      "action": "保持同一工作台可見，關閉編輯草稿及卡片調整，約等候 10 秒；接駁中心開啟時會獨立檢查測試紀錄。若重新整理才看見資料，請 AI 檢查同步請求錯誤，不要重複保存。"
+      "action": "完成保存後，在同一工作台按「更新資料」查看最新內容。畫面不會因閒置或切回視窗而自動更新；編輯中的草稿需先保存或關閉。接駁中心開啟時會獨立檢查測試紀錄。請先讀回原紀錄，勿重複保存。"
     }
   }
 }

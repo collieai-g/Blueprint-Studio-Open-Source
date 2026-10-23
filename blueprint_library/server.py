@@ -429,7 +429,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
         if path == "/api/export" and method == "GET":
             return self._json(store.export_metadata(), extra={"Content-Disposition": 'attachment; filename="blueprint-library-metadata.json"'})
         if method == "GET":
-            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/skills.js", "/skills.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()

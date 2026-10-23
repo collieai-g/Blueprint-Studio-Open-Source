@@ -1,20 +1,20 @@
-# 升級到 V2.6，同時保留原有工作資料
+# 升級到 V2.7，同時保留原有工作資料
 
 若本次已明確選擇另裝全新原生工作台、舊站保留不動，改按 [任務選擇規則](INSTALL.md#先確定這次任務才讀取進度) 使用安裝入口；不要把這份舊站升級清單套到獨立新安裝。以下備份要求仍適用於更新原站及需要保留的舊資料。
 
-**V2.6 原生更新先按 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 接續。** 本頁保留舊版遷移與 Sites 適配細節。V2.5 曾加入自動備份、隔離還原及啟動前遷移保護，維持 schema 5；V2.6 再追加 Agent 登記、工作及歷史表，升至 schema 6。舊版沒有維護 API 時仍先完成原資料完整備份。
+**V2.7 原生更新先按 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 接續。** 本頁保留舊版遷移與 Sites 適配細節。V2.5 曾加入自動備份、隔離還原及啟動前遷移保護，維持 schema 5；V2.6 再追加 Agent 登記、工作及歷史表，升至 schema 6。舊版沒有維護 API 時仍先完成原資料完整備份。
 
 [返回首頁](../README.md) · [安裝指南](INSTALL.md) · [AI 工作方式](AI_WORKSPACE.md)
 
 [完整更新路線](UPDATE_ROUTE.md) 定義從候選取回到原站部署、右側驗收與 AI 接駁的連續步驟。保存候選不等於部署；已有私人檢查點後直接接續，不重複交接。
 
-本版 **2.6.0** 加入[獨立 Agent 共用工作台](AGENT_ROADMAP.md)。原生資料庫由 schema 5 升至 **schema 6**，在同一交易追加 Agent 資料表，保留原公司紀錄、ID、待辦完成狀態、歷史、登入、附件及設定。共通 MCP 工具增至 40 個，原生及 Sites 原生接駁另有兩個擁有人備份工具，共 42 個。正式更新仍須先核實所選發行版 tag 與完整 commit；本頁描述來源版本，不表示任何私人工作台已部署新版。
+本版 **2.7.0** 整理四個主入口，加入 Skill 工作台與[左右協作流程](LEFT_RIGHT_WORKFLOW.md)，沿用 **schema 6**，不新增資料遷移。V2.6 曾由 schema 5 升至 schema 6，追加 Agent 表；從較舊版本更新時仍按對應遷移保留原公司紀錄、ID、待辦完成狀態、歷史、登入、附件及設定。選用 MCP 路徑時，共通工具為 40 個，原生及 Sites 原生接駁另有兩個擁有人備份工具，共 42 個；使用畫面控制不以安裝這些工具為前置條件。正式更新仍須先核實所選發行版 tag 與完整 commit；本頁描述來源版本，不表示任何私人工作台已部署新版。
 
 歷史相容：V2.4 曾由 schema 4 升至 schema 5，新增公司紀錄、歷史、帳戶、偏好和權限表，以及五組導覽。2.4.0 至 2.4.2 只增加更新助手及接續工具，沒有再次改變 schema。原品牌與 V2.3 排版繼續沿用；原有範圍見 [V2.4.md](V2.4.md)。
 
 更新的是程式與畫面。已有公司資料不重新初始化；新的預設介面不預填示範工作。卡片排列與輸入偏好保存在同一網站的目前瀏覽器，舊有卡片／清單及排序偏好仍沿用。
 
-日常報告、待辦、文件、收藏及公司資料經 API 保存；既有排版偏好、相容 Agent 的登記與設定沿用原保存方式，不需要 Git 或本頁的部署流程。長期公司專用開發使用自己已核實為 **Private** 的完整程式倉庫，將指定上游正式版本整合到公司的分支，保留自訂程式並完成測試，再部署受影響服務。短期試用或未修改原版可以保留原有來源。詳見[日常操作與程式更新](OPERATING_MODEL.md)。
+日常報告、待辦、文件、收藏及公司資料經現有畫面或已授權工具保存；既有排版偏好、相容 Agent 的登記與設定沿用原保存方式，不需要 Git 或本頁的部署流程。長期公司專用開發使用自己已核實為 **Private** 的完整程式倉庫，將指定上游正式版本整合到公司的分支，保留自訂程式並完成測試，再部署受影響服務。短期試用或未修改原版可以保留原有來源。詳見[日常操作與程式更新](OPERATING_MODEL.md)。
 
 GitHub 發佈新版後，已安裝的私人工作台不會自動改版。你向該工作台的 AI 發出升級指令，AI 便按此流程完成備份、整合、部署與驗證。日後升級可說「按官方升級指南，把我的現有工作台更新到最新穩定版，保留全部資料及自訂內容」；AI 先讀該版更新及遷移要求，再選定確切版本，不盲目覆蓋。
 
@@ -36,26 +36,32 @@ GitHub 發佈新版後，已安裝的私人工作台不會自動改版。你向�
 
 原生版：先完成完整備份與隔離還原，按 docs/NATIVE_LIFECYCLE.md 更新及驗證；保持原資料路徑／磁碟。
 舊版沒有維護 API 時，停止服務後用新版 tools/upgrade_workspace.py 備份及驗證。
-V2.6 追加 schema 6 的 Agent 表，保留原表及所有既有資料，不手動降低資料版本。
+V2.7 沿用 schema 6；從更舊版本更新時按對應遷移追加所需表，保留原表及所有既有資料，不手動降低資料版本。
 Sites：用新版 tools/package_workbench.py 產生完整介面包，整合到現有 Site 的來源；
 保留原有登入、資料庫、附件及 AI 工具適配。新增 workspace.js、brand.svg、connection.js 和 connection-guide.json 的服務路徑，
 先按 docs/STUDIO_API.md 在原 Site 實作完整 /api/studio/*、持久資料及角色檢查，
 按 docs/AGENT_CONTRACT.md 完成 Agent API，
-再連同 navigation.js、studio.js、studio.css、agents.js、agents.css、update.js、manifest.webmanifest、service-worker.js 一併部署。
+再連同 navigation.js、studio.js、studio.css、skills.js、skills.css、agents.js、agents.css、update.js、manifest.webmanifest、service-worker.js 一併部署。
 UI 包不包含 Sites 新後台，不能宣稱單換前端便完成升級。不要以 Python／SQLite 覆蓋 Sites 後台。
-補齊真正的 MCP 外掛寫入層，支援我所用的 Codex、Claude、Gemini 或其他相容客戶端。
+沿用我已選定的 AI 操作路徑。若選畫面操作且目前客戶端真的能控制同一個已登入工作台，
+使用正式表單保存一項已授權資料，重新開啟相同紀錄核對內容及待辦，記錄實際編號。
+可見網站、能控制登入分頁、工具已載入及保存成功分開驗證；不要求使用畫面路徑的人另寫 API 或先裝 MCP。
+若選 MCP，保留真正的外掛寫入層，支援 Codex、Claude、Gemini 或相容客戶端。
 原生版安裝 requirements-mcp.txt，配置 mcp／mcp-config 指向原後台；Sites 整合 integrations/mcp
-到原本已驗證身份的 API，保留舊工具相容性並刷新外掛。確認目前對話載入寫入工具，
-不能把「已安裝」當成「能寫入」。開啟 AI 接駁中心，使用它的測試參數呼叫 blueprint_verify_connection；我授權建立一筆明確標示的接駁測試及測試待辦。
-每個新對話讀 blueprint_connection_guide，並將後台地址及如何讀規則合併到客戶端私人指引。
-按 docs/CONNECT.md 處理登入、工具載入或網絡卡點，帶我完成同一紀錄的右側顯示及第一項真實工作。
+到原已驗證身份的 API，保留舊工具相容性並按需刷新外掛。確認目前對話載入寫入工具，
+再開 AI 接駁中心，用其參數透過 blueprint_verify_connection 完成 MCP 驗收；我授權該接駁測試及測試待辦。
+不得用瀏覽器或直接 API 偽造 MCP 驗收紀錄。使用工具的新對話讀 blueprint_connection_guide，
+按 docs/CONNECT.md 處理具體卡點，並把工作台地址及規則合併到客戶端私人指引。
+按所選路徑完成同一紀錄的重新查看、右側顯示及第一項真實工作。
 保留我的自訂內容；遇到衝突逐項整合，不能強制 reset、刪 volume 或重建資料。
 
 按 docs/LAYOUT.md 驗證標題／副標題／日期無框、兩格與四格文字、卡片貼齊背景格線、
 拖動／縮放／收起、鍵盤操作、明確按鈕加頁且最多三頁，以及重新開啟後保留排列；
-驗證左側 AI 保存後右側工作台自動更新，編輯中的草稿不被刷新覆寫。
+驗證工作台內保存後相應內容更新；外部保存後按「更新資料」查看同一結果。
+閒置及切回視窗不自動更新，編輯中的草稿不被較早請求覆寫。
 確認升級前的紀錄 ID、公司設定、附件、歷史與已完成待辦仍在，AI 能讀寫同一個後台。
-核對 Agent 工作台、40 個共通工具及原生額外兩個備份工具；如已接入 Agent，驗證工作台準備工作、目前 AI 對話處理、保存並讀回同一結果。
+核對四個主入口及 Skill 工作台；選用 MCP 時核對 40 個共通工具及原生額外兩個備份工具。
+如已接入 Agent，沿用其正式生命週期工具及來源摘要，驗證準備工作、目前 AI 對話處理、保存並讀回同一結果。
 不要把加入 Agent 或接通接口當作目前對話已能執行，不自動喚起 Codex，也不接入背景 AI 或 WhatsApp。
 完成後交付原網址、新版本、資料保留結果、備份位置及回復舊版的方法。
 遇到工具或登入限制，完成可執行部分並指出確切下一步，不聲稱未驗證的升級已完成。
@@ -69,9 +75,9 @@ UI 包不包含 Sites 新後台，不能宣稱單換前端便完成升級。不�
 
 ## 沿用 V2.2 的內置接駁流程
 
-V2.2 起提供 AI 接駁中心、共用接入及工作規則、兩個新 MCP 工具、六種卡點處理及第一項工作引導。升級後必須開啟中心，使用本次指令完成工具驗收與畫面確認，詳見 [CONNECT.md](CONNECT.md)。接駁測試仍是明確標示的新工作紀錄；V2.4 的公司表和 V2.6 的 Agent 表均納入同一正式資料庫及完整備份。
+V2.2 起提供 AI 接駁中心、共用接入及工作規則、兩個新 MCP 工具、六種卡點處理及第一項工作引導。選用 MCP 路徑時，升級後開啟中心，使用本次指令完成工具驗收與畫面確認，詳見 [CONNECT.md](CONNECT.md)。接駁測試仍是明確標示的新工作紀錄；V2.4 的公司表和 V2.6 的 Agent 表均納入同一正式資料庫及完整備份。
 
-V2.2 起需要靜態資產 /connection.js 及 /connection-guide.json；Sites MCP 適配器新增同目錄 connection.mjs。必須同時更新網站、工具層及外掛定義，不能只換前端。原生 MCP 必須執行新版本來源；既有資料路徑及客戶端其他設定不變。
+V2.2 起提供靜態資產 /connection.js 及 /connection-guide.json；Sites MCP 適配器有同目錄 connection.mjs。網站、工具合約或外掛定義有受影響修改時，同步更新相應部分，不能只換版本文字。使用原生 MCP 時須執行相容來源；畫面控制路徑不必先安裝 MCP。既有資料路徑及客戶端其他設定不變。
 
 ## 1. 先辨認現有安裝
 
@@ -135,22 +141,22 @@ Sites 升級由有 Sites 工具的 AI 在原工作台對話執行。先讀當前
    ```
 
 3. 更新包包含 `library_web/` 全部 V2 必要檔案、圖示及 SHA-256 清單。AI 比對清單後，整合到原 Site 服務靜態資源的位置；保留 Sites 自己的伺服器、登入、資料庫 binding、附件及 AI 工具。
-4. 確保 `/connection.js`、`/connection-guide.json`、`/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供，並保留 `/update.js` 更新助手、`/navigation.js`、`/studio.js`、`/studio.css`、`/manifest.webmanifest` 和 `/service-worker.js`。V2.6 另需 `/agents.js`、`/agents.css`，按 [STUDIO_API.md](STUDIO_API.md) 及 [AGENT_CONTRACT.md](AGENT_CONTRACT.md) 在原儲存實作完整 `/api/studio/*`、角色保護、版本檢查及交易。這個後台移植不包含在 UI 包中；原有 API 仍保留。MCP 適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，重新連接外掛並驗證工具。介面讀取同一正式資料庫，追加所需公司及 Agent 資料表，不能另開空資料庫。保留原有存取限制。
+4. 確保 `/connection.js`、`/connection-guide.json`、`/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供，並保留 `/update.js` 更新助手、`/navigation.js`、`/studio.js`、`/studio.css`、`/manifest.webmanifest` 和 `/service-worker.js`。Agent 介面另需 `/agents.js`、`/agents.css`，Skill 介面需 `/skills.js`、`/skills.css`，按 [STUDIO_API.md](STUDIO_API.md) 及 [AGENT_CONTRACT.md](AGENT_CONTRACT.md) 在原儲存實作完整 `/api/studio/*`、角色保護、版本檢查及交易。這個後台移植不包含在 UI 包中；原有 API 仍保留。選用 MCP 時，適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，按需重新連接外掛並驗證工具。介面讀取同一正式資料庫，追加所需公司及 Agent 資料表，不能另開空資料庫。保留原有存取限制。
 5. 依原 Site 現有 API 測試與本指南驗收；如有平台適配，對照回應結構，不能省略功能或將 SQLite 程式直接放入 Sites。
 6. 按 Sites 流程提交完整來源、部署至**同一網站**，核對正式網址與使用者登入後結果。更新本機程式／Codex 環境不會自動更新正式 Site。
 
-如果需要由左側 AI 填寫公司資料、文件、收藏或待辦，沿用並補齊該 Site 已有工具。插件已建立不代表目前對話已載入；必須實測一筆資料在同一網站出現並讀回。
+如果需要由左側 AI 填寫公司資料、文件、收藏或待辦，按選定路徑使用目前真正能控制同一登入分頁的工具，或該 Site 已授權的 MCP 工具。可見網頁不等於能控制，外掛已建立也不等於已載入；兩條路徑都須實測一筆資料在同一網站保存，重新開啟相同編號核對。
 
 ## 5. 升級驗收與回復
 
-- 登入同一網址，看見原有五組側欄、白色工作台、原品牌標誌及 V2.6 Agent 工作台。
+- 登入同一網址，看見「總覽、工作、AI、資料」四個主入口、Skill 工作台、白色工作台及原品牌標誌；既有 Agent 工作台及舊路由仍可使用。
 - 實測收件匣轉待辦、項目保存、主題關聯、報價至發票流程；員工不能透過直接 API 讀取財務與人事。
-- MCP 能探索 40 個共通工具；原生及 Sites 原生接駁另有兩個擁有人備份工具，共 42 個。實測 studio_create → studio_get 同一 ID，並確認原生 schema_version=6。只讀連接按權限隱藏寫入工具。
+- 按選定 AI 路徑驗收：畫面控制實際操作正式表單並重新開啟相同紀錄；MCP 則探索 40 個共通工具，原生及 Sites 原生接駁另有兩個擁有人備份工具，共 42 個，並實測 studio_create → studio_get 同一 ID。兩者均確認 schema_version=6；只讀權限不得寫入。MCP 接駁測試只使用真正 blueprint_verify_connection，不由畫面偽造。
 - 如有已接入 Agent，從工作台建立工作、由目前 AI 對話開始並保存結果、讀回同一 ID；核對指定來源、設定版本、衝突及失敗狀態。沒有背景執行器，不把介面可見當作已自動運行。
 - 原公司設定、紀錄 ID、歷史版本、星號、收藏集、待辦完成狀態及附件仍然存在。
 - 「調整排版」可以按格拖動及調整大小，亦可收起／展開；重開同一瀏覽器保留排列。手機可操作。
 - 舊版卡片／清單及排序偏好保留；排列沿用 `blueprint-workspace-v2` 鍵，首次保存前備份舊值，不清空舊儲存。
-- AI 透過既有 API／工具保存後，工作台在可見且沒有編輯草稿時約 10 秒內更新；失敗會顯示狀態。輸入中的表單、選取資料及卡片調整期間暫停同步。
+- 閒置、切回視窗及瀏覽器歷史還原不觸發更新。工作台內保存後更新相應結果；外部保存後按「更新資料」讀取。正在輸入的草稿、選取資料及卡片調整不被較早請求覆寫；失敗顯示具體狀態並等待手動重試。
 - 搜尋、必要上載、下載、勾選待辦和修改仍可用；備用操作及偏好設定可展開手動入口。
 - 重啟服務／重新部署後再次驗證資料，更新私人安裝進度記錄。
 

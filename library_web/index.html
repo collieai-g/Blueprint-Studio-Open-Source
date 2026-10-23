@@ -9,23 +9,25 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/studio.css">
   <link rel="stylesheet" href="/agents.css">
+  <link rel="stylesheet" href="/skills.css">
   <script src="/workdays.js" defer></script>
   <script src="/workspace.js" defer></script>
   <script src="/connection.js" defer></script>
   <script src="/update.js" defer></script>
   <script src="/navigation.js" defer></script>
   <script src="/agents.js" defer></script>
+  <script src="/skills.js" defer></script>
   <script src="/studio.js" defer></script>
   <script src="/app.js" defer></script>
   <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 </head>
-<body data-entry-mode="ai">
+<body data-entry-mode="ai" data-workspace-state="loading">
   <a class="skip-link" href="#main">跳至工作內容</a>
   <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="關閉導覽" hidden></button>
   <aside id="sidebar" class="sidebar" aria-label="主要導覽">
     <a class="sidebar-brand" href="/" aria-label="Blueprint Studio 工作台"><img class="brand-mark" src="/brand.svg" width="48" height="48" alt=""><span class="brand-wordmark"><strong>Bluepr<span class="brand-i">ı</span>nt</strong><small><span>S</span><span>T</span><span>U</span><span>D</span><span>I</span><span>O</span></small></span></a>
     <div class="workspace-label"><span id="company-avatar" class="workspace-avatar" aria-hidden="true">企</span><div><strong id="company-name">我的公司</strong><small id="company-industry">專屬管理後台</small></div></div>
-    <div id="legacy-navigation">
+    <div id="legacy-navigation" hidden>
     <p class="nav-label">工作空間</p>
     <nav class="legacy-main-nav" aria-label="資料檢視">
       <button class="nav-item active" type="button" data-view="dashboard" aria-current="page"><span data-icon="dashboard"></span><span>工作台</span></button>
@@ -50,15 +52,18 @@
   <div class="app-main">
     <header class="topbar">
       <div class="topbar-start"><button id="mobile-menu" class="icon-button mobile-menu" type="button" aria-label="開啟導覽" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button><p class="breadcrumb">工作空間 <span aria-hidden="true">/</span> <strong id="breadcrumb-current">工作台</strong></p></div>
-      <div class="top-actions"><button id="command-button" class="command-button" type="button" aria-label="搜尋全部資料，快捷鍵 Control 或 Command 加 K"><span data-icon="search"></span><span>搜尋工作空間</span><kbd>⌘ K</kbd></button><div class="add-wrapper"><button id="add-item" class="button secondary" type="button" aria-expanded="false" aria-controls="add-menu"><span data-icon="plus"></span>備用操作<span data-icon="chevron"></span></button><div id="add-menu" class="add-menu" hidden><button type="button" data-workday-action="import"><span data-icon="calendar"></span>手動匯入工作</button><button type="button" data-action="upload"><span data-icon="upload"></span>加入檔案</button><button type="button" data-action="link"><span data-icon="link"></span>收藏連結</button><button type="button" data-action="collection"><span data-icon="folder-plus"></span>新增收藏集</button></div></div></div>
+      <div class="top-actions"><button id="refresh-workspace" class="button quiet small" type="button">更新資料</button><button id="command-button" class="command-button" type="button" aria-label="搜尋全部資料，快捷鍵 Control 或 Command 加 K"><span data-icon="search"></span><span>搜尋工作空間</span><kbd>⌘ K</kbd></button><div class="add-wrapper"><button id="add-item" class="button secondary" type="button" aria-expanded="false" aria-controls="add-menu"><span data-icon="plus"></span>備用操作<span data-icon="chevron"></span></button><div id="add-menu" class="add-menu" hidden><button type="button" data-workday-action="import"><span data-icon="calendar"></span>手動匯入工作</button><button type="button" data-action="upload"><span data-icon="upload"></span>加入檔案</button><button type="button" data-action="link"><span data-icon="link"></span>收藏連結</button><button type="button" data-action="collection"><span data-icon="folder-plus"></span>新增收藏集</button></div></div></div>
     </header>
-    <main id="main" tabindex="-1">
+    <main id="main" tabindex="-1" aria-busy="true">
+      <section id="workspace-startup" class="studio-empty" role="status" aria-live="polite"><p id="workspace-startup-message">正在載入工作台…</p><button id="retry-workspace" class="button secondary" type="button" hidden>重新連接</button></section>
+      <p class="workspace-status"><span class="sync-dot" aria-hidden="true"></span><span id="workspace-sync" role="status" aria-live="polite">正在連接資料…</span></p>
+      <nav id="studio-section-navigation" class="studio-section-nav" aria-label="目前區域" hidden></nav>
       <div class="page-heading" id="view-heading" hidden><div><p class="eyebrow" id="page-eyebrow">YOUR WORKSPACE</p><h1 id="page-title">工作台<span class="title-dot" aria-hidden="true">.</span></h1><p id="page-description">管理公司的日常工作，隨時接續下一步。</p></div><div class="page-date" id="page-date"></div></div>
       <div id="studio-view-tabs" class="studio-tabs" hidden></div>
       <section id="studio-panel" class="studio-panel" hidden aria-label="公司工作內容"></section>
       <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <section id="dashboard-panel" class="dashboard-panel" aria-label="工作台概覽">
-        <div class="board-toolbar"><div><span class="sync-dot" aria-hidden="true"></span><span id="workspace-sync" role="status" aria-live="polite">正在連接資料…</span></div><div class="board-actions"><button id="refresh-workspace" class="button quiet small" type="button">重新整理</button><button id="edit-board" class="button secondary small" type="button" aria-pressed="false">調整排版</button><button id="reset-board" class="button quiet small" type="button" hidden>還原排列</button></div></div>
+        <div class="board-toolbar"><div class="board-actions"><button id="edit-board" class="button secondary small" type="button" aria-pressed="false">調整排版</button><button id="reset-board" class="button quiet small" type="button" hidden>還原排列</button></div></div>
         <div id="board-editor" class="board-editor" hidden>
           <div class="layout-presets"><label>選擇排版<select id="board-preset"><option value="balanced">整齊排列</option><option value="focus">工作優先</option><option value="compact">簡潔排列</option></select></label><button id="apply-board-preset" class="button secondary small" type="button">套用排版</button></div>
           <div class="layout-selection"><label>調整項目<select id="board-selected"></select></label><label>寬度<input id="board-width" type="number" required min="1" max="96" aria-label="寬度（格）"></label><span class="layout-times" aria-hidden="true">×</span><label>高度<input id="board-height" type="number" required min="1" max="48" aria-label="高度（格）"></label><span>格</span><button id="apply-board-size" class="button secondary small" type="button">設定大小</button><span id="text-size-options"><button class="button quiet small" type="button" data-text-size="2">兩格</button><button class="button quiet small" type="button" data-text-size="4">四格</button></span><label>移到頁面<select id="board-page"></select></label></div>

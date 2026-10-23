@@ -1,5 +1,24 @@
 # Blueprint Studio Open Source
 
+Current UI uses exactly four primary entries: 總覽, 工作, AI, 資料. Keep core
+work and data pages in secondary navigation; retain existing records, deep links,
+server permissions and preference keys. Idle timers, focus, visibility changes and
+browser history restoration must not refresh company data or replace active views.
+Refresh on explicit user actions and successful in-workbench writes. Boot through
+one loading/error shell with retry; never fall back silently to the legacy UI.
+
+Follow docs/LEFT_RIGHT_WORKFLOW.md for client-controlled UI and Skill handoff.
+Blueprint supplies selected materials, brief preparation, authorized persistence
+and results; the active Codex or compatible AI supplies reasoning and execution.
+Prefer genuine browser controls when available and authorized; a visible browser
+pane or a local QA browser does not grant control of the user's tab. Keep MCP as
+an optional automation route and preserve the shared backend's authorization,
+version checks and readback. Reusable Skills contain professional workflow rules;
+private task briefs contain current requirements and explicitly selected sources.
+Skill generation/export never installs a plugin or starts a model. Media production
+uses tools actually loaded in the active client. No separate video AI service,
+background worker, automatic plugin installation or deployment per daily task.
+
 Follow docs/OPERATING_MODEL.md when distinguishing daily use from development.
 Daily work, tasks, files, bookmarks and reports use authorized data APIs with
 version checks and readback; do not turn them into Git commits or deployments.
@@ -101,7 +120,8 @@ The V2 UI package can update a compatible Sites adapter; preserve its authentica
 API implementation, database, object storage and tool binding. Do not replace it
 with native Python code or create another Site. AI writes use real existing tools;
 UI polling is not permission to read conversations or a simulated AI connection.
-The user requires model-independent AI writes through a real plugin/tool layer.
+The user authorizes model-independent AI writes through actual client UI controls
+or a real plugin/tool layer, depending on the active client's capabilities.
 Follow docs/AI_CONNECTION.md; integrations/mcp/tools.json defines the shared tool
 contract. Native MCP stdio bridges to the existing authenticated HTTP backend,
 never a separate local database. Sites uses an authenticated MCP adapter to its
