@@ -21,11 +21,24 @@
   <a href="https://blueprint-agent-studio.onrender.com/">Official website</a>
 </p>
 
-**Blueprint Studio is an open-source company workspace that works alongside Codex.** Give instructions on the left; let Codex organize material and carry out the work. On the right, Blueprint stores your company's documents, projects, tasks and results so you can review them and continue later.
+**Blueprint Studio is an open-source workspace for founders and small companies that use Codex for daily work.** Give instructions in Codex's own interface on the left. On the right, open your company's actual Blueprint workspace to review documents, projects, tasks and results.
 
-![Illustration: the user directs Codex on the left, Blueprint manages company records on the right, and saved results are opened again for verification](artifacts/codex-blueprint-workflow.svg)
+Two real interfaces work together:
 
-*An illustration, not a software screenshot. Its Chinese labels show goals, Skills and authorized tools on the left; Overview, Work, AI and Data on the right. Your AI app or window arrangement provides the two panels. Blueprint does not embed Codex.*
+| Left: the existing Codex interface | Right: your company's Blueprint workspace |
+| --- | --- |
+| Give instructions, review progress and direct the work in your usual Codex conversation. | Sign in to your own workspace, select company material, review progress and check saved results. |
+| Codex uses the AI workflows, automation and authorized tools provided by the active client. | Blueprint supplies the company management UI, persistent records, permissions, versions and Skill handoff. |
+
+Your client or window arrangement places the interfaces side by side. Blueprint works with the existing Codex interface; it does not rebuild or embed Codex as its own chat panel.
+
+## Built for founders and small teams
+
+Founders need to organize meetings, documents, projects, tasks and daily results while using AI to move work forward. Blueprint keeps company material in a workspace where it can be found, followed up and reused. Codex interprets your instructions and carries out the work with the capabilities actually available to it.
+
+The project aims to reuse Codex's existing AI workflows and tools, reducing the cost of rebuilding a general AI conversation, control and automation layer. Development can focus on company processes, data and specialist needs. Actual automation still depends on the tools the active client truly provides and is authorized to use.
+
+The shared backend and interface are open source and can be adapted to your business. Reusable Skills describe professional methods such as video design; Codex applies them using available tools, while Blueprint stores the material and results. Each department does not need a separately developed model service.
 
 ## Complete one real task first
 
