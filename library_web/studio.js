@@ -4,7 +4,7 @@
   const NAV=root.BlueprintNavigation, $=id=>document.getElementById(id);
   const node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
   const button=(label,run,cls='button secondary small')=>{const e=node('button',cls,label);e.type='button';e.addEventListener('click',()=>Promise.resolve().then(run).catch(error=>app.notice(error.message,true)));return e;};
-  let app,state,route='overview',activeTab='',request=0,editing=null,actionSubmit=null,activeRecord=null,navigating=false,ready=false,initialized=false;
+  let app,state,route='overview',activeTab='',request=0,editing=null,actionSubmit=null,activeRecord=null,navigating=false,ready=false,initialized=false,navigationRequest=0;
   let choices=[],searchText='',pageOffset=0,lastNav='',dragTopic=null;
   const pageNames={leads:'潛在客戶分析',quotes:'智能報價單與合約流水線',customers:'現有客戶檔案庫',feedback:'客戶反饋與客訴追蹤表',suppliers:'供應商與合作夥伴',revenue:'公司營收與發票',costs:'雲端伺服器與 AI 算力成本'};
   const icons={project:'checklist',inbox:'inbox',command:'automation',task:'checklist',lead:'search',quote:'document',customer:'folder',feedback:'chat',member:'settings',supplier:'link',invoice:'document',cost:'automation',specialist:'chat',conversation:'chat',scenario:'checklist',topic:'folder',inspiration:'bookmark',report:'document'};
@@ -44,50 +44,27 @@
     const signature=JSON.stringify([route,state.catalog.map(r=>[r.id,r.version,r.title,r.visibility]),preferences,state.summary.counts]);
     if(!force&&lastNav===signature)return;lastNav=signature;
     const holder=$('studio-navigation');holder.replaceChildren();
+    const current=definition();
     NAV.groups.forEach(group=>{
-      if(preferences.hidden_groups?.includes(group.id)&&definition().group!==group.id)return;
-      const section=node('section','studio-nav-group'),toggle=button('',()=>savePrefs({groups:preferences.groups.includes(group.id)?preferences.groups.filter(g=>g!==group.id):[...preferences.groups,group.id]}),'studio-group-button');
-      toggle.dataset.group=group.id;toggle.title=group.label;toggle.setAttribute('aria-expanded',String(preferences.groups.includes(group.id)));
-      toggle.append(app.icon(group.icon),node('span','studio-nav-label',group.label),node('span','studio-group-arrow',preferences.groups.includes(group.id)?'−':'+'));section.append(toggle);
-      const children=node('div','studio-nav-children');children.hidden=!preferences.groups.includes(group.id);
-      const items=[...group.items];
-      if(group.id==='specialists'){
-        const extra=catalog('specialist').filter(r=>!['specialist-website','specialist-whatsapp','specialist-email','specialist-video'].includes(r.id));
-        items.splice(5,0,...extra.map(r=>['specialist/'+r.id,r.title,'chat','專員設定','specialist']));
-      }
-      if(group.id==='topics'){
-        const topics=catalog('topic').sort((a,b)=>(a.data.order||0)-(b.data.order||0)||a.created_at.localeCompare(b.created_at));
-        items.unshift(...topics.slice(0,5).map(r=>['topic/'+r.id,r.title,r.data.icon||'folder','主題內容','topic']));
-      }
-      items.forEach(entry=>{
-        if(!Array.isArray(entry)){if(entry.access!=='admin'||admin())children.append(node('p','studio-nav-heading',entry.heading));return;}
-        const [value,label,icon,,kind,access]=entry;if(access==='admin'&&!admin())return;
-        if(value==='templates'&&!admin())return;
-        const e=routeButton(value,label,icon);
-        if(kind==='specialist'&&value.startsWith('specialist/')){
-          const specialist=catalog('specialist').find(r=>r.id===value.split('/')[1]);
-          const status=specialist?.data.state||'unconnected',dot=node('span','specialist-dot');dot.dataset.state=status;
-          dot.title=statusLabel('specialist','state',status);dot.setAttribute('aria-label',dot.title);e.append(dot);
-        }
-        const count={inbox:state.summary.counts.inbox,feedback:state.summary.counts.feedback,quotes:state.summary.counts.quotes}[value];
-        if(count)e.append(node('span','nav-count studio-count',count));
-        if(value.startsWith('topic/')){
-          const topic=catalog('topic').find(r=>r.id===value.split('/')[1]);if(topic)e.style.setProperty('--topic-color',topic.data.color||'#7b8793');
-          e.draggable=true;e.addEventListener('dragstart',()=>{dragTopic=value.split('/')[1];});e.addEventListener('dragover',event=>event.preventDefault());
-          e.addEventListener('drop',async event=>{event.preventDefault();if(dragTopic)await reorderTopic(dragTopic,value.split('/')[1]);dragTopic=null;});
-        }
-        children.append(e);
-      });
-      if(group.id==='topics')children.append(button('＋ 新主題',()=>editRecord('topic'),'nav-item studio-new-topic'));
-      section.append(children);holder.append(section);
+      const link=routeButton(group.route,group.label,group.icon);link.classList.add('studio-primary');link.dataset.group=group.id;
+      const active=current.group===group.id;link.classList.toggle('active',active);
+      if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+      holder.append(link);
     });
-    const pins=$('studio-pins');pins.replaceChildren();const savedPins=preferences.pins||[];
-    if(savedPins.length||Number(document.querySelector('[data-count=pinned]')?.textContent)){
-      pins.append(node('p','nav-label','釘選'));
-      savedPins.forEach(pin=>pins.append(routeButton(pin.route||'record/'+pin.id,pin.title,'star')));
-      pins.append(routeButton('pinned','查看釘選內容','star'));
-    }
+    // Saved pins and old expansion choices remain stored; the primary sidebar stays compact.
+    const pins=$('studio-pins');pins.replaceChildren();pins.hidden=true;
+    const secondary=$('studio-section-navigation');secondary.replaceChildren();
+    const group=NAV.groups.find(group=>group.id===current.group);
+    const items=(group?.items||[]).filter(Array.isArray).filter(entry=>entry[5]!=='admin'||admin());
+    secondary.hidden=items.length<2;
+    items.forEach(([value,label,icon])=>{
+      const link=routeButton(value,label,icon);link.className='studio-section-link';
+      const active=value===route||value===current.parentRoute;link.classList.toggle('active',active);
+      if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+      secondary.append(link);
+    });
   }
+
   async function reorderTopic(from,to){
     const topics=catalog('topic').sort((a,b)=>(a.data.order||0)-(b.data.order||0)||a.created_at.localeCompare(b.created_at));
     const index=topics.findIndex(r=>r.id===from),target=topics.findIndex(r=>r.id===to);if(index<0||target<0||index===target)return;
@@ -133,12 +110,16 @@
   function hideLegacy(){app.hideLegacy();$('view-heading').hidden=true;$('dashboard-panel').hidden=true;$('workdays-panel').hidden=true;$('library-panel').hidden=true;$('studio-view-tabs').hidden=true;$('studio-panel').hidden=false;}
   async function navigate(value,{replace=false}={}){
     if(!ready)return;
+    const transition=++navigationRequest;++request;
     if(value.startsWith('collection/'))value='topic/'+value.split('/')[1];
     value=NAV.aliases[value]||value;
-    activeRecord=value.startsWith('record/')?(await api(recordUrl(value.split('/')[1]))).record:null;
-    const page=definition(value);if(page.access==='admin'&&!admin())throw new Error('你的帳戶沒有這項權限。');
+    let record=null;
+    try{if(value.startsWith('record/'))record=(await api(recordUrl(value.split('/')[1]))).record;}
+    catch(error){if(transition!==navigationRequest)return;throw error;}
+    if(transition!==navigationRequest)return;
+    activeRecord=record;
+    const page=definition(value);if(page.access==='admin'&&!admin()){const error=new Error('你的帳戶沒有這項權限。');error.status=403;throw error;}
     route=value;activeTab='';pageOffset=0;searchText='';
-    if(page.group&&!state.preferences.data.groups.includes(page.group)){state.preferences.data.groups=[...state.preferences.data.groups,page.group];await savePrefs({groups:state.preferences.data.groups});}
     const url='#/'+value;if(location.hash!==url)history[replace?'replaceState':'pushState'](null,'',url);
     $('breadcrumb-current').textContent=page.label;app.closeSidebar();renderNavigation(true);
     await renderPage();
@@ -148,13 +129,13 @@
     if(route==='overview'||route==='overview/workdays'||route==='overview/todos'||route==='documents'){
       navigating=true;app.setView(route==='documents'?'files':route.endsWith('/workdays')?'workdays':route.endsWith('/todos')?'todos':'dashboard');navigating=false;
       $('studio-panel').hidden=true;
-      const bar=$('studio-view-tabs');bar.hidden=false;bar.replaceChildren();
-      if(route.startsWith('overview'))bar.append(tabs([['overview','今日總覽'],['overview/workdays','每日工作紀錄'],['overview/todos','待辦']],v=>navigate(v),route));
-      else bar.append(tabs([['documents','文件'],['reports','報告與交付物']],v=>v==='documents'?navigate(v):navigate('reports'),'documents'));
+      const bar=$('studio-view-tabs');bar.hidden=route!=='documents'&&route!=='overview/todos';bar.replaceChildren();
+      if(route==='documents')bar.append(tabs([['documents','文件'],['reports','報告與交付物']],v=>v==='documents'?navigate(v):navigate('reports'),'documents'));
       if(route==='overview/todos'){const wrap=node('div','studio-inline-tasks');const data=await api('/records?kind=task&limit=100');if(seq!==request)return;wrap.append(header('其他待辦','由收件匣、靈感和項目加入。',[button('新增待辦',()=>editRecord('task'))]),...data.records.map(recordCard));bar.append(wrap);}
       renderOverview();return;
     }
     hideLegacy();const panel=$('studio-panel');panel.replaceChildren(node('p','muted','正在讀取…'));
+    if(route==='skills')return root.BlueprintSkills.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request});
     if(route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))return root.BlueprintAgents.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request});
     if(route.startsWith('specialist/'))return specialistPage(route.split('/')[1],seq);
     if(route.startsWith('topic/'))return topicPage(route.split('/')[1],seq);
@@ -177,6 +158,7 @@
     if(!archived){actions.push(button('交給 AI',()=>openCommand('請幫我整理'+title+'。')));actions.push(button('新增'+(schema(kind)?.label||'內容'),()=>kind==='inspiration'?addInspiration():editRecord(kind)));}
     actions.push(button('釘選頁面',()=>pinPage()));
     panel.replaceChildren(header(title,description,actions));extra.forEach(n=>panel.append(n));
+    if(route==='specialists'&&admin())panel.append(button('從範本新增',()=>navigate('templates')));
     if(route==='reports')panel.append(tabs([['documents','文件'],['reports','報告與交付物']],v=>navigate(v),'reports'));
     if(route==='inspirations/learning')panel.append(button('查看原有影片與收藏',()=>openLegacyLibrary('links'),'text-button'));
     if(route==='archived')panel.append(button('查看原有封存文件與收藏',()=>openLegacyLibrary('archived'),'text-button'));
@@ -408,7 +390,7 @@
     if(user)$('studio-action-fields').querySelector('[data-field=username]').readOnly=true;
   }
   function accountPage(){
-    const panel=$('studio-panel');panel.replaceChildren(header('帳戶','目前使用的工作空間與登入資料。'),node('p','',`使用者：${state.identity.name||state.identity.username}`),node('p','',`登入名稱：${state.identity.username}`),node('p','',`角色：${{owner:'老闆',admin:'管理員',member:'員工'}[state.identity.role]}`),node('p','muted',`工作台版本：V2.4 · 後台 ${document.getElementById('version').title}`),node('p','muted','原生後台使用瀏覽器的 HTTP 登入。需要切換登入帳戶時，請開啟新的私人瀏覽視窗，再輸入另一個帳戶。'));
+    const panel=$('studio-panel');panel.replaceChildren(header('帳戶','目前使用的工作空間與登入資料。'),node('p','',`使用者：${state.identity.name||state.identity.username}`),node('p','',`登入名稱：${state.identity.username}`),node('p','',`角色：${{owner:'老闆',admin:'管理員',member:'員工'}[state.identity.role]}`),node('p','muted',`工作台版本：${document.getElementById('version').textContent} · ${document.getElementById('version').title}`),node('p','muted','原生後台使用瀏覽器的 HTTP 登入。需要切換登入帳戶時，請開啟新的私人瀏覽視窗，再輸入另一個帳戶。'));
     if(admin())panel.append(button('管理團隊登入',()=>navigate('team')));
   }
   function preferencesPanel(){
@@ -417,8 +399,7 @@
     [['narrow','使用窄側欄'],['notifications','顯示工作台提醒'],['monthly_review','每月建立一次靈感回顧指令']].forEach(([key,title])=>{
       const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.checked=!!state.preferences.data[key];input.addEventListener('change',()=>savePrefs({[key]:input.checked}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',title));holder.append(label);
     });
-    holder.append(node('p','muted','選擇側欄顯示的主列。當前頁面所屬主列仍會顯示。'));
-    NAV.groups.forEach(group=>{const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.checked=!state.preferences.data.hidden_groups.includes(group.id);input.addEventListener('change',()=>savePrefs({hidden_groups:input.checked?state.preferences.data.hidden_groups.filter(g=>g!==group.id):[...state.preferences.data.hidden_groups,group.id]}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',group.label));holder.append(label);});
+    holder.append(node('p','muted','側欄固定顯示總覽、工作、AI 和資料。'));
   }
   async function companySwitcher(){
     const fields=[['name',{label:'工作空間名稱',type:'text',required:true}],['url',{label:'已有工作台網址',type:'url',required:true}]];
@@ -444,8 +425,14 @@
     });
     const select=node('select');select.id='studio-focus-options';select.multiple=true;select.size=8;select.setAttribute('aria-label','今日焦點');choices.filter(r=>['task','project','inbox'].includes(r.kind)).forEach(r=>{const o=node('option','',r.title);o.value=JSON.stringify({kind:r.kind,id:r.id});o.selected=state.preferences.data.focus?.some(ref=>ref.kind===r.kind&&ref.id===r.id);select.append(o);});$('studio-action-fields').append(select);
   }
-  async function refresh(){
-    if(!ready)return;const next=await api('/state');if(state.preferences.version>next.preferences.version)next.preferences=state.preferences;state=next;renderNavigation();preferencesPanel();await renderOverview();
+  async function refresh({background=false,transition=navigationRequest,renderCurrent=false}={}){
+    if(!ready)return false;
+    const next=await api('/state');
+    if(background&&(app.isBusy()||transition!==navigationRequest))return false;
+    if(state.preferences.version>next.preferences.version)next.preferences=state.preferences;
+    state=next;renderNavigation();preferencesPanel();await renderOverview();
+    if(renderCurrent&&transition===navigationRequest&&!route.startsWith('overview')&&route!=='documents'&&!(route==='skills'&&root.BlueprintSkills?.isBusy()))await renderPage();
+    return true;
   }
   async function search(query){const result=await api('/records?'+new URLSearchParams({q:query,limit:12}));return result;}
   function legacyView(view,collectionId){
@@ -457,9 +444,9 @@
   }
   async function init(context){
     app=context;
-    try{state=await api('/state');}catch(error){$('legacy-navigation').hidden=false;document.querySelector('.legacy-main-nav').classList.add('main-nav');app.notice('V2.4 工作功能未能載入。請先確認同一後台已完整升級。'+error.message,true);return;}
+    state=await api('/state');
     ready=true;$('legacy-navigation').hidden=true;$('studio-sidebar-tools').hidden=false;$('studio-nav-scroll').hidden=false;$('studio-account').hidden=false;$('studio-mobile-command').hidden=false;
-    const top=$('studio-sidebar-tools');top.append(button('搜尋全部 ⌘K',()=>app.openCommand(),'nav-item'),button('指揮中樞 ⌘J',()=>openCommand(),'nav-item'),button('＋ 新增',()=>quickAdd(),'nav-item'),button('收窄側欄',()=>savePrefs({narrow:!state.preferences.data.narrow}),'studio-narrow-toggle'));
+    const top=$('studio-sidebar-tools');top.append(button('收窄側欄',()=>savePrefs({narrow:!state.preferences.data.narrow}),'studio-narrow-toggle'));
     const company=document.querySelector('.workspace-label');company.tabIndex=0;company.setAttribute('role','button');company.setAttribute('aria-label','切換公司與工作空間');company.addEventListener('click',companySwitcher);company.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();companySwitcher();}});
     const bottom=document.querySelector('.sidebar-bottom');bottom.prepend(routeButton('archived','已封存','archive'));
     $('studio-account').addEventListener('click',()=>navigate('account'));
@@ -480,7 +467,11 @@
     document.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='j'){event.preventDefault();openCommand();}});
     preferencesPanel();await loadChoices();
     const params=new URLSearchParams(location.search),old=params.get('view');let initial=location.hash.replace(/^#\/?/,'')||old||'overview';if(old==='collection'&&params.get('collection_id'))initial='topic/'+params.get('collection_id');
-    await navigate(initial,{replace:true});
+    try{await navigate(initial,{replace:true});}
+    catch(error){
+      if(![400,403,404].includes(error.status))throw error;
+      await navigate('overview',{replace:true});app.notice('原本的頁面暫時無法開啟，已返回總覽。'+error.message,true);
+    }
     const share=params.get('share_url')||params.get('share_text');if(share){try{const url=new URL(share);if(['http:','https:'].includes(url.protocol))addInspiration(url.href,params.get('share_title')||'');}catch{app.notice('分享的內容沒有有效網址。',true);}}
     if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
     initialized=true;
@@ -490,6 +481,6 @@
     const options=[['task','待辦'],['project','項目'],['inspiration','靈感'],['customer','客戶'],['topic','主題'],...(admin()?[['specialist','AI 專員']]:[])];
     options.forEach(([kind,label])=>$('studio-action-fields').append(button(label,()=>{closeDialog('studio-action-dialog');$('studio-action-submit').hidden=false;return kind==='inspiration'?addInspiration():kind==='specialist'?navigate('templates'):editRecord(kind);})));$('studio-action-dialog').addEventListener('close',()=>{$('studio-action-submit').hidden=false;},{once:true});
   }
-  const agentBusy=()=>((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy());
-  root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,refreshVisible:async()=>{if(!ready||app.isBusy()||agentBusy())return;await refresh();if(app.isBusy()||agentBusy())return;if(!route.startsWith('overview')&&route!=='documents')await renderPage();}};
+  const agentBusy=()=>((route==='skills'&&root.BlueprintSkills?.isBusy())||((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy()));
+  root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,refreshVisible:async()=>{if(!ready||app.isBusy()||agentBusy())return false;const transition=navigationRequest;if(await refresh({background:true,transition})===false||app.isBusy()||agentBusy()||transition!==navigationRequest)return false;if(!route.startsWith('overview')&&route!=='documents')await renderPage();return true;}};
 })(globalThis);

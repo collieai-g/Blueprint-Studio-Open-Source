@@ -30,6 +30,27 @@ In AI apps that support a split view, chat on the left and view your workspace o
 
 A [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) keeps company data and backups independently manageable while retaining the original UI and MCP entrypoint. Live hosting and platform acceptance remain installation work. **2.6 adds a [shared workbench for independent Agents](docs/AGENT_ROADMAP.md)**: each Agent keeps its own repository and pinned version, while Studio manages settings, prepared jobs and results. The active Codex or compatible AI conversation performs the work. No autonomous customer-service or background AI executor is included.
 
+## Codex and Blueprint work side by side
+
+The active AI client reasons and executes; Blueprint prepares selected materials,
+private task briefs and results. In **AI → Skill & handoff**, export a reusable
+`SKILL.md` separately from the current private brief. A video workflow can reuse
+professional instructions and the media tools already available to Codex instead
+of requiring another hosted video AI. Exporting instructions does not install a
+plugin, launch Codex or render a video.
+
+When the active client actually has authorized controls for the workbench browser,
+it can use the visible forms and verify saved results. A visible split view alone
+is not browser control. MCP remains an optional automation route; both paths use
+the workbench's existing authenticated persistence and version checks. See the
+[side-by-side workflow](docs/LEFT_RIGHT_WORKFLOW.md) and
+[reusable video Skill](templates/skills/personal-video/README.md).
+
+The sidebar has four primary entries: **Overview, Work, AI, Data**. Existing
+records, permissions and deep links remain compatible. Idle, focus and history
+restoration do not refresh data; use **Update data** for external changes. Writes
+made in the workbench update their results immediately.
+
 ## How it works: daily records and software updates
 
 For a fictional company, “123 Medical Studio,” ask Codex to summarize today's research progress, save a report and update the tasks. Codex reads authorized material, saves through tools and reads back the result; the workspace displays the same records. **Daily operations do not require GitHub changes or a Sites redeployment.**
@@ -99,15 +120,14 @@ If the AI cannot read GitHub, download the full package ending in `-installer.zi
 
 ![Blueprint workspace with a white grid background, company navigation and project progress](artifacts/studio-v2.4-projects.png)
 
-*The original workspace’s project view, using test data. The interface currently uses Traditional Chinese. [View the mobile interface](artifacts/studio-v2.4-mobile.png).*
+*A historical V2.4 project view with test data; V2.7 uses four primary entries. The interface currently uses Traditional Chinese. [View the mobile interface](artifacts/studio-v2.4-mobile.png).*
 
 | Area | What it helps you do |
 | --- | --- |
-| **Work** | See today’s priorities, inbox, tasks and project progress. Keep documents and completed work together. |
-| **AI specialists** | Keep existing specialist settings and use the Agent workbench to register pinned packages, change settings, prepare jobs for the active AI conversation and inspect results. |
-| **Company** | Organize leads, quotes, contracts, invoices, payments, costs, team permissions and partners. |
-| **Inspiration** | Save websites, YouTube links, reference images and learning notes, and link them to relevant work. |
-| **Custom topics** | View related projects, documents and saved references together without duplicating the original records. |
+| **Overview** | Today’s focus, recent records and movable dashboard cards. |
+| **Work** | Projects, inbox, todos and daily work records. |
+| **AI** | Skills and handoff, compatible Agents, commands and connections. |
+| **Data** | Files, bookmarks, topics and pinned records. |
 
 White and light gray keep the view clear, with a faint grid to help align the layout. On the overview, move, resize and collapse cards along the grid. Headings, descriptions and dates use movable text without visible card borders. Add space below when needed, up to three pages. Search, uploads and task checkboxes remain available.
 

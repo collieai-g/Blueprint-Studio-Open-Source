@@ -29,6 +29,8 @@ def main():
         store.add_file('設計方向（示範）.md', '# 保持簡潔\n沿用白色與淺灰色。'.encode())
         studio.create({'kind':'inbox','title':'整理這次會議的重點','data':{'source':'示範內容','content':'先確定下一步，再分配工作。'}})
         studio.save_user({'username':'staff','role':'member','password':'test-member-password'})
+        member_studio = Studio(store, {'username':'staff','role':'member','name':'職員'})
+        member_studio.save_preferences({'expected_version':0,'data':{'groups':[],'hidden_groups':['work','specialists','company','inspiration','topics']}})
         server=make_server(data);threading.Thread(target=server.serve_forever,daemon=True).start()
         try:
             with sync_playwright() as p:
@@ -40,9 +42,19 @@ def main():
                 page.goto(base);page.wait_for_function('() => BlueprintStudio.isReady()')
                 page.wait_for_selector('#workspace-board[style]')
                 page.wait_for_function("() => document.querySelector('#workspace-sync').dataset.state === 'ready'")
-                assert page.locator('.studio-group-button').count()==5
-                assert page.locator('[data-group=work]').get_attribute('aria-expanded')=='true'
-                assert page.locator('[data-group=company]').get_attribute('aria-expanded')=='false'
+                assert page.locator('#studio-navigation .studio-primary .studio-nav-label').all_text_contents()==['總覽','工作','AI','資料']
+                assert page.locator('#legacy-navigation').is_hidden()
+                assert page.locator('#studio-navigation [data-studio-route^="specialist/"]').count()==0
+                page.locator('#studio-navigation [data-group=work]').click()
+                page.wait_for_selector('#studio-panel h1:text-is("項目")')
+                assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['項目','收件匣','待辦','工作紀錄']
+                page.locator('#studio-navigation [data-group=specialists]').click()
+                page.wait_for_selector('#skill-workspace[data-skills-ready=true]')
+                page.locator('#studio-navigation [data-group=inspiration]').click()
+                page.wait_for_function("() => !document.getElementById('library-panel').hidden && document.getElementById('studio-panel').hidden")
+                assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['文件','收藏','主題','釘選']
+                page.locator('#studio-navigation [data-group=overview]').click()
+                page.wait_for_function("() => !document.getElementById('dashboard-panel').hidden")
                 page.screenshot(path=str(output/'studio-overview.png'),full_page=True)
                 def go(route):
                     page.evaluate('(route) => BlueprintStudio.navigate(route)',route)
@@ -91,6 +103,16 @@ def main():
                 page.locator('#studio-refs').select_option(json.dumps({'kind':'project','id':project['id']},separators=(',',':')))
                 submit();page.wait_for_selector('#studio-panel h1:text-is("網站設計靈感")')
                 assert page.get_by_role('button',name='整理新季度網站',exact=True).is_visible()
+                # Legacy entry forms synchronize their studio mirrors without polling.
+                go('inspirations');page.locator('#add-item').click();page.locator('#add-menu [data-action=link]').click()
+                page.locator('#link-url').fill('https://example.com/new-reference');page.locator('#link-title').fill('立即顯示的新收藏')
+                page.locator('#link-form button[type=submit]').click()
+                page.wait_for_selector('#studio-panel .studio-record-title:text-is("立即顯示的新收藏")')
+                assert studio.list('inspiration',q='立即顯示的新收藏')['total']==1
+                page.locator('#add-item').click();page.locator('#add-menu [data-action=collection]').click()
+                page.locator('#collection-name').fill('立即顯示的新主題');page.locator('#collection-form button[type=submit]').click()
+                page.wait_for_selector('#studio-panel h1:text-is("立即顯示的新主題")')
+                assert studio.list('topic',q='立即顯示的新主題')['total']==1
                 # Every top-level and child page actually renders.
                 for route in ['inbox','projects','documents','reports','specialist/specialist-website','specialist/specialist-whatsapp','specialist/specialist-email','specialist/specialist-video','templates','connections','leads','quotes','customers','feedback','team','suppliers','revenue','costs','inspirations','inspirations/web','inspirations/components','inspirations/ai','inspirations/brand','inspirations/business','inspirations/learning','topics','archived','account']:
                     go(route)
@@ -114,13 +136,24 @@ def main():
                 # Old URLs route to the retained daily-work view.
                 page.goto(base+'/?view=workdays');page.wait_for_function("() => location.hash === '#/overview/workdays'")
                 assert page.locator('#workdays-panel').is_visible()
+                # An obsolete deep link must not trap the entire workbench behind retry.
+                page.set_viewport_size({'width':1440,'height':1050})
+                page.goto(base+'/#/record/missing');page.wait_for_function('() => BlueprintStudio.isReady()')
+                assert page.evaluate('() => document.body.dataset.workspaceState')=='ready'
+                assert page.evaluate('() => location.hash')=='#/overview'
+                assert page.locator('#studio-navigation').is_visible()
+                assert '原本的頁面' in page.locator('#notice').inner_text()
                 member_context=browser.new_context(viewport={'width':1440,'height':900},http_credentials={'username':'staff','password':'test-member-password'})
                 member=member_context.new_page();member.goto(base);member.wait_for_function('() => BlueprintStudio.isReady()')
-                member.locator('[data-group=company]').click()
+                assert member.locator('#studio-navigation .studio-primary .studio-nav-label').all_text_contents()==['總覽','工作','AI','資料']
+                member.locator('#studio-navigation [data-group=work]').click()
                 assert member.locator('[data-studio-route=revenue]').count()==0
                 assert member.locator('[data-studio-route=team]').count()==0
                 invoice=studio.list('invoice')['records'][0]
                 response=member.request.get(base+'/api/studio/records/'+invoice['id']);assert response.status==403
+                member.goto(base+'/?startup=restricted#/revenue');member.wait_for_function('() => BlueprintStudio.isReady()')
+                assert member.evaluate('() => document.body.dataset.workspaceState')=='ready'
+                assert member.evaluate('() => location.hash')=='#/overview'
                 assert not errors, errors
                 browser.close()
         finally:

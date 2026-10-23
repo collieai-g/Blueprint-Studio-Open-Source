@@ -1,14 +1,13 @@
-# V2.6.0：Codex 與獨立 Agent 共用工作台
+# V2.7.0：四個入口，左右協作與 Skill 交接
 
-本版新增 Agent 接駁規格、工作台介面及共用 API／MCP 操作。管理員接入已核對固定版本的 Agent 設定檔，在工作台準備工作，再由目前已連接的 Codex 對話讀取資料、處理及保存結果。
+左側 Codex 理解要求並使用真正可用的工具執行；右側藍圖準備選定材料、私人工作說明並保存成果。專業方法可以用 Skill 重用，例如影片設計不用先建立另一個常駐 AI 服務。
 
-- [主要運作方式](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.6.0/docs/OPERATING_MODEL.md)區分日常資料、Agent 登記與程式更新：日常管理直接保存；長期公司專用版本在私人倉庫維護，由 Codex 整合上游、保留自訂內容並部署受影響服務。GitHub 提交不代表 Sites 已更新。
-- Agent 以獨立倉庫開發，使用藍圖的共用表單、操作及結果版面。公開開發範本位於 `templates/agent/`，完整約定見 [Agent 接駁規格](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.6.0/docs/AGENT_CONTRACT.md)。
-- 工作固定建立時的 Agent 版本及設定。來源範圍、開始、完成、失敗與取消由伺服器檢查；結果保留實際客戶端名稱及引用來源。
-- UI 與 MCP 使用相同身份、版本檢查及資料庫。新增 10 個共用工具，合共 40 個；原生及 Sites 原生接駁加上備份工具，共 42 個。
-- schema 5 → 6 追加 Agent 登記、工作及歷史資料表，保留原公司資料、附件與登入。原有備份與還原包含新表；舊版程式不能直接讀取 schema 6。
-- Sites 原生接駁包含新畫面及工具；正式平台登入、發佈、目前對話載入與端到端驗收仍須於安裝時完成。
+- 側欄保留總覽、工作、AI、資料，收起重複及細分入口；原資料、權限和舊連結保留。
+- 閒置及切回視窗不再重建畫面。按「更新資料」查看外部保存，工作台內保存即時同步。
+- 修復舊版回退、較慢請求覆蓋新頁面、失效起始連結及保存後不同步等問題。
+- AI 的「Skill 與交接」可準備要求、選定素材、編輯可重用規則、複製／下載 SKILL.md 及私人交接單，並將交接單保存為同一後台的報告後讀回，沿用選定來源的權限。
+- [左右協作流程](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.7.0/docs/LEFT_RIGHT_WORKFLOW.md)說明畫面控制、工具及回存；[影片 Skill 範本](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.7.0/templates/skills/personal-video/README.md)提供可重用製作方法。
 
-此版本不會按網頁按鈕自動喚起 Codex，沒有新增模型 API 呼叫、常駐執行器、WhatsApp 接駁或對外自動發送。Agent「已連接功能」表示後台已啟用相容接駁方式，不代表目前 Codex 對話已載入工具。
+畫面控制只在目前客戶端真正提供並授權時可用。右側可見、Skill 已下載、外掛已安裝、目前工具可用與影片已製作分開驗證。工作台不自動啟動 Codex、安裝外掛、呼叫影片模型或執行背景工作。MCP 是另一條相容路線，原有身份、版本及來源權限檢查保持不變。
 
-完整安裝使用 `-installer.zip`；`-workbench.zip` 只包含介面及接駁來源，需要相容的新後台。[驗證紀錄](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.6.0/VALIDATION.md)另列測試證據與正式部署邊界。
+本版不新增資料庫 schema；沿用 schema 6 與 40 個共通／42 個原生 MCP 工具。安裝使用完整 installer.zip；workbench.zip 需整合到現有相容後台，不是獨立後台。GitHub 發布不會自動更新既有私人工作台，請沿用更新入口、原網址、資料與可還原備份。

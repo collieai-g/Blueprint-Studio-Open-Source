@@ -99,7 +99,9 @@ def main():
                 page.screenshot(path=str(output / 'connection-mobile.png'), full_page=True)
                 page.locator('#connection-dialog [data-close]').click()
                 mcp_call('blueprint_save_text_file', {'name': 'AI 保存驗證.txt', 'text': '由真實 MCP 保存的工作內容。'})
-                page.get_by_text('AI 保存驗證.txt', exact=True).wait_for(timeout=17000)
+                assert page.get_by_text('AI 保存驗證.txt', exact=True).count() == 0
+                page.locator('#refresh-workspace').click()
+                page.get_by_text('AI 保存驗證.txt', exact=True).wait_for()
                 assert store.stats()['files'] == 2
                 # Incomplete deployments must not leave an old green completion state.
                 page.locator('.connection-banner [data-connection-open]').click()
@@ -114,7 +116,7 @@ def main():
                 browser.close()
                 print(json.dumps({'checks': ['client-specific instructions', 'actual MCP write/readback/todo update',
                     'right-side matching receipt', 'client isolation', 'Sites routing', 'network guidance',
-                    'failure and recovery', 'reload persistence', 'mobile layout', 'real file write auto refresh'],
+                    'failure and recovery', 'reload persistence', 'mobile layout', 'real file write manual refresh'],
                     'browser_errors': errors, 'screenshots': str(output)}, ensure_ascii=False))
         finally:
             server.shutdown(); server.server_close(); thread.join()

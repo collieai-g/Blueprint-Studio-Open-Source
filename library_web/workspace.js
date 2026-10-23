@@ -115,7 +115,7 @@
     const $=id=>document.getElementById(id), board=$('workspace-board'); if(!board) return;
     let raw=null,saved;
     try { raw=localStorage.getItem(KEY);saved=JSON.parse(raw||'null'); } catch { /* Safe defaults. */ }
-    let preferences=normalize(saved),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,timer,scrollFrame;
+    let preferences=normalize(saved),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame;
     const widgets=new Map([...board.querySelectorAll('[data-widget]')].map(node=>[node.dataset.widget,node]));
     const status=$('workspace-sync'), columns=()=>integer(Math.floor(board.clientWidth/UNIT),6,6,96);
     const announce=text=>{$('board-announcement').textContent=text;};
@@ -245,18 +245,17 @@
       const dx=event.key==='ArrowLeft'?-1:event.key==='ArrowRight'?1:0,dy=event.key==='ArrowUp'?-1:event.key==='ArrowDown'?1:0;
       change(id,control.dataset.boardAction==='resize'?{w:r.w+dx,h:r.h+dy,collapsed:false}:{x:r.x+dx,y:r.y+dy});
     });
-    async function sync(manual=false){
-      if(syncing||pointer||document.hidden||document.querySelector('dialog[open]')||isBusy()||editing){if(manual)status.textContent='完成編輯後會繼續更新';return;}
+    async function sync(){
+      if(syncing||pointer||document.hidden||document.querySelector('dialog[open]')||isBusy()||editing){status.textContent='請先完成編輯，再按更新資料';return;}
       syncing=true;
       try{if(await refresh()===false)return;status.textContent=`資料已更新 · ${new Date().toLocaleTimeString('zh-HK',{hour:'2-digit',minute:'2-digit'})}`;status.dataset.state='ready';updateDate();}
-      catch{status.textContent='暫時無法更新，稍後會再試';status.dataset.state='error';}finally{syncing=false;}
+      catch{status.textContent='暫時無法更新，請再按更新資料';status.dataset.state='error';}finally{syncing=false;}
     }
-    $('refresh-workspace').addEventListener('click',()=>sync(true));
-    const schedule=async()=>{await sync();timer=setTimeout(schedule,10000);};
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync();});window.addEventListener('focus',()=>sync());
-    window.addEventListener('pagehide',()=>{clearTimeout(timer);if(pointer)endPointer(true);});window.addEventListener('pageshow',event=>{if(event.persisted){clearTimeout(timer);schedule();}});
+    // Reading, returning to the tab and restoring browser history never replace the page.
+    $('refresh-workspace').addEventListener('click',sync);
+    window.addEventListener('pagehide',()=>{if(pointer)endPointer(true);});
     new ResizeObserver(()=>{if(pointer)endPointer(true);render();}).observe(board);
-    applyMode();render();schedule();
+    applyMode();render();status.textContent='資料已載入 · 按更新資料查看最新內容';status.dataset.state='ready';
   }
   const api={normalize,arrange,fit,preset,overlaps,start,KEY,BACKUP_KEY,IDS,TEXT_IDS,UNIT,PAGE_ROWS,MAX_PAGES,minimum};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BlueprintWorkspace=api;

@@ -19,7 +19,7 @@
   }
 
   async function api(path, options = {}) {
-    const request = { credentials: 'same-origin', ...options };
+    const request = { credentials: 'same-origin', cache: 'no-store', ...options };
     if (options.body !== undefined) {
       request.headers = { 'Content-Type': 'application/json', 'X-Blueprint-Request': '1', ...options.headers };
       request.body = JSON.stringify(options.body);
@@ -138,7 +138,12 @@
     link: ['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'],
     'folder-plus': ['M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z M12 11v6 M9 14h6'],
     layout: ['M3 4h18v16H3Z M3 9h18 M9 9v11'], grid: ['M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z'],
-    list: ['M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01']
+    list: ['M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01'],
+    chat: ['M21 11a8 8 0 0 1-8 8H7l-4 3V11a9 9 0 0 1 18 0Z', 'M7 10h10 M7 14h6'],
+    automation: ['m13 2-9 12h7l-1 8 10-13h-7Z'],
+    document: ['M5 3h9l5 5v13H5Z M14 3v5h5 M8 12h8 M8 16h8'],
+    web: ['M3 4h18v16H3Z M3 9h18 M7 6h.01 M10 6h.01'],
+    finance: ['M3 5h18v14H3Z M3 9h18 M15 14h3']
   };
   const VIEWS = {
     dashboard: ['工作台', '管理公司的日常工作，隨時接續下一步。', 'YOUR WORKSPACE'],
@@ -191,7 +196,7 @@
   async function loadInfo() {
     const info = await api('/api/info');
     document.title = info.product_title || 'Blueprint Studio Backend｜藍圖工作室（後台）';
-    $('version').textContent = '工作台 v2.6.0';
+    $('version').textContent = info.version ? `工作台 v${info.version}` : 'Blueprint Studio Backend';
     $('version').title = info.version ? `後台 API v${info.version}` : '';
     document.querySelectorAll('[data-count]').forEach((node) => { node.textContent = Number(info.stats?.[node.dataset.count]) || 0; });
     if (info.company_profile) applyCompanyProfile(info.company_profile);
@@ -357,7 +362,7 @@
   }
 
   function refresh(resetPage = true, background = false) { if (resetPage) state.offset = 0; if (['workdays', 'todos'].includes(state.view)) return workdaysUI?.refreshCurrent?.(background) || Promise.resolve(); return loadItems(background); }
-  async function refreshAfterWrite() { await Promise.all([loadCollections(), loadInfo()]); await refresh(); if (state.view === 'dashboard') await workdaysUI?.refreshDashboard(); }
+  async function refreshAfterWrite() { await Promise.all([loadCollections(), loadInfo()]); await refresh(); if (state.view === 'dashboard') await workdaysUI?.refreshDashboard(); await window.BlueprintStudio?.refresh({renderCurrent:state.view === 'studio'}); }
 
   function setView(view, collectionId = '') {
     if (!Object.hasOwn(VIEWS, view) && view !== 'collection') return;
@@ -439,6 +444,7 @@
     submitForm(event.currentTarget, 'collection-error', async () => {
       const data = await api('/api/collections', { method: 'POST', body: { name: $('collection-name').value.trim(), description: $('collection-description').value.trim(), icon: $('collection-icon').value } });
       await loadCollections();
+      await window.BlueprintStudio?.refresh();
       $('collection-dialog').close();
       if (data.collection?.id) setView('collection', data.collection.id);
       await loadInfo();
@@ -698,14 +704,14 @@
     window.BlueprintConnection?.init({ api, openDialog, notice, setView });
     window.BlueprintUpdate?.init({ api, openDialog, notice });
     workdaysUI = window.BlueprintWorkdays;
-    workdaysUI?.init({ api, element, icon, notice, openDialog, setView, refreshInfo: loadInfo, refreshLibrary: async () => { await loadCollections(); if (!['workdays', 'todos'].includes(state.view)) await refresh(); } });
+    workdaysUI?.init({ api, element, icon, notice, openDialog, setView, refreshInfo: loadInfo, refreshLibrary: async () => { await loadCollections(); if (!['workdays', 'todos'].includes(state.view)) await refresh(); await window.BlueprintStudio?.refresh({renderCurrent:state.view === 'studio'}); } });
     workdaysUI?.setView('dashboard');
     renderStaticIcons(); populateCategories('category-filter', false, true); populateCategories('link-category', true); populateCategories('detail-category'); populateCategories('collection-icon');
     try { const preferences = JSON.parse(localStorage.getItem('blueprint-backend-display-v1') || '{}'); if (preferences.layout === 'list') state.layout = 'list'; if (['updated', 'created', 'title'].includes(preferences.sort)) state.sort = preferences.sort; } catch { /* Display preference only; company data remains on server. */ }
     $('dashboard-library-slot').append($('library-panel'));
     applyDisplayPreferences(); $('library-toolbar').hidden = true; $('sort-order').hidden = true; $('page-date').textContent = new Date().toLocaleDateString('zh-HK', { month: 'long', day: 'numeric', weekday: 'short' });
-    try { await Promise.all([loadInfo(), loadCollections()]); await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]);  }
-    catch (error) { $('item-grid').setAttribute('aria-busy', 'false'); $('result-count').textContent = '未能連接資料庫'; notice(error.message, true); }
+    await Promise.all([loadInfo(), loadCollections()]);
+    await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]);
   }
   function workspaceBusy() {
     return state.busy || state.profileBusy || !!workdaysUI?.isBusy?.() || state.selected.size > 0 ||
@@ -719,13 +725,22 @@
       if (workspaceBusy()) return false;
       if (state.view !== 'studio' && await refresh(false, true) === false) return false;
       if (state.view === 'dashboard') await workdaysUI?.refreshDashboard(true);
-      await window.BlueprintStudio?.refreshVisible();
+      if (await window.BlueprintStudio?.refreshVisible() === false) return false;
     }
   }); }
+  $('retry-workspace').addEventListener('click', () => location.reload());
   init().then(async () => {
-    await window.BlueprintStudio?.init({api, notice, icon, openDialog, closeSidebar, setView, openDetail, openAdd, openCommand,
+    if (!window.BlueprintStudio || !window.BlueprintWorkspace || !window.BlueprintNavigation || !window.BlueprintSkills || !window.BlueprintAgents) throw new Error('工作台介面未能完整載入，請重新連接。');
+    await window.BlueprintStudio.init({api, notice, icon, openDialog, closeSidebar, setView, openDetail, openAdd, openCommand,
       isBusy: workspaceBusy, hideLegacy: () => { state.view = 'studio'; clearSelection(); workdaysUI?.setView('studio'); }
     });
+    document.body.dataset.workspaceState = 'ready';
+    $('workspace-startup').hidden = true; $('main').setAttribute('aria-busy', 'false');
     startWorkspace();
-  }).catch(error => notice(error.message, true));
+  }).catch(error => {
+    document.body.dataset.workspaceState = 'error';
+    $('main').setAttribute('aria-busy', 'false');
+    $('workspace-startup-message').textContent = `未能載入工作台：${error.message || '請檢查連線後重試。'}`;
+    $('retry-workspace').hidden = false;
+  });
 })();

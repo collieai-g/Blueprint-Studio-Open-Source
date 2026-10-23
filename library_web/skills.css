@@ -1,0 +1,14 @@
+/* Skills use the same notebook layout and controls as the workbench. */
+.skill-brief-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; max-width: 960px; }
+.skill-brief-form .field { display: grid; gap: 7px; min-width: 0; font-size: 12px; }
+.skill-brief-form input, .skill-brief-form textarea, .skill-brief-form select { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; }
+.skill-brief-form textarea { resize: vertical; }
+.skill-brief-form .field:has(textarea), .skill-brief-form .field:has(select[multiple]), .skill-brief-form > .actions, .skill-brief-form > p, .skill-brief-form > details { grid-column: 1 / -1; }
+.skill-brief-form > .actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.skill-preview { min-width: 0; }
+.skill-preview summary, .skill-reusable-rules summary { cursor: pointer; font-size: 13px; }
+.skill-preview h2 { margin: 18px 0 9px; font-size: 13px; }
+.skill-reusable-rules .field { margin-top: 16px; }
+.skill-reusable-rules p { margin-top: 10px; }
+#skill-status { overflow-wrap: anywhere; }
+@media(max-width:600px) { .skill-brief-form { grid-template-columns: 1fr; padding: 16px; } }
