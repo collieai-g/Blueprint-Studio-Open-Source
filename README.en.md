@@ -9,7 +9,7 @@
 
 <h1 align="center">Blueprint Studio Open Source</h1>
 
-<p align="center"><strong>Let AI help with the work. Keep your company’s information in order.</strong></p>
+<p align="center"><strong>Codex advances the work. Blueprint manages the company. Independent Agents provide specialist capabilities.</strong></p>
 
 <p align="center">
   <a href="README.md">繁體中文</a> · <strong>English</strong>
@@ -22,11 +22,30 @@
   <a href="#keep-updated">Update your workspace</a>
 </p>
 
-Blueprint Studio is an open-source AI workspace for running a company’s daily work. Tell your connected AI what you need, and it can put work results, tasks, documents and customer records in the right place. Use the workspace to find information, track progress and build a lasting record of your company’s work.
+Blueprint Studio is an open-source shared workspace connecting AI tools such as Codex, company information and independent Agents. Keep your main conversation in Codex; use Blueprint to manage company records, Agent settings, progress and results. Authorized AI tools and interface controls read and write the same private backend data.
+
+Blueprint provides shared management and connection capabilities. It does not bundle working business Agents such as customer service. Developers maintain specialist Agents in separate repositories and connect them through the shared contract; the template and independent summary demo support development and acceptance checks.
 
 In AI apps that support a split view, chat on the left and view your workspace on the right. You can also open it in a separate browser tab. **AI understands and organizes the work. The workspace stores it and makes it visible.**
 
-A new route under development uses a [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) to keep company data and backups independently manageable while retaining the original UI and MCP entrypoint. Adapter source and isolated tests are included; live hosting and platform acceptance remain installation work. The [Blueprint customer-service Agent roadmap](docs/AGENT_ROADMAP.md) distinguishes implemented foundations from future work. An autonomous customer-service executor is not included.
+A [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) keeps company data and backups independently manageable while retaining the original UI and MCP entrypoint. Live hosting and platform acceptance remain installation work. **2.6 adds a [shared workbench for independent Agents](docs/AGENT_ROADMAP.md)**: each Agent keeps its own repository and pinned version, while Studio manages settings, prepared jobs and results. The active Codex or compatible AI conversation performs the work. No autonomous customer-service or background AI executor is included.
+
+## How it works: daily records and software updates
+
+For a fictional company, “123 Medical Studio,” ask Codex to summarize today's research progress, save a report and update the tasks. Codex reads authorized material, saves through tools and reads back the result; the workspace displays the same records. **Daily operations do not require GitHub changes or a Sites redeployment.**
+
+| What you want to do | GitHub and deployment |
+| --- | --- |
+| Add daily work, update tasks, save documents or bookmarks, compile company reports, manage records | Save through existing APIs to the private backend; no source change or redeployment |
+| Change existing company or Agent settings, or use built-in layout controls | Save settings directly; browser layout stays in that browser; no redeployment |
+| Add an Agent compatible with the deployed contract | Review its pinned version, register it, configure it and enable its adapter; normally no company source change or redeployment |
+| Change interface code or button logic, add unsupported AI capabilities, or upgrade Blueprint | Update the company's software version, test and deploy the affected services |
+
+For long-term company-specific development, create or reuse your own **private GitHub source repository** for the company version and custom changes. When Blueprint releases an update, Codex integrates a selected version, preserves customizations, tests, backs up and updates the existing service. An upstream release does not automatically synchronize private repositories, and a GitHub push does not deploy Sites. Users of the unmodified original do not need a separate repository.
+
+With a Sites entrypoint and independent backend, the backend supplies the interface and business functions. Compatible changes may require only a backend deployment; gateway or tool-contract changes also require publishing the existing Sites entrypoint. Customer service that continuously receives and answers messages needs a separately implemented runtime and channel connection.
+
+[Full operating model: company repositories, independent Agents and deployment](docs/OPERATING_MODEL.md)
 
 ## Two instructions: install once, update whenever needed
 
@@ -85,7 +104,7 @@ If the AI cannot read GitHub, download the full package ending in `-installer.zi
 | Area | What it helps you do |
 | --- | --- |
 | **Work** | See today’s priorities, inbox, tasks and project progress. Keep documents and completed work together. |
-| **AI specialists** | Set up roles, knowledge, rules and task templates. External replies and automated execution still require real services to be connected. |
+| **AI specialists** | Keep existing specialist settings and use the Agent workbench to register pinned packages, change settings, prepare jobs for the active AI conversation and inspect results. |
 | **Company** | Organize leads, quotes, contracts, invoices, payments, costs, team permissions and partners. |
 | **Inspiration** | Save websites, YouTube links, reference images and learning notes, and link them to relevant work. |
 | **Custom topics** | View related projects, documents and saved references together without duplicating the original records. |
@@ -121,11 +140,21 @@ The project started with ChatGPT and Codex workflows, but its connection method 
 | **Grok and other AI apps** | An app with compatible tool connections and the required installation capabilities can follow the same process. Not every product has been individually verified. |
 | **Chat or webpage preview only** | These can explain steps or display a page. A complete workspace also needs a running backend, sign-in, and lasting storage for records and attachments. |
 
-MCP is a shared way for AI apps to call workspace tools. This project provides 30 shared MCP tools. Native V2.5 adds two owner-only backup tools, for 32 in total. Compatible clients can use the same authorized backend. **A Sites-like feature is a possible deployment route; a complete installation still needs backend execution, storage, sign-in and tool connections.** You can also host the backend elsewhere and connect your AI to it.
+MCP is a shared way for AI apps to call workspace tools. This project provides 40 shared MCP tools, including 10 Agent tools. The native backend adds two owner-only backup tools, for 42 in total. Compatible clients can use the same authorized backend. **A Sites-like feature is a possible deployment route; a complete installation still needs backend execution, storage, sign-in and tool connections.** You can also host the backend elsewhere and connect your AI to it.
 
 A runnable Python backend is provided for local and cloud use, with deployment guidance for Docker, Render and Railway. For Sites, the project provides the original interface, tool contracts and backend adaptation specifications; there is no universal one-click full installation yet. External services such as automatic specialist replies, webpage capture and video processing also need to be connected separately. Downloading the interface does not start those services.
 
 [AI connection guide](docs/AI_CONNECTION.md) · [Local installation](docs/INSTALL_LOCAL.md) · [Cloud installation](docs/INSTALL_CLOUD.md)
+
+## Manage independent Agents in one workbench
+
+Each Agent lives in its own GitHub repository and follows the [shared contract](docs/AGENT_CONTRACT.md) for rules, settings, operations and a standard UI description. Studio renders common controls; its buttons and Codex MCP tools use the same backend data.
+
+Settings save directly. An operation needing AI first creates a job; tell Codex to process its job ID. Codex reads the selected sources, performs the work and saves a result that appears in Studio. A repository URL does not install code, and connecting an adapter does not prove the active chat has loaded tools. Buttons do not wake Codex automatically.
+
+When the installed workspace supports an Agent's contract, registration lets the existing interface display its operations without republishing Sites. Adding Agent files to the company repository does not automatically register or execute them; integrate and deploy code only when additional software capabilities are needed. Agent and Blueprint updates are selected separately, and existing jobs keep their original settings snapshots.
+
+Start a new package from the [Agent template](templates/agent/README.md), or connect the separately published [summary demo Agent](https://github.com/collieai-g/collieai-g-Blueprint-Agent-Summary). Validate the complete handoff with a summary of explicitly selected material before using it for daily work. Company data and results stay in the existing backend; Agent packages keep independent versions.
 
 ## Keep company information in your own workspace
 
@@ -137,6 +166,7 @@ Each update keeps the original workspace: back up, integrate, deploy and verify.
 
 | You want to learn about | Read |
 | --- | --- |
+| Daily operations, company versions and independent Agents | [Operating model](docs/OPERATING_MODEL.md) |
 | Installation and first use | [Start here](START_HERE.md) · [Full installation guide](docs/INSTALL.md) |
 | AI connections and daily work | [Connection center](docs/CONNECT.md) · [Daily work](docs/DAILY_WORK.md) |
 | Updates, backups and recovery | [Update route](docs/UPDATE_ROUTE.md) · [Upgrade guide](docs/UPGRADE.md) |

@@ -1,10 +1,14 @@
 # Blueprint Studio Open Source｜完整安裝指南
 
-**V2.5 新安裝先讀 [原生安裝與持續更新](NATIVE_LIFECYCLE.md)。** 必須完成完整備份下載、隔離還原、重啟保存及日後部署能力驗收。沒有平台偏好時，優先選原生本機／雲端；Sites 仍需另行適配及驗證。以下帳戶、原版介面和 AI 接駁步驟繼續適用。
+**V2.6 新安裝先讀 [原生安裝與持續更新](NATIVE_LIFECYCLE.md)。** 必須完成完整備份下載、隔離還原、重啟保存及日後部署能力驗收。沒有平台偏好時，優先選原生本機／雲端；Sites 仍需另行適配及驗證。V2.6 新增獨立 Agent 工作台，沿用原有帳戶、公司資料與 AI 接駁流程。
 
 [返回首頁及複製安裝指令](../README.md#貼給你的-ai開始安裝)
 
 目標是由一段安裝指令開始，逐步建立你自己的藍圖工作台：打開**原版完整介面**、登入、保存工作，再次開啟仍能繼續使用。AI 應陪同完成整條路線，每次只交代目前一步及需要你操作的事項。
+
+長期開發公司專用功能時，以自己已核實為 **Private** 的程式倉庫保存完整來源及自訂改動；開源藍圖是上游版本來源。更新時先整合指定正式版本、保留自訂程式並測試，再明確部署受影響的正式服務。短期試用或直接使用未修改原版，可沿用原有來源，不強制另建倉庫。完整分工見[日常操作與程式更新](OPERATING_MODEL.md)。
+
+日常報告、待辦、文件、收藏及公司資料由已授權 API 保存，不需要提交 Git 或部署。既有排版偏好、相容 Agent 的登記與設定，也使用原有保存方式；只有改動程式、接口或平台適配時才走程式更新流程。
 
 完整安裝包的入口是 [INSTALL_AI.txt](../INSTALL_AI.txt)。可直接把整段文字貼給 AI，或上載完整 ZIP 並請它讀取入口。工作台內置 [AI 接駁中心](CONNECT.md)：安裝 AI 必須帶到真實工具讀寫、右側顯示及第一項工作，不能停在網站可開啟。
 
@@ -59,7 +63,7 @@ AI 工具接駁必須完成 [不同 AI 的 MCP 接駁指南](AI_CONNECTION.md)�
 
 ## 安裝必須沿用原版介面
 
-正式工作台來源是 `library_web/`：`index.html`、`style.css`、`app.js`、`workdays.js`、`workspace.js`、`brand.svg`、`connection.js`、`connection-guide.json`、`navigation.js`、`studio.js`、`studio.css`、`manifest.webmanifest`、`service-worker.js`，以及 `assets/icons/`。以所選上游版本的這些檔案和功能為基準，保留版面、顏色、圖示、文字、導覽、手機選單及全部既有操作。安裝本身不授權另做簡化版、刪入口或重新設計 UI。
+正式工作台來源是 `library_web/`：`index.html`、`style.css`、`app.js`、`workdays.js`、`workspace.js`、`brand.svg`、`connection.js`、`connection-guide.json`、`update.js`、`navigation.js`、`studio.js`、`studio.css`、`agents.js`、`agents.css`、`manifest.webmanifest`、`service-worker.js`，以及 `assets/icons/`。以所選上游版本的這些檔案和功能為基準，保留版面、顏色、圖示、文字、導覽、手機選單及全部既有操作。安裝本身不授權另做簡化版、刪入口或重新設計 UI。
 
 原生 Python 服務透過 `library --data ...` 或 `company/Dockerfile` 提供這套介面。`python blueprint.py`、`gui`、`serve` 及 `dist/index.html` 是舊版離線資料包工具，不能用來代替公司工作台。截圖、Pages 示範或只存瀏覽器的樣板亦不能作為正式安裝交付。
 
@@ -118,9 +122,11 @@ AI 連接：未設定／需使用者授權／已實際保存及讀回
 
 若正式網址受工具網絡或登入限制，先完成可執行檢查，再請使用者在同一正式網址完成缺少的一步，記錄「待使用者驗證」。本機測試成功、部署工具回報成功及插件已建立，各自只證明對應階段。
 
-## V2.4 新工作功能驗收
+## V2.6 公司與 Agent 工作台驗收
 
-先按 [V2.4 功能與限制](V2.4.md) 及 [公司 API](STUDIO_API.md) 核對五組側欄、收件匣、項目、客戶／報價／發票、角色保護、多分類靈感及主題。原生版 schema 5、MCP 30 工具。專員空殼、外部服務等待狀態、實際資料保存要分開驗收；Sites 需先完成同一正式後台適配，UI 包不能代替。
+先按 [V2.4 原有功能與限制](V2.4.md) 及 [公司 API](STUDIO_API.md) 核對五組側欄、收件匣、項目、客戶／報價／發票、角色保護、多分類靈感及主題，再按 [Agent 規格](AGENT_CONTRACT.md)核對 Agent 工作台。V2.6 原生資料庫使用 **schema 6**，MCP 提供 **40 個共通工具、原生及 Sites 原生接駁共 42 個工具**；兩個額外工具只供擁有人維護備份。既有資料升級前完成備份與還原演練，追加 Agent 資料表並保留原紀錄、ID、登入、附件及設定。
+
+需要接入 Agent 時，審核獨立倉庫的固定 commit 及 manifest，再登記並連接接口。驗證從工作台建立工作、目前 AI 對話讀取指定資料、保存真實結果及讀回同一 ID。設定衝突、未連接及失敗要清楚顯示；不會因加入套件而自動啟動 Codex。舊專員空殼、外部服務等待狀態及 Agent 的實際工作結果分開驗收。Sites 需完成同一正式後台的公司與 Agent API 適配，UI 包不能代替；本機測試也不代表正式 Sites 已通過驗收。
 
 ## 完成後交付
 

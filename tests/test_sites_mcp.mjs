@@ -8,6 +8,42 @@ const request = (message, authorized = true) => new Request('https://workspace.e
 const authorize = req => { if (!req.headers.has('Verified-Test-User')) throw new Error('Denied'); };
 const rpc = (name, args) => ({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'blueprint_' + name, arguments: args } });
 
+test('Agent tools share bounded JSON conversion and preserve the authenticated identity', async () => {
+  const seen = [];
+  const id = 'a'.repeat(32);
+  const handler = createMcpHandler({ tools, authorize, version: 'test', dispatch: async req => {
+    seen.push({ path: new URL(req.url).pathname, user: req.headers.get('Verified-Test-User'),
+      data: req.method === 'GET' ? null : await req.json() });
+    return Response.json({ agent: { id, version: 1 } });
+  } });
+  const call = async (name, args) => (await (await handler(request(rpc(name, args)), {})).json()).result;
+  const registered = await call('agent_register', { manifest_json: '{"contract_version":1}',
+    source_json: '{"repository":"https://github.com/test/agent","revision":"123"}', settings_json: '{"tone":"短句"}' });
+  assert.equal(registered.isError, false);
+  assert.deepEqual(seen[0], { path: '/api/studio/agents', user: 'owner',
+    data: { manifest: { contract_version: 1 }, source: { repository: 'https://github.com/test/agent', revision: '123' }, settings: { tone: '短句' } } });
+  const job = { agent_id: id, operation_id: 'summarize', title: '摘要', inputs_json: '{"text":"原文"}', refs_json: '[]' };
+  assert.equal((await call('agent_job_create', job)).isError, false);
+  assert.deepEqual(seen[1].data, { agent_id: id, operation_id: 'summarize', title: '摘要', inputs: { text: '原文' }, refs: [] });
+  const before = seen.length;
+  for (const [name, args] of [
+    ['agent_register', { manifest_json: '[]', source_json: '{}' }],
+    ['agent_register', { manifest_json: '{}', source_json: 'null' }],
+    ['agent_job_create', { ...job, inputs_json: '[]' }],
+    ['agent_job_create', { ...job, refs_json: '{}' }],
+    ['agent_update', { id, expected_version: 1, settings_json: 'false' }],
+    ['agent_job_action', { id, expected_version: 1, action: 'complete', arguments_json: '[]' }],
+    ['agent_get', { id: '../access.json' }],
+    ['agent_job_action', { id, expected_version: 1, action: 'run_model', arguments_json: '{}' }]
+  ]) assert.equal((await call(name, args)).isError, true);
+  assert.equal(seen.length, before);
+  const readOnly = createMcpHandler({ tools, authorize, version: 'test', readOnly: true, dispatch: () => { throw new Error('must not write'); } });
+  const list = (await (await readOnly(request({ jsonrpc: '2.0', id: 1, method: 'tools/list' }), {})).json()).result.tools;
+  assert.ok(list.some(tool => tool.name === 'blueprint_agent_job_context'));
+  assert.ok(!list.some(tool => tool.name === 'blueprint_agent_job_action'));
+  assert.equal((await (await readOnly(request(rpc('agent_job_create', job)), {})).json()).result.isError, true);
+});
+
 test('V2.4 tool transport parses bounded JSON and keeps the original identity', async () => {
   const calls=[];
   const handler=createMcpHandler({tools,authorize,version:'2.4.0',dispatch:async req=>{

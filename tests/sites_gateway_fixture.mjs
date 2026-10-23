@@ -40,11 +40,33 @@ assert.equal(info.deployment_mode, 'sites_native');
 assert.equal(info.maintenance.supported, true);
 const page = await request('/');
 const pageSha = createHash('sha256').update(Buffer.from(await page.arrayBuffer())).digest('hex');
-assert.equal((await mcp('tools/list', {})).tools.length, 32);
+assert.equal((await mcp('tools/list', {})).tools.length, 42);
 const saved = await tool('save_bookmark', { title: '跨入口資料', url: 'https://example.com/saved' });
 assert.equal((await api('/api/items/' + saved.item.id)).item.title, '跨入口資料');
 const uploaded = await api('/api/files', 'POST', { name: 'retain.txt', content_base64: Buffer.from('original attachment').toString('base64') });
 assert.equal(await (await request('/api/files/' + uploaded.item.id)).text(), 'original attachment');
+// Both entrypoints operate on one persisted Agent job; the text below is fixture output.
+const manifest = { contract_version: 1, id: 'gateway-summary', name: '摘要測試 Agent',
+  version: '1.0.0', adapter: 'connected_client', instructions: '只整理使用者指定的資料。',
+  settings: [], operations: [{ id: 'summarize', name: '整理摘要', instructions: '保留來源。',
+    input_fields: [] }], ui: { layout: 'standard', result_label: '摘要' } };
+const { agent: registered } = await api('/api/studio/agents', 'POST', { manifest,
+  source: { repository: 'https://github.com/example/summary', revision: 'a'.repeat(40) } });
+const { agent: connected } = await tool('agent_action', { id: registered.id,
+  expected_version: registered.version, action: 'connect', arguments_json: '{}' });
+const refs = [{ kind: 'item', id: saved.item.id }];
+const { job: queued } = await api('/api/studio/agent-jobs', 'POST', { agent_id: connected.id,
+  operation_id: 'summarize', title: '雙入口摘要測試', inputs: {}, refs, source_key: 'gateway-summary-1' });
+assert.equal(queued.state, 'awaiting_codex');
+const context = await tool('agent_job_context', { id: queued.id });
+const { job: started } = await tool('agent_job_action', { id: queued.id, expected_version: queued.version,
+  action: 'start', arguments_json: JSON.stringify({ source: 'Gateway integration fixture', context_digest: context.context_digest }) });
+const { job: completed } = await tool('agent_job_action', { id: queued.id, expected_version: started.version,
+  action: 'complete', arguments_json: JSON.stringify({ result: '測試結果：已保存跨入口資料。',
+    source: 'Gateway integration fixture', source_refs: refs, context_digest: context.context_digest }) });
+assert.equal(completed.state, 'completed');
+assert.equal((await api('/api/studio/agent-jobs/' + queued.id)).job.result, completed.result);
+for (const asset of ['/agents.js', '/agents.css']) assert.equal((await request(asset)).status, 200);
 const evidence = await tool('verify_connection', { challenge: 'f'.repeat(32), client: 'Gateway integration test', date: '2026-10-22' });
 assert.equal((await api('/api/workdays/' + evidence.workday_id)).workday.entries[1].done, true);
 assert.equal((await request('/api/maintenance', 'GET', undefined, 'member-id')).status, 403);
@@ -65,5 +87,6 @@ assert.equal(response.status, 200);
 const bytes = Buffer.from(await response.arrayBuffer());
 await writeFile(config.archive, bytes, { flag: 'wx', mode: 0o600 });
 console.log(JSON.stringify({ item_id: saved.item.id, file_id: uploaded.item.id,
+  agent_id: connected.id, agent_job_id: completed.id,
   workday_id: evidence.workday_id, page_sha256: pageSha,
   archive_sha256: createHash('sha256').update(bytes).digest('hex') }));

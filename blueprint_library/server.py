@@ -25,7 +25,7 @@ from blueprint_folders import __version__
 from blueprint_folders.core import CATEGORIES, _atomic_json
 from .classify import classify_item
 from .context import build_context
-from .store import LibraryError, Store
+from .store import LibraryError, SCHEMA_VERSION, Store
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "library_web"
@@ -305,7 +305,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
                                "company_profile": profile,
                                "product_name": "Blueprint Studio Backend",
                                "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
-                               "connection_mode": "native", "classification": "rules", "stats": store.stats(member_access=not studio.admin), "account": self.identity, "studio_schema": 5,
+                               "connection_mode": "native", "classification": "rules", "stats": store.stats(member_access=not studio.admin), "account": self.identity, "studio_schema": SCHEMA_VERSION,
                                "maintenance": self.server.maintenance.status() if self.server.maintenance and self.identity.get('role') == 'owner' else {'supported': False}})
         if path == "/api/company-profile":
             if method == "GET":
@@ -429,7 +429,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
         if path == "/api/export" and method == "GET":
             return self._json(store.export_metadata(), extra={"Content-Disposition": 'attachment; filename="blueprint-library-metadata.json"'})
         if method == "GET":
-            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()

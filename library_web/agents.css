@@ -1,0 +1,36 @@
+/* Agent pages inherit Blueprint's controls, colours and notebook spacing. */
+.agent-section-title { font-size: 16px; font-weight: 600; margin: 24px 0 14px; }
+.agent-empty { padding: 22px 0; }
+.agent-form { display: grid; gap: 18px; margin: 20px 0; }
+.agent-form .agent-section-title { margin-top: 0; }
+.agent-form .field, .agent-handoff .field { display: grid; gap: 7px; min-width: 0; font-size: 12px; }
+.agent-form input:not([type=checkbox]), .agent-form select, .agent-form textarea, .agent-handoff textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; }
+.agent-form select[multiple] { min-height: 150px; }
+.agent-form input[type=checkbox] { width: auto; justify-self: start; }
+.agent-form .field input[type=file] { font-size: 12px; }
+.agent-form textarea, .agent-handoff textarea { resize: vertical; }
+.agent-fields { display: grid; gap: 16px; }
+.agent-fields:empty { display: none; }
+.agent-form .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.agent-form .form-error, .agent-cancel-form .form-error { margin: 0; }
+.agent-form button[type=submit] { justify-self: start; }
+.agent-origin { margin: 16px 0; font-size: 12px; }
+.agent-origin summary, .agent-inputs summary { cursor: pointer; margin-bottom: 12px; }
+.agent-origin p { margin: 7px 0; overflow-wrap: anywhere; }
+.agent-repository { overflow-wrap: anywhere; }
+.agent-operations { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit,minmax(min(100%,250px),1fr)); margin: 22px 0; }
+.agent-operations > h2 { grid-column: 1 / -1; margin-bottom: 0; }
+.agent-operations .studio-card button { align-self: flex-start; }
+.agent-handoff { display: grid; gap: 14px; margin: 20px 0; }
+.agent-handoff h2, .agent-result-panel h2, .agent-error h2 { margin-top: 0; }
+.agent-handoff > button { justify-self: start; }
+.agent-job-meta { margin: 12px 0; overflow-wrap: anywhere; }
+.agent-result, .agent-error-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.8; }
+.agent-result-panel, .agent-error, .agent-inputs { margin: 20px 0; }
+.agent-result-panel > .muted { margin-top: 16px; }
+.agent-status { display: inline-block; border-radius: 4px; padding: 4px 8px; background: #eef1f3; color: #5c6873; font-size: 11px; }
+.agent-status[data-agent-status=completed] { color: #3c6550; background: #edf4ef; }
+.agent-status[data-agent-status=failed] { color: #8a493c; background: #f7eeea; }
+.agent-status[data-agent-status=in_progress] { color: #665a3a; background: #f5f2e9; }
+.agent-job-card .agent-status { align-self: flex-start; }
+@media(max-width:600px) { .agent-form, .agent-handoff, .agent-inputs, .agent-result-panel { padding: 16px; } .agent-inputs .studio-fields-display { grid-template-columns: 1fr; gap: 5px; } .agent-inputs dd { margin-bottom: 12px; } }

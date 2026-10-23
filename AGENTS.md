@@ -1,16 +1,32 @@
 # Blueprint Studio Open Source
 
+Follow docs/OPERATING_MODEL.md when distinguishing daily use from development.
+Daily work, tasks, files, bookmarks and reports use authorized data APIs with
+version checks and readback; do not turn them into Git commits or deployments.
+Existing settings and compatible Agent registration also save directly; browser
+layout preferences stay in the browser. Long-term company customization uses a
+verified private source repository, preserving its customizations when integrating
+selected upstream releases. Upstream publication does not synchronize company
+repositories; GitHub pushes do not deploy Sites. Deploy only affected services:
+compatible native backend changes need not republish the Sites gateway. Blueprint
+ships shared management and contracts, not working business Agents; templates and
+the independent summary demo are development examples. Private runtime data and
+credentials stay outside every source repository, including private repositories.
+
 For the optional Sites-to-native gateway, read docs/SITES_NATIVE_GATEWAY.md.
 Sites owns the entrypoint and verified identity; the independently deployed native
 backend owns company data, attachments and backups. Never replace an existing D1/R2
 Site with this gateway as an implicit migration. Keep per-user private account
 mapping, backend role checks, the authenticated API contract probe and no-redirect
 credential boundary. Native and gateway versions are independent. This path has
-32 tools and no D1/R2 company-data backup dependency; it still requires real host,
+42 tools and no D1/R2 company-data backup dependency; it still requires real host,
 platform publication, backup/restore and live client acceptance. Consult
-docs/AGENT_ROADMAP.md for Blueprint's future Agent design. The Agent runtime and
-autonomous customer service are not implemented; do not infer them from saved
-specialist settings or MCP availability. Maintainer research is kept separately
+docs/AGENT_ROADMAP.md and docs/AGENT_CONTRACT.md for the shared Agent workbench.
+V2.6 adds pinned declarative Agent packages and persistent jobs handled by the
+active AI conversation through the same HTTP/MCP API. No model API, background
+Agent runtime or autonomous customer service is included. Adapter connection is
+not proof that the current chat has loaded tools. Existing specialist records
+remain unconnected shells; do not silently convert them into active Agents. Maintainer research is kept separately
 under research/ and excluded from product archives and Docker build context.
 Installation and runtime must not require research notes or reference projects.
 
@@ -35,8 +51,8 @@ OS data lease, startup journal, rehearsal, previous rows/attachments/credentials
 and failed-data copies. Never initialize a nonempty directory or roll back code
 by silently lowering a data version. Runtime backup pauses/drains HTTP requests,
 not arbitrary SQLite writers; use one service and HTTP/MCP for active access.
-Offline restore only targets a new directory. Native has 32 MCP tools; Sites keeps
-the 30-tool shared contract and needs its own proven backup/restore adapter. Do not
+Offline restore only targets a new directory. Native has 42 MCP tools; Sites keeps
+the 40-tool shared contract and needs its own proven backup/restore adapter. Do not
 promise automatic off-host copying, platform deployment or loaded chat tools from
 native maintenance status. Keep all private runtime files out of Git.
 
@@ -196,3 +212,17 @@ upgrade. Full production backup remains required. State exact missing backup
 capabilities and supported paths checked; do not invent a backup button or mark
 an attachment listing as a complete object backup. Report website deployment and
 AI connection acceptance separately. All private progress stays outside this repo.
+
+
+V2.6 Agent workbench uses independently versioned packages and additive schema 6
+registry/job/history tables in the same private backend. Read docs/AGENT_CONTRACT.md
+before changing the manifest, routes or state transitions. Preserve all earlier
+records, IDs, attachments and credentials. Pin package repository and commit;
+registration never fetches or executes remote code. UI modules are declarative
+standard controls. Settings snapshots belong to each job. UI and MCP writes must
+share version checks and current reference permissions, including result reads.
+A UI button prepares work; the user starts it in the original AI conversation.
+Read context, start with its digest, save a real result or failure, then read back.
+Keep completed jobs immutable and never fabricate execution or connection evidence.
+Do not add WhatsApp, model providers, unattended workers or scheduler behavior as
+part of this feature. Independent Agent repositories contain reusable source only.

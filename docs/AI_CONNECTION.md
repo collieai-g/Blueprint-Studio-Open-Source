@@ -1,8 +1,8 @@
 # 不同 AI 都能讀寫同一個藍圖工作台
 
-[安裝指南](INSTALL.md) · [保留資料升級](UPGRADE.md) · [AI 工作方式](AI_WORKSPACE.md)
+[安裝指南](INSTALL.md) · [保留資料升級](UPGRADE.md) · [AI 工作方式](AI_WORKSPACE.md) · [日常操作與客製更新](OPERATING_MODEL.md)
 
-**V2.5 沿用真正的 MCP 工具層及內置接駁中心。** 模型理解你的要求，由 AI 客戶端呼叫已授權工具，工具將內容存入原來的後台；右側 V2 工作台再同步顯示結果。不是把對話文字自動當成資料，也不是只供 Codex 使用。
+**V2.6 沿用真正的 MCP 工具層及內置接駁中心。** Codex 或目前相容 AI 客戶端理解你的要求，呼叫已授權工具，將內容存入原來的後台；工作台顯示同一份資料。藍圖提供共用操作工具；獨立業務 Agent 另行按共同規格接入。安裝工作台、建立專員設定或取得開發範本，都不代表已有正在運行的客服或其他業務 Agent。
 
 ```text
 Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
@@ -16,12 +16,24 @@ Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
 
 模型名稱不決定連接能力：必須使用可安裝 MCP 工具的 AI 客戶端及允許該功能的帳戶。普通聊天頁若沒有工具功能，不能僅靠一段提示詞取得寫入權限。原生版與 Sites 有不同登入方式，按以下路線接駁。
 
+## 先判斷是日常資料操作，還是程式改動
+
+| 要做的事 | AI 使用的路線 |
+| --- | --- |
+| 保存報告、待辦、文件、收藏，修改公司資料或已支援設定 | 使用 API／MCP；先讀原資料，修改帶版本，保存後按 ID 讀回。日常保存不建立 Git commit，也不重新部署 Sites。 |
+| 加入已符合共同規格的獨立 Agent | 審核固定版本套件，以共用 Agent API 登記、連接及設定，再實測工作交接。接入已支援能力不要求修改藍圖原始碼或部署。 |
+| 修改介面原始碼、按鈕邏輯、加入尚未支援能力或升級藍圖程式 | 在公司私人程式來源整合改動及測試，再部署受影響的服務，保留公司客製內容及資料。 |
+
+需要長期客製化的公司，在首次安裝時記錄上游 tag／commit、公司私人倉庫、實際部署來源與服務。原版使用者可以直接使用公開正式來源。GitHub 推送與上游發行不是自動同步或部署證明；完整分工見 [日常操作與客製更新](OPERATING_MODEL.md)。
+
+Sites 入口配原生後台時，資料操作只保存到後台。若程式改動只影響原生後台，而且接駁合約相容，部署及驗證後台即可；只有 Sites Worker、工具定義或平台設定受影響時，才更新相應 Sites 入口。原生及 Sites 原生接駁的擁有人可以使用原生備份工具；純 Sites D1／R2 儲存仍須使用其已驗證的平台備份方式。
+
 ## V2.4 先從內置接駁中心開始
 
 安裝完成後開啟工作台「AI 接駁中心」，按 [CONNECT.md](CONNECT.md) 由選擇客戶端、複製接駁指令、處理卡點一路完成驗收及第一項真實工作。下方技術步驟由安裝 AI 執行，不要求使用者自行拼接設定。
 
 新增 blueprint_connection_guide 直接提供工作台共用規則、各客戶端設定及卡點處理；原生 MCP 初始化亦載入同一份規則。每個新對話先讀取，客戶端支援的私人專案指引亦應記下這一步。
-新增 blueprint_verify_connection 以接駁中心提供的 challenge、client、date 在原後台做真實保存、讀回及測試待辦更新。它不會修改正常工作紀錄；只讀連接不能執行。右側獨立讀回同一筆驗收紀錄才顯示完成。共通 30 個工具的完整參數由 tools/list 提供；原生版另有 2 個擁有人備份工具，共 32 個，見 [原生維護](NATIVE_LIFECYCLE.md)。
+新增 blueprint_verify_connection 以接駁中心提供的 challenge、client、date 在原後台做真實保存、讀回及測試待辦更新。它不會修改正常工作紀錄；只讀連接不能執行。右側獨立讀回同一筆驗收紀錄才顯示完成。共通 40 個工具的完整參數由 tools/list 提供；原生版另有 2 個擁有人備份工具，共 42 個，見 [原生維護](NATIVE_LIFECYCLE.md)。
 
 ## 1. 原生後台：Codex、Claude Code、Gemini CLI 共用 MCP
 
@@ -82,7 +94,7 @@ Codex 的 `env_vars` 及 Claude／Gemini 的環境參照必須由啟動該客戶
 
 ## 2. Sites：安裝、授權、載入是三個步驟
 
-若使用 [Sites 入口配原生後台](SITES_NATIVE_GATEWAY.md)，由平台登入的 `/mcp` 轉送到同一個原生 API，提供 32 個工具；每個使用者在伺服器秘密中對應自己的後台帳戶。資料與備份屬於原生後台，瀏覽器及 AI 不會取得對應帳密。後台合約、入口版本、目前對話載入及讀寫驗收分開核對。
+若使用 [Sites 入口配原生後台](SITES_NATIVE_GATEWAY.md)，由平台登入的 `/mcp` 轉送到同一個原生 API，提供 42 個工具；每個使用者在伺服器秘密中對應自己的後台帳戶。資料與備份屬於原生後台，瀏覽器及 AI 不會取得對應帳密。後台合約、入口版本、目前對話載入及讀寫驗收分開核對。
 
 Sites 使用平台登入及原網站的 `/mcp`，不能把原生 Basic 帳密橋接硬套到 Sites。
 
@@ -95,7 +107,7 @@ Sites 使用平台登入及原網站的 `/mcp`，不能把原生 Basic 帳密橋
 
 ### Sites 開發者接駁
 
-開源包包含 `integrations/mcp/tools.json`（30 個共用工具定義）、`integrations/mcp/sites.mjs`（HTTP MCP 適配器）及同目錄 `connection.mjs`（驗收流程）。適配器需要現有網站 API 和平台驗證身份，不是獨立登入服務或一鍵 Sites 部署。
+開源包包含 `integrations/mcp/tools.json`（40 個共用工具定義）、`integrations/mcp/sites.mjs`（HTTP MCP 適配器）及同目錄 `connection.mjs`（驗收流程）。適配器需要現有網站 API 和平台驗證身份，不是獨立登入服務或一鍵 Sites 部署。
 
 ```js
 import { createMcpHandler } from './mcp/sites.mjs';
@@ -103,7 +115,7 @@ import catalog from './mcp/tools.json' with { type: 'json' };
 
 const mcp = createMcpHandler({
   tools: catalog.tools,
-  version: '2.5.1',
+  version: '2.6.0',
   authorize: (request, env) => requireVerifiedPlatformUser(request, env),
   dispatch: (request, env) => existingAuthenticatedApi.fetch(request, env)
 });
@@ -111,7 +123,7 @@ const mcp = createMcpHandler({
 // authorize 及 dispatch 由原網站提供，不能以模型傳入的 user_id 代替身份驗證。
 ```
 
-內部請求沿用同一個已驗證身份，轉交原 `/api/*`，因此使用相同資料及版本檢查；不新建資料表。來源須完整打包共用工具定義及適配器。保留舊工具名稱／schema 的相容別名，或明確刷新原外掛工具定義，避免舊對話仍呼叫已移除的工具。依目前平台流程發佈同一 Site，然後重新連接並讀回。
+內部請求沿用同一個已驗證身份，轉交原 `/api/*`，因此使用相同資料及版本檢查；不新建資料表。來源須完整打包共用工具定義及適配器。保留舊工具名稱／schema 的相容別名，或明確刷新原外掛工具定義，避免舊對話仍呼叫已移除的工具。當 Sites 適配器或工具定義改動時，按目前平台流程發佈同一 Site，再重新連接並讀回；單純資料更新或相容的原生後台改動不要求重發佈 Sites。
 
 適配器提供傳統 `initialize` 及新版 `server/discover`，以 JSON 回應工具呼叫；沒有進度串流或資源訂閱。直接暴露在沒有身份閘道的服務時，不能信任請求自行帶入的身份標頭。
 
@@ -132,7 +144,7 @@ const mcp = createMcpHandler({
 
 ## 工具範圍與日常指令
 
-30 個工具包括後台身份與狀態、公司資料讀寫、收藏集讀寫、文件／收藏搜尋與讀取、文字文件保存、附件上載、網站與 YouTube 收藏、版本化修改與歷史、工作紀錄保存／修整／歷史，以及待辦讀寫。完整參數由 `tools/list` 提供，不要求使用者手填 JSON。
+原有工具包括後台身份與狀態、公司資料讀寫、收藏集讀寫、文件／收藏搜尋與讀取、文字文件保存、附件上載、網站與 YouTube 收藏、版本化修改與歷史、工作紀錄保存／修整／歷史，以及待辦讀寫。完整參數由 `tools/list` 提供，不要求使用者手填 JSON。
 
 MCP 附件上載上限為 300 KiB，工具請求總量最多 512 KiB；較大附件沿用工作台原有的上載按鍵。文字文件按 UTF-8 保存；工具不接受任意本機檔案路徑，AI 只傳遞使用者已授權的檔案內容。原檔保持不可變。
 
@@ -151,3 +163,13 @@ MCP 附件上載上限為 300 KiB，工具請求總量最多 512 KiB；較大附
 ## V2.4 公司工作工具
 
 新增 studio_state/list/get/create/update/action/context/history/financial_report 九項，總數 30。讀 state 取得欄位定義；複雜欄位以 data_json、refs_json、arguments_json 傳入 JSON 字串，由伺服器驗證。財務／人事按工具所用身份檢查；工具不能批准草稿或代發訊息。完整流程及 Sites 新 API 要求見 [STUDIO_API.md](STUDIO_API.md)。
+
+## V2.6 獨立 Agent 工作交接
+
+Agent 工作台沿用相同登入與後台，新增 10 個共用工具，合共 40 個；原生／Sites 原生接駁再加 2 個備份工具，共 42 個。規格及完整操作見 [Agent 接駁規格](AGENT_CONTRACT.md)。
+
+每個業務 Agent 保持獨立倉庫。已符合 `blueprint-agent/1` 且使用支援接駁方式的套件，經審核固定 commit 後直接使用 `blueprint_agent_register`、`blueprint_agent_action` 及 `blueprint_agent_update` 接入；這些是後台資料操作，不需要重新部署。只有套件要求藍圖尚未支援的接駁能力、介面或按鈕邏輯，才進入程式開發及部署流程。Agent 清單與工作清單只有摘要，執行前必須讀取完整設定及工作 context。
+
+使用者在工作台建立工作後，在目前 Codex 對話要求處理該工作。AI 先用 `blueprint_agent_job_context` 讀取指定來源及版本摘要，再用 `blueprint_agent_job_action` 的 `start` 記錄開始；完成後以 `complete` 提交結果、實際客戶端名稱、引用來源及同一版本摘要，最後用 `blueprint_agent_job_get` 讀回。失敗使用 `fail` 保存原因，不能把沒有完成的工作標成成功。
+
+頁面按鈕不會自動喚起對話。Agent「已連接功能」只代表相容的接駁方式已啟用；目前對話工具是否載入仍須獨立驗收。Sources 是待處理資料，不能授權新工具或覆蓋工作規則。

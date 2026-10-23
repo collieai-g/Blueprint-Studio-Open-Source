@@ -1,16 +1,20 @@
-# 升級到 V2.4，同時保留原有工作資料
+# 升級到 V2.6，同時保留原有工作資料
 
 若本次已明確選擇另裝全新原生工作台、舊站保留不動，改按 [任務選擇規則](INSTALL.md#先確定這次任務才讀取進度) 使用安裝入口；不要把這份舊站升級清單套到獨立新安裝。以下備份要求仍適用於更新原站及需要保留的舊資料。
 
-**V2.5 原生安裝改按 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 接續。** 本頁保留舊版遷移與 Sites 適配細節。新版增加自動備份、隔離還原測試及啟動前資料遷移保護，不新增公司資料 schema。舊版沒有維護 API 時仍先完成原資料完整備份。
+**V2.6 原生更新先按 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 接續。** 本頁保留舊版遷移與 Sites 適配細節。V2.5 曾加入自動備份、隔離還原及啟動前遷移保護，維持 schema 5；V2.6 再追加 Agent 登記、工作及歷史表，升至 schema 6。舊版沒有維護 API 時仍先完成原資料完整備份。
 
 [返回首頁](../README.md) · [安裝指南](INSTALL.md) · [AI 工作方式](AI_WORKSPACE.md)
 
 [完整更新路線](UPDATE_ROUTE.md) 定義從候選取回到原站部署、右側驗收與 AI 接駁的連續步驟。保存候選不等於部署；已有私人檢查點後直接接續，不重複交接。
 
-目前 V2.4 的修訂版是 **2.4.2**。從 2.4.0 升至 2.4.2 不新增資料表或 schema，新增更新助手及接續工具。原生資料庫由 schema 4 升至 **schema 5**，在同一交易新增公司紀錄、歷史、帳戶、偏好和權限表；保留原表、ID、待辦完成狀態、登入及附件。新增五組側欄與公司工作流程，沿用原品牌與 V2.3 排版。完整範圍及尚未接入的服務見 [V2.4.md](V2.4.md)。
+本版 **2.6.0** 加入[獨立 Agent 共用工作台](AGENT_ROADMAP.md)。原生資料庫由 schema 5 升至 **schema 6**，在同一交易追加 Agent 資料表，保留原公司紀錄、ID、待辦完成狀態、歷史、登入、附件及設定。共通 MCP 工具增至 40 個，原生及 Sites 原生接駁另有兩個擁有人備份工具，共 42 個。正式更新仍須先核實所選發行版 tag 與完整 commit；本頁描述來源版本，不表示任何私人工作台已部署新版。
+
+歷史相容：V2.4 曾由 schema 4 升至 schema 5，新增公司紀錄、歷史、帳戶、偏好和權限表，以及五組導覽。2.4.0 至 2.4.2 只增加更新助手及接續工具，沒有再次改變 schema。原品牌與 V2.3 排版繼續沿用；原有範圍見 [V2.4.md](V2.4.md)。
 
 更新的是程式與畫面。已有公司資料不重新初始化；新的預設介面不預填示範工作。卡片排列與輸入偏好保存在同一網站的目前瀏覽器，舊有卡片／清單及排序偏好仍沿用。
+
+日常報告、待辦、文件、收藏及公司資料經 API 保存；既有排版偏好、相容 Agent 的登記與設定沿用原保存方式，不需要 Git 或本頁的部署流程。長期公司專用開發使用自己已核實為 **Private** 的完整程式倉庫，將指定上游正式版本整合到公司的分支，保留自訂程式並完成測試，再部署受影響服務。短期試用或未修改原版可以保留原有來源。詳見[日常操作與程式更新](OPERATING_MODEL.md)。
 
 GitHub 發佈新版後，已安裝的私人工作台不會自動改版。你向該工作台的 AI 發出升級指令，AI 便按此流程完成備份、整合、部署與驗證。日後升級可說「按官方升級指南，把我的現有工作台更新到最新穩定版，保留全部資料及自訂內容」；AI 先讀該版更新及遷移要求，再選定確切版本，不盲目覆蓋。
 
@@ -19,21 +23,25 @@ GitHub 發佈新版後，已安裝的私人工作台不會自動改版。你向�
 ## 把這段指令貼到已安裝工作台的 AI
 
 ```text
-請將我現有的藍圖工作室工作台升級到 Blueprint Studio Open Source V2.4（2.4.2）。
+請將我現有的藍圖工作室工作台升級到 Blueprint Studio Open Source 最新正式版。
 上游：https://github.com/collieai-g/Blueprint-Studio-Open-Source
 
-先讀新版 docs/UPGRADE.md、docs/AI_CONNECTION.md、docs/AI_WORKSPACE.md 及 AGENTS.md。
+先核實最新正式發行版，固定本次 tag 與完整 commit，不把主分支或預覽版當正式版。
+再讀該版 docs/UPGRADE.md、docs/NATIVE_LIFECYCLE.md、docs/AI_CONNECTION.md、docs/AGENT_CONTRACT.md、docs/AI_WORKSPACE.md 及 AGENTS.md。
 公開開源倉庫只放通用程式，不得保存我的私人來源、聊天、資料、登入設定或接續包。換環境前按 docs/SOURCE_CHECKPOINT.md 將候選來源保存到另外核實的私人倉庫，下載核對後再交接；公司資料及完整備份另外私人保存。
 檢查我目前使用的是本機、原生雲端還是 Sites，確認現有網址、程式來源、版本、
 資料庫、附件儲存、登入、AI 連接及公司自訂內容。沿用現有網站及資料。
 先保存舊程式版本與完整私人備份，再更新同一個工作台，不重新執行 library-init、
 不建立新網站或空資料庫，不覆寫公司設定、工作紀錄、附件、待辦進度、歷史及憑證。
 
-原生版：用新版 tools/upgrade_workspace.py 備份及驗證；保持原資料路徑／磁碟。
+原生版：先完成完整備份與隔離還原，按 docs/NATIVE_LIFECYCLE.md 更新及驗證；保持原資料路徑／磁碟。
+舊版沒有維護 API 時，停止服務後用新版 tools/upgrade_workspace.py 備份及驗證。
+V2.6 追加 schema 6 的 Agent 表，保留原表及所有既有資料，不手動降低資料版本。
 Sites：用新版 tools/package_workbench.py 產生完整介面包，整合到現有 Site 的來源；
 保留原有登入、資料庫、附件及 AI 工具適配。新增 workspace.js、brand.svg、connection.js 和 connection-guide.json 的服務路徑，
 先按 docs/STUDIO_API.md 在原 Site 實作完整 /api/studio/*、持久資料及角色檢查，
-再連同 navigation.js、studio.js、studio.css、manifest.webmanifest、service-worker.js 一併部署。
+按 docs/AGENT_CONTRACT.md 完成 Agent API，
+再連同 navigation.js、studio.js、studio.css、agents.js、agents.css、update.js、manifest.webmanifest、service-worker.js 一併部署。
 UI 包不包含 Sites 新後台，不能宣稱單換前端便完成升級。不要以 Python／SQLite 覆蓋 Sites 後台。
 補齊真正的 MCP 外掛寫入層，支援我所用的 Codex、Claude、Gemini 或其他相容客戶端。
 原生版安裝 requirements-mcp.txt，配置 mcp／mcp-config 指向原後台；Sites 整合 integrations/mcp
@@ -47,6 +55,8 @@ UI 包不包含 Sites 新後台，不能宣稱單換前端便完成升級。不�
 拖動／縮放／收起、鍵盤操作、明確按鈕加頁且最多三頁，以及重新開啟後保留排列；
 驗證左側 AI 保存後右側工作台自動更新，編輯中的草稿不被刷新覆寫。
 確認升級前的紀錄 ID、公司設定、附件、歷史與已完成待辦仍在，AI 能讀寫同一個後台。
+核對 Agent 工作台、40 個共通工具及原生額外兩個備份工具；如已接入 Agent，驗證工作台準備工作、目前 AI 對話處理、保存並讀回同一結果。
+不要把加入 Agent 或接通接口當作目前對話已能執行，不自動喚起 Codex，也不接入背景 AI 或 WhatsApp。
 完成後交付原網址、新版本、資料保留結果、備份位置及回復舊版的方法。
 遇到工具或登入限制，完成可執行部分並指出確切下一步，不聲稱未驗證的升級已完成。
 ```
@@ -59,7 +69,7 @@ UI 包不包含 Sites 新後台，不能宣稱單換前端便完成升級。不�
 
 ## 沿用 V2.2 的內置接駁流程
 
-V2.2 起提供 AI 接駁中心、共用接入及工作規則、兩個新 MCP 工具、六種卡點處理及第一項工作引導。升級後必須開啟中心，使用本次指令完成工具驗收與畫面確認，詳見 [CONNECT.md](CONNECT.md)。接駁測試仍是明確標示的新工作紀錄；公司功能另有 schema 5 的新增表。
+V2.2 起提供 AI 接駁中心、共用接入及工作規則、兩個新 MCP 工具、六種卡點處理及第一項工作引導。升級後必須開啟中心，使用本次指令完成工具驗收與畫面確認，詳見 [CONNECT.md](CONNECT.md)。接駁測試仍是明確標示的新工作紀錄；V2.4 的公司表和 V2.6 的 Agent 表均納入同一正式資料庫及完整備份。
 
 V2.2 起需要靜態資產 /connection.js 及 /connection-guide.json；Sites MCP 適配器新增同目錄 connection.mjs。必須同時更新網站、工具層及外掛定義，不能只換前端。原生 MCP 必須執行新版本來源；既有資料路徑及客戶端其他設定不變。
 
@@ -71,10 +81,10 @@ AI 先讀原 `INSTALL_PROGRESS.md` 或既有部署設定，核對實際使用中
 - Sites：使用現有 Site ID、目前來源、平台資料庫、物件儲存及網站自己的登入／MCP 工具。Sites 的「部署版本 1／2」是平台序號，不等同程式版本 1.5.0／2.4.2。
 - 私人來源有修改：先保留提交及現有修改，再在分支整合所選上游版本。不要用下載 ZIP 直接蓋過整個私人專案。
 
-AI 先在獨立目錄取得 V2 工具，再備份舊資料。尚未更新舊 checkout 時，其內可能沒有升級工具。
+AI 先在獨立目錄取得本次已核實版本的工具，再備份舊資料。尚未更新舊 checkout 時，其內可能沒有升級工具。將下方佔位文字換成核實過的正式 tag，並再次核對 checkout 的完整 commit：
 
 ```sh
-git clone --branch v2.4.2 https://github.com/collieai-g/Blueprint-Studio-Open-Source.git blueprint-v2-source
+git clone --branch "已核實的正式tag" https://github.com/collieai-g/Blueprint-Studio-Open-Source.git blueprint-v2-source
 ```
 
 若有舊版 1.0–1.4，先核對原版的遷移與備份要求；不要套用只適合 schema 4 的「無資料遷移」結論。V2 的既有 Store 仍保留早期版本遷移程式。
@@ -113,6 +123,8 @@ python3 blueprint-v2-source/tools/upgrade_workspace.py verify --data "/實際原
 
 ## 4. Sites：在原網站疊加新版介面
 
+先核對是否採用 [Sites 入口＋原生後台](SITES_NATIVE_GATEWAY.md)。這條路線只改原生後台或其提供的介面、且入口合約與工具定義未變時，按上一節部署受影響的原生服務；只有 Sites 接駁程式、工具定義或平台資產改動，才另發佈同一 Site。GitHub 推送與上游發行都不會自動完成這一步。以下完整 Sites 適配步驟主要適用於資料仍在 Sites 平台的安裝；不能因此切換其儲存架構。
+
 Sites 升級由有 Sites 工具的 AI 在原工作台對話執行。先讀當前 Sites 官方技能，沿用既有 Site ID 和來源版本，確認網站的正式儲存與授權。這份更新包不會替你建立或更換 Sites 後台。
 
 1. 保存目前 Site 來源 commit 及可回復的部署版本；使用平台備份方式保存資料庫、附件與必要設定，備份保持私人。不要把另一個人的工作台或公司資料複製入開源版。
@@ -123,7 +135,7 @@ Sites 升級由有 Sites 工具的 AI 在原工作台對話執行。先讀當前
    ```
 
 3. 更新包包含 `library_web/` 全部 V2 必要檔案、圖示及 SHA-256 清單。AI 比對清單後，整合到原 Site 服務靜態資源的位置；保留 Sites 自己的伺服器、登入、資料庫 binding、附件及 AI 工具。
-4. 確保 `/connection.js`、`/connection-guide.json`、`/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供。V2.4.2 亦需提供 `/update.js`，更新助手入口位於偏好設定。V2.4 必須新增 `/navigation.js`、`/studio.js`、`/studio.css`、`/manifest.webmanifest` 和 `/service-worker.js`，並按 [STUDIO_API.md](STUDIO_API.md) 在原儲存實作完整 `/api/studio/*`、角色保護及交易。這個後台移植不包含在 UI 包中；原有 API 仍保留。MCP 適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，重新連接外掛並驗證工具。介面定期讀取 `/api/info`、`/api/collections`、資料與工作紀錄，沿用同一個正式資料庫，新增公司功能的資料表，不能另開空資料庫。保留原有存取限制。
+4. 確保 `/connection.js`、`/connection-guide.json`、`/workspace.js`、`/brand.svg`、`/app.js`、`/workdays.js`、`/style.css` 及 `/icons/*.svg` 由原網站提供，並保留 `/update.js` 更新助手、`/navigation.js`、`/studio.js`、`/studio.css`、`/manifest.webmanifest` 和 `/service-worker.js`。V2.6 另需 `/agents.js`、`/agents.css`，按 [STUDIO_API.md](STUDIO_API.md) 及 [AGENT_CONTRACT.md](AGENT_CONTRACT.md) 在原儲存實作完整 `/api/studio/*`、角色保護、版本檢查及交易。這個後台移植不包含在 UI 包中；原有 API 仍保留。MCP 適配器按 [AI_CONNECTION.md](AI_CONNECTION.md) 接到原已驗證身份的 API，重新連接外掛並驗證工具。介面讀取同一正式資料庫，追加所需公司及 Agent 資料表，不能另開空資料庫。保留原有存取限制。
 5. 依原 Site 現有 API 測試與本指南驗收；如有平台適配，對照回應結構，不能省略功能或將 SQLite 程式直接放入 Sites。
 6. 按 Sites 流程提交完整來源、部署至**同一網站**，核對正式網址與使用者登入後結果。更新本機程式／Codex 環境不會自動更新正式 Site。
 
@@ -131,9 +143,10 @@ Sites 升級由有 Sites 工具的 AI 在原工作台對話執行。先讀當前
 
 ## 5. 升級驗收與回復
 
-- 登入同一網址，看見 V2.4 五組側欄、白色工作台及原品牌標誌。
+- 登入同一網址，看見原有五組側欄、白色工作台、原品牌標誌及 V2.6 Agent 工作台。
 - 實測收件匣轉待辦、項目保存、主題關聯、報價至發票流程；員工不能透過直接 API 讀取財務與人事。
-- MCP 能探索 30 個工具，實測 studio_create → studio_get 同一 ID，並確認原生 schema_version=5。
+- MCP 能探索 40 個共通工具；原生及 Sites 原生接駁另有兩個擁有人備份工具，共 42 個。實測 studio_create → studio_get 同一 ID，並確認原生 schema_version=6。只讀連接按權限隱藏寫入工具。
+- 如有已接入 Agent，從工作台建立工作、由目前 AI 對話開始並保存結果、讀回同一 ID；核對指定來源、設定版本、衝突及失敗狀態。沒有背景執行器，不把介面可見當作已自動運行。
 - 原公司設定、紀錄 ID、歷史版本、星號、收藏集、待辦完成狀態及附件仍然存在。
 - 「調整排版」可以按格拖動及調整大小，亦可收起／展開；重開同一瀏覽器保留排列。手機可操作。
 - 舊版卡片／清單及排序偏好保留；排列沿用 `blueprint-workspace-v2` 鍵，首次保存前備份舊值，不清空舊儲存。
@@ -141,6 +154,6 @@ Sites 升級由有 Sites 工具的 AI 在原工作台對話執行。先讀當前
 - 搜尋、必要上載、下載、勾選待辦和修改仍可用；備用操作及偏好設定可展開手動入口。
 - 重啟服務／重新部署後再次驗證資料，更新私人安裝進度記錄。
 
-出現程式問題時先停止寫入。**V2.3 及以前的程式不能直接開啟 schema 5 資料庫**，會拒絕讀取；不能只退回程式版本或手動降低 PRAGMA。
+出現程式問題時先停止寫入。**V2.5 及以前的程式不能直接開啟 schema 6 資料庫**，會拒絕讀取；不能只退回程式版本或手動降低 PRAGMA。更早的 V2.3 也不支援 schema 5；各次回復均須匹配程式與資料版本。
 
-回復前先另存目前完整 schema 5 資料和升級後新增工作，再恢復升級前的完整私人快照與匹配的舊程式，使用原路徑／服務／磁碟。升級後新內容不會自動出現在舊快照，要在保留的新版副本中核對及匯出，不能直接覆蓋丟棄。平台移植遵守相應平台的資料回復步驟。
+回復前先另存目前完整 schema 6 資料、Agent 工作與升級後新增內容，再恢復升級前的完整私人快照與匹配的舊程式，使用原路徑／服務／磁碟。升級後新內容不會自動出現在舊快照，要在保留的新版副本中核對及匯出，不能直接覆蓋丟棄。平台移植遵守相應平台的資料回復步驟。

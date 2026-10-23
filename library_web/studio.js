@@ -15,6 +15,7 @@
   const schema=kind=>state.schemas[kind];
   function definition(value=route){
     if(NAV.pages[value])return NAV.pages[value];
+    if(value.startsWith('agent/')||value.startsWith('agent-job/'))return {...NAV.pages.agents,route:value,label:value.startsWith('agent-job/')?'Agent 工作':'Agent 設定',parentRoute:'agents'};
     if(value.startsWith('specialist/'))return {...NAV.pages['specialist/specialist-website'],route:value,label:catalog('specialist').find(r=>r.id===value.split('/')[1])?.title||'AI 專員'};
     if(value.startsWith('topic/'))return {...NAV.pages.topics,route:value,label:catalog('topic').find(r=>r.id===value.split('/')[1])?.title||'自訂主題'};
     if(value.startsWith('record/')){
@@ -52,7 +53,7 @@
       const items=[...group.items];
       if(group.id==='specialists'){
         const extra=catalog('specialist').filter(r=>!['specialist-website','specialist-whatsapp','specialist-email','specialist-video'].includes(r.id));
-        items.splice(4,0,...extra.map(r=>['specialist/'+r.id,r.title,'chat','專員設定','specialist']));
+        items.splice(5,0,...extra.map(r=>['specialist/'+r.id,r.title,'chat','專員設定','specialist']));
       }
       if(group.id==='topics'){
         const topics=catalog('topic').sort((a,b)=>(a.data.order||0)-(b.data.order||0)||a.created_at.localeCompare(b.created_at));
@@ -154,6 +155,7 @@
       renderOverview();return;
     }
     hideLegacy();const panel=$('studio-panel');panel.replaceChildren(node('p','muted','正在讀取…'));
+    if(route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))return root.BlueprintAgents.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request});
     if(route.startsWith('specialist/'))return specialistPage(route.split('/')[1],seq);
     if(route.startsWith('topic/'))return topicPage(route.split('/')[1],seq);
     if(route.startsWith('record/'))return detailPage(route.split('/')[1],seq);
@@ -488,5 +490,6 @@
     const options=[['task','待辦'],['project','項目'],['inspiration','靈感'],['customer','客戶'],['topic','主題'],...(admin()?[['specialist','AI 專員']]:[])];
     options.forEach(([kind,label])=>$('studio-action-fields').append(button(label,()=>{closeDialog('studio-action-dialog');$('studio-action-submit').hidden=false;return kind==='inspiration'?addInspiration():kind==='specialist'?navigate('templates'):editRecord(kind);})));$('studio-action-dialog').addEventListener('close',()=>{$('studio-action-submit').hidden=false;},{once:true});
   }
-  root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,refreshVisible:async()=>{if(!ready||app.isBusy())return;await refresh();if(!route.startsWith('overview')&&route!=='documents')await renderPage();}};
+  const agentBusy=()=>((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy());
+  root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,refreshVisible:async()=>{if(!ready||app.isBusy()||agentBusy())return;await refresh();if(app.isBusy()||agentBusy())return;if(!route.startsWith('overview')&&route!=='documents')await renderPage();}};
 })(globalThis);

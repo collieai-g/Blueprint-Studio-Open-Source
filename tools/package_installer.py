@@ -11,6 +11,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blueprint_folders import __version__
+from blueprint_library.store import SCHEMA_VERSION
 
 EXCLUDED_PREFIXES = ('research/',)
 
@@ -20,7 +21,10 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
             'integrations/mcp/tools.json', 'docs/CONNECT.md', 'docs/UPGRADE.md',
             'requirements-mcp.txt', 'company/Dockerfile', 'library_web/navigation.js',
             'library_web/studio.js', 'library_web/studio.css', 'blueprint_library/studio.py',
-            'blueprint_library/studio_schema.py', 'blueprint_library/studio_http.py', 'docs/V2.4.md'}
+            'blueprint_library/studio_schema.py', 'blueprint_library/studio_http.py', 'docs/V2.4.md',
+            'blueprint_library/agents.py', 'blueprint_library/agents_http.py',
+            'library_web/agents.js', 'library_web/agents.css', 'docs/AGENT_CONTRACT.md',
+            'templates/agent/agent.json', 'docs/OPERATING_MODEL.md'}
 
 
 def build(output):
@@ -37,7 +41,7 @@ def build(output):
             raise ValueError('安裝包包含不允許的來源檔案。')
         files[name] = path.read_bytes()
     manifest = {'product': 'Blueprint Studio Open Source', 'version': __version__,
-                'entrypoint': 'INSTALL_AI.txt', 'database_schema': 5, 'private_data_included': False,
+                'entrypoint': 'INSTALL_AI.txt', 'database_schema': SCHEMA_VERSION, 'private_data_included': False,
                 'files': {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}}
     with zipfile.ZipFile(output, 'x', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in files.items():

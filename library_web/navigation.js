@@ -9,6 +9,7 @@
       ['projects','項目進度','checklist','查看階段、里程碑及相關成果。','project'],
       ['documents','文件與成果','folder','找回文件、報告和項目交付物。']]},
     {id:'specialists',label:'AI 專員',icon:'chat',open:true,items:[
+      ['agents','Agent 工作台','automation','管理獨立 Agent，將工作交給目前使用的 Codex。'],
       ['specialist/specialist-website','網站客服 AI','chat','設定網站查詢的處理方式。','specialist'],
       ['specialist/specialist-whatsapp','WhatsApp 客服 AI','chat','設定查詢及預約的處理方式。','specialist'],
       ['specialist/specialist-email','電郵 AI','inbox','設定來信分類和回覆規則。','specialist'],

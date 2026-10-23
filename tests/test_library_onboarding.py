@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from blueprint_library.onboarding import installation_instruction, load_company_file, prepare_setup
-from blueprint_library.store import LibraryError
+from blueprint_library.store import LibraryError, SCHEMA_VERSION
 
 
 class OnboardingTests(unittest.TestCase):
@@ -181,6 +181,14 @@ class OnboardingTests(unittest.TestCase):
         self.assertIn("不保存秘密或整段原始聊天", instruction)
         self.assertIn("重啟後查回", instruction)
         self.assertIn("保留已有資料", instruction)
+
+    def test_packaged_install_instruction_matches_generator_and_storage_contract(self):
+        instruction = installation_instruction()
+        packaged = Path(__file__).resolve().parents[1] / "INSTALL_AI.txt"
+        self.assertEqual(packaged.read_text(encoding="utf-8"), instruction)
+        self.assertIn(f"schema {SCHEMA_VERSION}", instruction)
+        self.assertIn("docs/AGENT_CONTRACT.md", instruction)
+        self.assertIn("保留所有舊紀錄、ID、登入、附件及設定", instruction)
 
 
 if __name__ == "__main__":

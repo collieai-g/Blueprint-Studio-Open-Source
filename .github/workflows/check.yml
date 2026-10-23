@@ -31,14 +31,17 @@ jobs:
       - run: node --check library_web/connection.js
       - run: node --check library_web/update.js
       - run: node --check library_web/studio.js
+      - run: node --check library_web/agents.js
       - run: node --check library_web/navigation.js
       - name: Check real authenticated browser workflows
         run: |
           python -m pip install playwright
           python -m playwright install --with-deps chromium
           python tests/check_studio_browser.py
+          python tests/check_agents_browser.py
           python tests/check_layout_browser.py
           python tests/check_update_browser.py
+          python tests/check_connection_browser.py
       - run: python tools/build_web.py
       - run: git diff --exit-code -- web/icons.js dist/index.html
   release:
