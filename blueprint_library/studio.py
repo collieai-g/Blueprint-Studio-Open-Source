@@ -18,7 +18,7 @@ import uuid
 from urllib.parse import urlsplit
 
 from .studio_schema import SCHEMAS, SPECIALISTS, TEMPLATES, REFERENCE_KINDS
-from .store import LibraryError, _now
+from .store import LibraryError, SCHEMA_VERSION, _now
 
 ADMIN_ROLES = {'owner', 'admin'}
 PASSWORD_ROUNDS = 310_000
@@ -754,5 +754,5 @@ class Studio:
                     record['runtime_connected']=False
                     record['month_usage']=format(self._usage(conn,record['id'],date.today().strftime('%Y-%m')),'.2f')
         return {'identity':self.identity,'schemas':schema,'catalog':catalog,'preferences':self.preferences(),'summary':self.summary(),
-                'templates':TEMPLATES,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True},
-                'schema_version':5}
+                'templates':TEMPLATES,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True,'agent_workbench':True,'agent_contract':'blueprint-agent/1'},
+                'schema_version':SCHEMA_VERSION}

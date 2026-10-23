@@ -1,3 +1,30 @@
+# v2.6.0 驗證紀錄
+
+驗證日期：2026-10-23（香港）。使用隔離測試資料與臨時帳戶，未改動正式 Sites 或公司資料。
+
+- Python：234 個測試通過；Node：34 個測試通過。新增 Agent 規格、登入與來源權限、版本衝突、去重、同時開始、來源版本、失敗及取消、schema 5 → 6 原子遷移／失敗回滾、重啟及備份還原驗證。
+- 真實 HTTP、原生 MCP stdio、Sites MCP 適配器及生成的 gateway 交叉讀寫同一工作。完成／來源／設定讀回一致；包含無權限、過期版本、斷開連接、唯讀模式及大型合法清單情境。平台身份在隔離測試中使用替身，沒有宣稱正式 Sites 授權成功。
+- Chromium 桌面及 390px 手機通過 Agent 登記、沒有預設值的必填設定、動態表單、未保存內容保留、輪詢競態、交接文字、結果來源、失敗狀態及角色控制。原公司流程、排版、更新助手及接駁中心的瀏覽器回歸驗證全部通過。
+- 另由本次 Codex 經官方 MCP 客戶端讀取一份明確標示的架構測試資料，實際整理摘要、呼叫開始／完成、讀回，再從瀏覽器核對相同結果。這是本機協定驗收，並非已在日常 Codex 對話安裝外掛或正式 Sites 部署。
+- Docker 正式容器建置、非 root 初始化、42 個工具、完整備份下載／認證還原、相同 volume 重啟及原 ID／附件／登入保留均通過。另用 MCP SDK 2.3.0 驗證新舊 HTTP 協定的工具載入與寫入讀回。
+- 完整安裝包、介面更新包、Sites gateway 及既有離線網頁建置通過；套件標示 schema 6 與相容後台要求。獨立摘要 Agent 和開發範本均通過 manifest 驗證。
+
+本次沒有接駁客服、WhatsApp、付費模型 API 或背景 AI 執行器。Windows／正式雲端主機與使用者目前對話的工具載入，仍須按安裝環境驗收；CI 容器與 MCP 跨版本檢查繼續保留。測試資料、帳密、截圖及執行收據均保存在公開倉庫以外。
+
+重做：
+
+```sh
+python -m unittest discover -s tests -v
+node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_sites_mcp.mjs tests/test_sites_gateway.mjs tests/test_connection.cjs tests/test_update.cjs
+python tests/check_agents_browser.py
+python tests/check_studio_browser.py
+python tests/check_layout_browser.py
+python tests/check_update_browser.py
+python tools/build_web.py
+```
+
+以下保留舊版本驗證紀錄。
+
 # v2.5.1 驗證紀錄
 
 驗證日期：2026-10-22。本版修正安裝指令的任務選擇，沒有改動私人正式站、資料 schema 或原生備份實作。

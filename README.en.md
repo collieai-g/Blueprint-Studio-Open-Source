@@ -26,7 +26,7 @@ Blueprint Studio is an open-source AI workspace for running a company’s daily 
 
 In AI apps that support a split view, chat on the left and view your workspace on the right. You can also open it in a separate browser tab. **AI understands and organizes the work. The workspace stores it and makes it visible.**
 
-A new route under development uses a [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) to keep company data and backups independently manageable while retaining the original UI and MCP entrypoint. Adapter source and isolated tests are included; live hosting and platform acceptance remain installation work. The [Blueprint customer-service Agent roadmap](docs/AGENT_ROADMAP.md) distinguishes implemented foundations from future work. An autonomous customer-service executor is not included.
+A [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) keeps company data and backups independently manageable while retaining the original UI and MCP entrypoint. Live hosting and platform acceptance remain installation work. **2.6 adds a [shared workbench for independent Agents](docs/AGENT_ROADMAP.md)**: each Agent keeps its own repository and pinned version, while Studio manages settings, prepared jobs and results. The active Codex or compatible AI conversation performs the work. No autonomous customer-service or background AI executor is included.
 
 ## Two instructions: install once, update whenever needed
 
@@ -85,7 +85,7 @@ If the AI cannot read GitHub, download the full package ending in `-installer.zi
 | Area | What it helps you do |
 | --- | --- |
 | **Work** | See today’s priorities, inbox, tasks and project progress. Keep documents and completed work together. |
-| **AI specialists** | Set up roles, knowledge, rules and task templates. External replies and automated execution still require real services to be connected. |
+| **AI specialists** | Keep existing specialist settings and use the Agent workbench to register pinned packages, change settings, prepare jobs for the active AI conversation and inspect results. |
 | **Company** | Organize leads, quotes, contracts, invoices, payments, costs, team permissions and partners. |
 | **Inspiration** | Save websites, YouTube links, reference images and learning notes, and link them to relevant work. |
 | **Custom topics** | View related projects, documents and saved references together without duplicating the original records. |
@@ -121,11 +121,19 @@ The project started with ChatGPT and Codex workflows, but its connection method 
 | **Grok and other AI apps** | An app with compatible tool connections and the required installation capabilities can follow the same process. Not every product has been individually verified. |
 | **Chat or webpage preview only** | These can explain steps or display a page. A complete workspace also needs a running backend, sign-in, and lasting storage for records and attachments. |
 
-MCP is a shared way for AI apps to call workspace tools. This project provides 30 shared MCP tools. Native V2.5 adds two owner-only backup tools, for 32 in total. Compatible clients can use the same authorized backend. **A Sites-like feature is a possible deployment route; a complete installation still needs backend execution, storage, sign-in and tool connections.** You can also host the backend elsewhere and connect your AI to it.
+MCP is a shared way for AI apps to call workspace tools. This project provides 40 shared MCP tools, including 10 Agent tools. The native backend adds two owner-only backup tools, for 42 in total. Compatible clients can use the same authorized backend. **A Sites-like feature is a possible deployment route; a complete installation still needs backend execution, storage, sign-in and tool connections.** You can also host the backend elsewhere and connect your AI to it.
 
 A runnable Python backend is provided for local and cloud use, with deployment guidance for Docker, Render and Railway. For Sites, the project provides the original interface, tool contracts and backend adaptation specifications; there is no universal one-click full installation yet. External services such as automatic specialist replies, webpage capture and video processing also need to be connected separately. Downloading the interface does not start those services.
 
 [AI connection guide](docs/AI_CONNECTION.md) · [Local installation](docs/INSTALL_LOCAL.md) · [Cloud installation](docs/INSTALL_CLOUD.md)
+
+## Manage independent Agents in one workbench
+
+Each Agent lives in its own GitHub repository and follows the [shared contract](docs/AGENT_CONTRACT.md) for rules, settings, operations and a standard UI description. Studio renders common controls; its buttons and Codex MCP tools use the same backend data.
+
+Settings save directly. An operation needing AI first creates a job; tell Codex to process its job ID. Codex reads the selected sources, performs the work and saves a result that appears in Studio. A repository URL does not install code, and connecting an adapter does not prove the active chat has loaded tools. Buttons do not wake Codex automatically.
+
+Start a new package from the [Agent template](templates/agent/README.md), or connect the separately published [summary demo Agent](https://github.com/collieai-g/collieai-g-Blueprint-Agent-Summary). Validate the complete handoff with a summary of explicitly selected material before using it for daily work. Company data and results stay in the existing backend; Agent packages keep independent versions.
 
 ## Keep company information in your own workspace
 

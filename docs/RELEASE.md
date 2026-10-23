@@ -1,13 +1,13 @@
-# V2.5.1：全新安裝與舊站更新分開處理
+# V2.6.0：Codex 與獨立 Agent 共用工作台
 
-之前的安裝入口寫着「發現已有工作台就轉去更新」，可能把已選擇全新安裝的使用者帶回舊 Sites 的備份流程。本版優先遵從使用者的任務選擇：明確另裝原生工作台時，保留舊站不動，另用獨立服務、資料、備份及私人進度。
+本版新增 Agent 接駁規格、工作台介面及共用 API／MCP 操作。管理員接入已核對固定版本的 Agent 設定檔，在工作台準備工作，再由目前已連接的 Codex 對話讀取資料、處理及保存結果。
 
-- **全新安裝：** 使用 [INSTALL_AI.txt](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.5.1/INSTALL_AI.txt)。即使有舊站，已明確選擇另裝時，也不要求先完成舊站 D1／R2 備份、候選還原或封裝。新站不會自動取得舊資料。
-- **更新原站：** 使用 [UPDATE_AI.txt](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.5.1/UPDATE_AI.txt)。仍須保留原資料並完成可還原備份，不能因遇到阻礙而擅自換成空白新站。
-- **搬遷舊資料：** 另外驗證匯出、附件及身份；不能將獨立新安裝說成資料已搬遷。
+- Agent 以獨立倉庫開發，使用藍圖的共用表單、操作及結果版面。公開開發範本位於 `templates/agent/`，完整約定見 [Agent 接駁規格](AGENT_CONTRACT.md)。
+- 工作固定建立時的 Agent 版本及設定。來源範圍、開始、完成、失敗與取消由伺服器檢查；結果保留實際客戶端名稱及引用來源。
+- UI 與 MCP 使用相同身份、版本檢查及資料庫。新增 10 個共用工具，合共 40 個；原生及 Sites 原生接駁加上備份工具，共 42 個。
+- schema 5 → 6 追加 Agent 登記、工作及歷史資料表，保留原公司資料、附件與登入。原有備份與還原包含新表；舊版程式不能直接讀取 schema 6。
+- Sites 原生接駁包含新畫面及工具；正式平台登入、發佈、目前對話載入與端到端驗收仍須於安裝時完成。
 
-雙語 README、生成的安裝指令、AGENTS、開始使用、本機／雲端及更新指南已同步。[任務選擇規則](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.5.1/docs/INSTALL.md#先確定這次任務才讀取進度)說明新舊服務隔離及換對話接續方式。
+此版本不會按網頁按鈕自動喚起 Codex，沒有新增模型 API 呼叫、常駐執行器、WhatsApp 接駁或對外自動發送。Agent「已連接功能」表示後台已啟用相容接駁方式，不代表目前 Codex 對話已載入工具。
 
-保留 V2.5.0 的原版介面、schema 5、32 個原生 MCP 工具及備份維護功能。新安裝仍須完成自己的備份下載、還原登入、重啟保存與 AI 寫入驗收。本版沒有部署或改動私人工作台，也沒有新增 Sites 的 D1／R2 備份能力。
-
-下載 `-installer.zip` 作完整安裝；`-workbench.zip` 只是介面更新包。[驗證紀錄](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.5.1/VALIDATION.md)列明測試與限制。
+完整安裝使用 `-installer.zip`；`-workbench.zip` 只包含介面及接駁來源，需要相容的新後台。[驗證紀錄](../VALIDATION.md)另列測試證據與正式部署邊界。

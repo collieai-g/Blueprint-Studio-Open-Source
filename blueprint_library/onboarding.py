@@ -14,7 +14,7 @@ import re
 import shlex
 
 from .company import _fields as _company_fields
-from .store import LibraryError
+from .store import LibraryError, SCHEMA_VERSION
 
 
 _SOURCE_ROOT = Path(__file__).resolve().parents[1]
@@ -65,7 +65,11 @@ def installation_instruction() -> str:
         "沿用來源識別；修改使用版本檢查並保留可恢復歷史，不用隨機識別繞過衝突。"
         "不保存秘密或整段原始聊天，不聲稱能讀取其他平台不可見對話。"
         "目前沒有可用連線時，只輸出可匯入 JSON，不聲稱已儲存。"
-        "按 docs/V2.4.md 驗收五組側欄與公司資料流程。原生版以完整備份升至 schema 5，回復舊版須匹配舊資料快照。Sites 先按 docs/STUDIO_API.md 在原後台完成適配，單換 UI 不能完成升級。專員及外部截圖／影片服務未接入時保留等待狀態，不宣稱已自動執行。\n"
+        "按 docs/V2.4.md 驗收原有五組側欄與公司資料流程，並按 docs/AGENT_CONTRACT.md 核對 V2.6 Agent 工作台。"
+        f"原生版以完整備份及還原演練升至 schema {SCHEMA_VERSION}，追加 Agent 登記、工作及歷史表，保留所有舊紀錄、ID、登入、附件及設定；回復舊版須使用匹配的完整舊資料快照，不能只退回程式或降低資料版本。"
+        "Sites 先按 docs/STUDIO_API.md 及 docs/AGENT_CONTRACT.md 在原後台完成適配，單換 UI 不能完成升級。"
+        "如本次需要接入 Agent，沿用已選定的獨立倉庫，審核固定 commit 的套件後才登記及連接功能；由工作台建立指定來源的工作，再在目前已載入工具的 AI 對話處理、保存及讀回相同結果。"
+        "加入套件、連接接口及目前對話通過實測是不同狀態，按鈕不會自動喚起 Codex。既有專員及外部截圖／影片服務未接入時保留等待狀態，不宣稱已自動執行；本版沒有模型 API、背景 AI、WhatsApp 或排程服務。\n"
     )
 
 

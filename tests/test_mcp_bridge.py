@@ -14,7 +14,7 @@ from unittest.mock import patch
 from blueprint_library.mcp_server import Bridge, client_config
 from blueprint_folders import __version__
 from blueprint_library.server import initialize_library, make_server
-from blueprint_library.store import LibraryError, Store
+from blueprint_library.store import LibraryError, Store, SCHEMA_VERSION
 
 HAS_MCP = importlib.util.find_spec('mcp') is not None
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +68,37 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
             await self.session(work)
         self.assertEqual(self.store.workday_stats()['workdays'], 3)
 
+    async def test_agent_job_through_independent_stdio_client(self):
+        async def work(client):
+            manifest = {'contract_version': 1, 'id': 'stdio-summary', 'name': 'MCP 摘要測試',
+                'version': '1.0.0', 'adapter': 'connected_client', 'instructions': '只整理指定內容。',
+                'settings': [], 'operations': [{'id': 'summarize', 'name': '摘要',
+                    'instructions': '整理輸入內容。', 'input_fields': [
+                        {'key': 'text', 'label': '內容', 'type': 'textarea', 'required': True}]}],
+                'ui': {'layout': 'standard'}}
+            agent = (await self.call(client, 'agent_register', {'manifest_json': json.dumps(manifest),
+                'source_json': json.dumps({'repository': 'https://github.com/example/stdio-summary',
+                                          'revision': 'c' * 40})}))['agent']
+            agent = (await self.call(client, 'agent_action', {'id': agent['id'],
+                'expected_version': agent['version'], 'action': 'connect'}))['agent']
+            job = (await self.call(client, 'agent_job_create', {'agent_id': agent['id'],
+                'operation_id': 'summarize', 'title': '通訊協定測試工作',
+                'inputs_json': json.dumps({'text': '任務已完成；下一步核對。'}), 'refs_json': '[]'}))['job']
+            context = await self.call(client, 'agent_job_context', {'id': job['id']})
+            source = 'Independent MCP test client'
+            job = (await self.call(client, 'agent_job_action', {'id': job['id'],
+                'expected_version': job['version'], 'action': 'start',
+                'arguments_json': json.dumps({'source': source, 'context_digest': context['context_digest']})}))['job']
+            saved = (await self.call(client, 'agent_job_action', {'id': job['id'],
+                'expected_version': job['version'], 'action': 'complete',
+                'arguments_json': json.dumps({'result': '測試輸出：完成後核對。', 'source': source,
+                    'source_refs': [], 'context_digest': context['context_digest']})}))['job']
+            reread = (await self.call(client, 'agent_job_get', {'id': job['id']}))['job']
+            self.assertEqual(reread, saved)
+            self.assertEqual(reread['state'], 'completed')
+            self.assertEqual(reread['result_source'], source)
+        await self.session(work)
+
     async def test_files_collections_bookmarks_and_versioned_updates(self):
         async def work(client):
             collection = (await self.call(client, 'create_collection', {'name': 'Research'}))['collection']
@@ -88,7 +119,7 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
     async def test_studio_tools_use_same_backend_and_preserve_human_confirmation(self):
         async def work(client):
             state = await self.call(client, 'studio_state', {})
-            self.assertEqual(state['schema_version'], 5)
+            self.assertEqual(state['schema_version'], SCHEMA_VERSION)
             self.assertFalse(state['capabilities']['specialist_runtime'])
             record = (await self.call(client, 'studio_create', {'kind':'command','title':'MCP 真實工作',
                 'data_json':json.dumps({'instruction':'整理已提供資料'})}))['record']

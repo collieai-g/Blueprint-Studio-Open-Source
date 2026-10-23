@@ -13,6 +13,9 @@ from .store import LibraryError
 def handle(handler, method, path, query):
     if not path.startswith('/api/studio/'):
         return False
+    from .agents_http import handle as agent_route
+    if agent_route(handler, method, path, query):
+        return True
     studio=Studio(handler.server.store,handler.identity)
     def send(value,status=200):handler._json(value,status);return True
     def body():return handler._body()

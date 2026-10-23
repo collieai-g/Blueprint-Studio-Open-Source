@@ -15,6 +15,7 @@ from blueprint_library import backup
 from blueprint_library.server import initialize_library, make_server
 from blueprint_library.store import Store
 from blueprint_library.studio import Studio
+from blueprint_library.agents import Agents
 from tools.build_sites_gateway import build
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +52,10 @@ class SitesGatewayIntegrationTests(unittest.TestCase):
                 self.assertEqual(restored.get_item(evidence['item_id'])['title'], '跨入口資料')
                 self.assertEqual(restored.get_file(evidence['file_id'])[0].read_bytes(), b'original attachment')
                 self.assertEqual((root / 'restored/access.json').read_bytes(), (data / 'access.json').read_bytes())
+                restored_job = Agents(restored).get_job(evidence['agent_job_id'])
+                self.assertEqual(restored_job['state'], 'completed')
+                self.assertEqual(restored_job['result_source'], 'Gateway integration fixture')
+                self.assertEqual(restored_job['source_refs'], [{'kind': 'item', 'id': evidence['item_id']}])
             finally:
                 server.shutdown(); server.server_close(); thread.join()
             # A new process/adapter version can use the same data and credentials.

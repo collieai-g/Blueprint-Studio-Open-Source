@@ -19,4 +19,7 @@ def runtime_contract(*, managed):
         'backup_scope': ['database', 'attachments', 'login'] if managed else [],
         'off_host_backup': 'not_managed',
         'agent_executor': 'not_configured',
+        'agent_contract': 'blueprint-agent/1',
+        'agent_handoff': 'connected_client',
+        'autonomous_agents': False,
     }

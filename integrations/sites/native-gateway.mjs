@@ -10,7 +10,7 @@ const JSON_LIMIT = 512 * 1024;
 const FILE_LIMIT = Math.floor(20 * 1024 * 1024 * 4 / 3) + 128 * 1024;
 const ASSETS = new Set(['/', '/index.html', '/app.js', '/workdays.js', '/workspace.js',
   '/brand.svg', '/style.css', '/connection.js', '/update.js', '/connection-guide.json',
-  '/studio.js', '/studio.css', '/navigation.js', '/manifest.webmanifest', '/service-worker.js']);
+  '/studio.js', '/studio.css', '/agents.js', '/agents.css', '/navigation.js', '/manifest.webmanifest', '/service-worker.js']);
 const failure = (status, message) => { throw Object.assign(new Error(message), { status, safe: true }); };
 const jsonResponse = (value, status = 200) => new Response(JSON.stringify(value), {
   status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store',

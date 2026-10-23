@@ -46,3 +46,9 @@ MCP 動作：`to_task/ask_ai/create_quote/create_invoice/plan_command/complete_c
 先備份原正式資料，再對照 `tests/test_studio.py` 及 `tests/check_studio_browser.py` 驗證：原 ID／附件、五組頁面、命令與收件匣、報價發票、金額去重、版本衝突、角色越權、舊附件路徑、主題範圍、專員空狀態、手機、草稿保留。
 
 UI 包有 SHA-256 清單但沒有 Sites 後台。API 不相容時保留舊功能並顯示載入失敗，不應把升級標為完成。完整原生部署用 installer 包及 Python／Docker 路線。
+
+## V2.6 Agent 共用操作層
+
+新增 `/api/studio/agents` 與 `/api/studio/agent-jobs`，詳見 [Agent 接駁規格](AGENT_CONTRACT.md)。UI 和 MCP 共用這些路由、身份及版本檢查。Agent 登記與工作使用獨立資料表，schema 5 → 6 追加建立；原公司紀錄、附件及登入不變，備份涵蓋全部新表。舊版程式不能開啟 schema 6，回復時須使用相容程式及完整備份。
+
+`state` 新增 `agent_workbench: true` 及 `agent_contract: blueprint-agent/1`；`specialist_runtime` 和自動外發仍為 false。`/api/runtime` 的 `agent_handoff: connected_client` 表示由已連接 AI 客戶端交接工作，並非常駐執行器或目前對話已連接的證明。
