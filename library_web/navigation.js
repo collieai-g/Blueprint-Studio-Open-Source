@@ -38,6 +38,7 @@
     ['templates','從範本新增','plus','選擇一個角色，建立自己的專員。',undefined,'admin']
   ]);
   add('work',[
+      ['external-work','外部工作','automation','查看外部服務的紀錄、操作指令及實際結果。',undefined,'admin'],
       ['leads','潛在客戶','search','記錄公開商業資料和跟進進度。','lead'],
       ['quotes','報價與合約','document','由草稿、確認、簽署到建立發票。','quote'],
       ['customers','客戶檔案庫','folder','把聯絡、項目和往來內容放在一起。','customer'],

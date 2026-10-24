@@ -94,8 +94,8 @@ def main():
                 go('connections')
                 page.wait_for_selector('#studio-panel h1:text-is("舊接入紀錄")')
                 assert page.locator('#studio-panel h2:text-is("保留的接入設定（示範）")').is_visible()
-                assert page.locator('#studio-panel button').all_text_contents()==['查看紀錄']
-                assert page.locator('#studio-panel input, #studio-panel select, #studio-panel textarea, #studio-panel .studio-tabs').count()==0
+                assert page.locator('#studio-panel .studio-card button').all_text_contents()==['查看紀錄']
+                assert page.locator('#studio-panel .studio-card input, #studio-panel .studio-card select, #studio-panel .studio-card textarea, #studio-panel .studio-tabs').count()==0
                 assert page.locator('#studio-section-navigation [data-studio-route=connections]').count()==0
                 assert_no_connection_wizard()
                 assert page.request.get(base+'/api/studio/records/'+integration['id']).json()['record']['version']==integration['version']
@@ -208,12 +208,16 @@ def main():
                 assert '未接入' in page.locator('#studio-panel').inner_text()
                 page.screenshot(path=str(output/'studio-specialist.png'),full_page=True)
                 go('projects');page.screenshot(path=str(output/'studio-projects.png'),full_page=True)
-                page.locator('.studio-narrow-toggle').click();page.wait_for_function("() => document.body.classList.contains('studio-narrow')")
-                page.reload();page.wait_for_function('() => BlueprintStudio.isReady()');assert page.locator('body').evaluate("n => n.classList.contains('studio-narrow')")
+                assert page.locator('.studio-narrow-toggle').count() == 0
+                assert not page.locator('body').evaluate("n => n.classList.contains('studio-narrow')")
+                sidebar_width = page.locator('#sidebar').evaluate('n => n.getBoundingClientRect().width')
+                page.reload();page.wait_for_function('() => BlueprintStudio.isReady()')
+                assert page.locator('#sidebar').evaluate('n => n.getBoundingClientRect().width') == sidebar_width
+                assert page.locator('.topbar #studio-section-navigation').is_visible()
+                assert page.locator('.breadcrumb').count() == 0
                 assert page.locator('#settings-button [data-icon=settings] .ui-icon').is_visible()
                 open_settings()
                 page.locator('#settings-dialog [data-close]').click()
-                page.locator('.studio-narrow-toggle').click()
                 page.set_viewport_size({'width':390,'height':844})
                 page.locator('#mobile-menu').wait_for(state='visible')
                 assert page.locator('#studio-mobile-command').is_visible()
@@ -233,8 +237,8 @@ def main():
                 assert settings_box['x']>=0 and settings_box['x']+settings_box['width']<=390, settings_box
                 page.locator('#settings-dialog [data-close]').click()
                 # Old URLs route to the retained daily-work view.
-                page.goto(base+'/?view=workdays');page.wait_for_function("() => location.hash === '#/overview/workdays'")
-                assert page.locator('#workdays-panel').is_visible()
+                page.goto(base+'/?view=workdays');page.wait_for_function("() => BlueprintStudio.isReady() && location.hash === '#/overview/workdays'")
+                page.locator('#workdays-panel').wait_for(state='visible')
                 # An obsolete deep link must not trap the entire workbench behind retry.
                 page.set_viewport_size({'width':1440,'height':1050})
                 page.goto(base+'/#/record/missing');page.wait_for_function('() => BlueprintStudio.isReady()')
@@ -273,7 +277,7 @@ def main():
                 browser.close()
         finally:
             server.shutdown();server.server_close()
-    print('Workbench browser checks passed: minimal overview/optional real cards, no AI wizard/orientation, retained records and integration deep links, settings-only footer and secondary dialogs, own account/member permissions, archived data tab, CRUD, search, commands, quote-to-invoice, topics, all pages, drafts, narrow/sidebar/mobile, old URLs.')
+    print('Workbench browser checks passed: minimal overview/optional real cards, no AI wizard/orientation, retained records and integration deep links, settings-only footer and secondary dialogs, own account/member permissions, archived data tab, CRUD, search, commands, quote-to-invoice, topics, all pages, drafts, stable sidebar width/topbar/mobile, old URLs.')
 
 
 if __name__=='__main__':main()

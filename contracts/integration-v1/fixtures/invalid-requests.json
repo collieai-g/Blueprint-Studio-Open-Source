@@ -1,0 +1,76 @@
+[
+  {
+    "name": "client tenant claim",
+    "operation": "record",
+    "change": {
+      "tenant_id": "other-company"
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "noninteger source revision",
+    "operation": "record",
+    "change": {
+      "source_revision": true
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "invalid timestamp",
+    "operation": "record",
+    "change": {
+      "occurred_at": "yesterday"
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "unsupported schema",
+    "operation": "record",
+    "change": {
+      "schema_version": "2.0"
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "empty external id",
+    "operation": "record",
+    "change": {
+      "external_id": ""
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "undeclared action",
+    "operation": "command",
+    "change": {
+      "name": "send-real-message"
+    },
+    "expected_status": 403
+  },
+  {
+    "name": "unknown input field",
+    "operation": "command",
+    "change": {
+      "payload": {
+        "script": "alert(1)"
+      }
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "untrusted remote schema",
+    "operation": "manifest",
+    "change": {
+      "commands": [
+        {
+          "name": "takeover",
+          "label": "我接手",
+          "input_schema": {
+            "$ref": "https://untrusted.example/schema.json"
+          }
+        }
+      ]
+    },
+    "expected_status": 400
+  }
+]

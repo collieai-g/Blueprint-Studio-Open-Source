@@ -77,3 +77,45 @@ test('bounded fallback retains all explicitly selected modules in fragmented imp
     assert.equal(JSON.stringify(bounded),before);
   }
 });
+test('display text overrides survive layout presets and reject malformed content',()=>{
+  const text='<script>example only</script>\n我的工作台';
+  const value=all({texts:{heading:text,description:'今天的重點',date:'自訂日期',injected:'ignored'}});
+  assert.deepEqual(value.texts,{heading:text,description:'今天的重點',date:'自訂日期'});
+  for(const name of ['balanced','focus','compact']){
+    const changed=preset(name,43,value.mode,value.pages,value.visible,value.texts);
+    assert.deepEqual(changed.texts,value.texts);
+  }
+  assert.deepEqual(normalize({texts:{heading:42,description:'x'.repeat(2001),date:'bad\x00value'}}).texts,{});
+});
+test('only registered data-backed modules can join the existing overview geometry',()=>{
+  const workspace=require('../library_web/workspace.js');
+  assert.throws(()=>workspace.registerWidget({id:'remote-script',label:'invalid'}),/不支援/);
+  workspace.registerWidget({id:'projects',label:'工作項目'});
+  const saved={version:1,layoutVersion:4,columns:43,pages:1,visible:['heading','projects'],
+    cards:{heading:{x:2,y:0,w:16,h:3},projects:{x:0,y:8,w:20,h:12,collapsed:false}}};
+  const value=workspace.normalize(saved);
+  assert.deepEqual(value.visible,['heading','projects']);assert.equal(value.cards.projects.y,8);
+  const before=JSON.stringify(value);
+  check(workspace.fit(value,13),13,1,value.visible);
+  assert.equal(JSON.stringify(value),before);
+});
+test('overview customization selects only the active authenticated account scope',()=>{
+  const {scopedPreferences}=require('../library_web/workspace.js');
+  const scope='https://studio.example|owner';
+  const old=all({visible:['heading','files'],texts:{heading:'Last user private heading'}});
+  const saved={...old,scopes:{[scope]:all({visible:['heading','todos'],texts:{heading:'Owner title'}})}};
+  assert.equal(scopedPreferences(saved,scope).texts.heading,'Owner title');
+  const next=scopedPreferences(saved,'https://studio.example|staff');
+  assert.deepEqual(next.texts,{});assert.deepEqual(next.visible,['heading']);
+  assert.deepEqual(scopedPreferences(old,scope).texts,{});
+  assert.deepEqual(scopedPreferences(old,scope).visible,['heading','files']);
+});
+test('many selected cards remain readable on mobile without creating saved pages',()=>{
+  const workspace=require('../library_web/workspace.js');
+  for(let index=0;index<12;index++)workspace.registerWidget({id:'pin-studio_record-reading-'+index,label:'來源卡片'});
+  const value=workspace.normalize({version:1,layoutVersion:4,pages:1,columns:43,cards:{},visible:workspace.IDS});
+  const before=JSON.stringify(value),layout=workspace.fit(value,6);
+  assert.ok(layout);assert.deepEqual(Object.keys(layout).sort(),[...value.visible].sort());
+  let end=0;for(const rect of Object.values(layout)){assert.ok(rect.y>=end);end=rect.y+rect.h;assert.ok(rect.w<=6);}
+  assert.equal(JSON.stringify(value),before);assert.equal(value.pages,1);
+});

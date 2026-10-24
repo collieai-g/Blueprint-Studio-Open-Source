@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "record_type": "message",
+  "external_id": "fictional-message-001",
+  "event_id": "fictional-event-001",
+  "source_revision": 1,
+  "source": "fictional-service",
+  "occurred_at": "2026-10-24T08:00:00Z",
+  "payload": {
+    "thread_external_id": "fictional-thread-001",
+    "direction": "inbound",
+    "sender_type": "customer",
+    "text": "這是虛構驗收內容，請由同事跟進。"
+  },
+  "idempotency_key": "fictional-record-001",
+  "correlation_id": "fictional-case-001"
+}

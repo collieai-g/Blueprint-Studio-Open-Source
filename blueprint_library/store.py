@@ -27,7 +27,7 @@ from .workdays import WorkdayMixin
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
 MAX_TEXT_SIZE = 200 * 1024
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 _SOURCE_ROOT = Path(__file__).resolve().parent.parent
 _SOURCE_TYPES = {"website", "youtube", "code", "document", "image", "video", "other"}
 _SORT_ORDERS = {
@@ -210,6 +210,8 @@ class Store(CompanyMixin, WorkdayMixin):
             initialize_studio(conn)
             from .agents import initialize as initialize_agents
             initialize_agents(conn)
+            from .integrations import initialize as initialize_integrations
+            initialize_integrations(conn)
             conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def _collection_id(self, conn, value):

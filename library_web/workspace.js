@@ -1,7 +1,7 @@
 /* Grid preferences are local to this browser, separate from company data. */
 'use strict';
 ((root) => {
-  const KEY = 'blueprint-workspace-v2', BACKUP_KEY = 'blueprint-workspace-v2.2-backup', VISIBILITY_BACKUP_KEY = 'blueprint-workspace-v2.7.3-backup';
+  const KEY = 'blueprint-workspace-v2', BACKUP_KEY = 'blueprint-workspace-v2.2-backup', VISIBILITY_BACKUP_KEY = 'blueprint-workspace-v2.7.3-backup', CUSTOM_BACKUP_KEY = 'blueprint-workspace-v2.8-backup';
   const UNIT = 24, PAGE_ROWS = 48, MAX_PAGES = 3;
   const TEXT_IDS = ['heading', 'description', 'date'];
   const LABELS = { heading: '總覽標題', description: '副標題', date: '日期', files: '文件庫', links: '資料收藏', youtube: 'YouTube 學習', unfiled: '待整理', workdays: '最近工作', todos: '待辦事項', recent: '最近更新' };
@@ -9,6 +9,21 @@
     files: [0,4,10,7], links: [11,4,10,7], youtube: [22,4,10,7], unfiled: [33,4,10,7],
     workdays: [0,12,21,10], todos: [22,12,21,10], recent: [0,23,43,14] };
   const IDS = Object.keys(DEFAULTS);
+  const CORE_IDS=[...IDS];
+  let controller=null,accountScope='';
+  const pendingVisible=new Set();
+  function setScope(scope){
+    accountScope=typeof scope==='string'&&scope.length<=1200&&!/[\x00-\x1f\x7f]/.test(scope)?scope:'';
+    controller?.setScope();
+  }
+  function scopedPreferences(saved,scope=accountScope){
+    if(!scope)return normalize(saved);
+    if(saved?.scopes&&Object.hasOwn(saved.scopes,scope))return normalize(saved.scopes[scope]);
+    const result=normalize(saved);
+    result.texts={};
+    result.visible=saved?.scopes&&Object.keys(saved.scopes).length?['heading']:result.visible.filter(id=>CORE_IDS.includes(id));
+    return result;
+  }
   const isText = id => TEXT_IDS.includes(id);
   const minimum = id => isText(id) ? { w: 1, h: 1 } : { w: 6, h: id === 'recent' ? 6 : 4 };
   const integer = (v, fallback, min, max) => Number.isInteger(v) ? Math.max(min, Math.min(max, v)) : fallback;
@@ -25,8 +40,36 @@
       cards[id] = card;
     });
     const visible = ['heading', ...IDS.filter(id => id !== 'heading' && valid && value.layoutVersion === 4 && Array.isArray(value.visible) && value.visible.includes(id))];
+    const texts={};
+    for(const id of TEXT_IDS)if(typeof value?.texts?.[id]==='string'&&value.texts[id].length<=2000&&!value.texts[id].includes('\x00'))texts[id]=value.texts[id];
     return { version: 1, layoutVersion: 4, visible, mode: value?.mode === 'manual' ? 'manual' : 'ai',
-      pages, columns: integer(value?.columns, 43, 6, 96), cards };
+      pages, columns: integer(value?.columns, 43, 6, 96), cards, texts };
+  }
+  function registerWidget({id,label,node,defaults=[0,4,18,10],visible=false}) {
+    if(typeof id!=='string'||!/^(?:projects|inbox|ai-agents|ai-skills|commands|pin-(?:studio_record|agent|agent_job|skill|workday|item)-[a-zA-Z0-9_.-]{1,160})$/.test(id))throw new Error('不支援的總覽卡片。');
+    if(!IDS.includes(id)){
+      if(IDS.length>=40)throw new Error('總覽卡片已達上限。');
+      DEFAULTS[id]=[0,4,18,10].map((fallback,index)=>integer(defaults[index],fallback,0,index<2?143:48));IDS.push(id);
+    }
+    LABELS[id]=typeof label==='string'?label.slice(0,160):'已選卡片';
+    if(node&&typeof document!=='undefined'){
+      node.dataset.widget=id;
+      if(controller)controller.attach(id,node,visible);else document.getElementById('workspace-board')?.append(node);
+    }
+    if(visible&&!controller)pendingVisible.add(id);
+    return id;
+  }
+  function isVisible(id){
+    if(controller)return controller.visible(id);
+    if(pendingVisible.has(id))return true;
+    try{return scopedPreferences(JSON.parse(localStorage.getItem(KEY)||'null')).visible.includes(id);}catch{return id==='heading';}
+  }
+  function setVisible(id,visible=true){if(controller)return controller.setVisible(id,visible);if(visible)pendingVisible.add(id);else pendingVisible.delete(id);return true;}
+  function unregisterWidget(id){
+    if(!id.startsWith('pin-')||!IDS.includes(id))return false;
+    IDS.splice(IDS.indexOf(id),1);delete DEFAULTS[id];delete LABELS[id];pendingVisible.delete(id);
+    if(controller)controller.detach(id);else if(typeof document!=='undefined')document.querySelector(`[data-widget="${id}"]`)?.remove();
+    return true;
   }
   const overlaps = (a,b) => a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
   function findSpace(rect, placed, cols, pages) {
@@ -83,10 +126,21 @@
     // Responsive/legacy fallback: reduce only the display, never saved preferences.
     const compact=normalize(value);
     IDS.forEach(id=> { const min=minimum(id); Object.assign(compact.cards[id],{x:0,y:0,w:isText(id)?Math.min(columns,Math.max(2,compact.cards[id].w)):min.w,h:min.h}); });
-    return arrange(compact,columns);
+    const layout=arrange(compact,columns);if(layout)return layout;
+    if(columns<24&&columns<value.columns){
+      // A dense small screen remains a readable scroll view. This is display
+      // geometry only: it neither creates saved pages nor changes desktop cards.
+      const reading={};let y=0;
+      for(const id of IDS.filter(id=>value.visible.includes(id))){
+        const h=isText(id)?Math.max(1,Math.min(value.cards[id].h,3)):Math.max(minimum(id).h,Math.min(value.cards[id].h,10));
+        reading[id]={x:0,y,w:columns,h};y+=h+1;
+      }
+      return reading;
+    }
+    return null;
   }
-  function preset(name, columns=43, mode='ai', pages=1, visible=['heading']) {
-    const value=normalize({version:1,layoutVersion:4,cards:{},visible,mode,pages,columns});
+  function preset(name, columns=43, mode='ai', pages=1, visible=['heading'], texts={}) {
+    const value=normalize({version:1,layoutVersion:4,cards:{},visible,mode,pages,columns,texts});
     if(name==='focus') {
       Object.assign(value.cards.todos,{x:0,y:13,w:27,h:17});
       Object.assign(value.cards.workdays,{x:28,y:13,w:15,h:17});
@@ -106,32 +160,52 @@
     const $=id=>document.getElementById(id), board=$('workspace-board'); if(!board) return;
     let raw=null,saved;
     try { raw=localStorage.getItem(KEY);saved=JSON.parse(raw||'null'); } catch { /* Safe defaults. */ }
-    let preferences=normalize(saved),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame;
+    let preferences=scopedPreferences(saved),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame;
     const widgets=new Map([...board.querySelectorAll('[data-widget]')].filter(node=>IDS.includes(node.dataset.widget)).map(node=>[node.dataset.widget,node]));
     const status=$('workspace-sync'), columns=()=>integer(Math.floor(board.clientWidth/UNIT),6,6,96);
     const announce=text=>{$('board-announcement').textContent=text;};
     const persist=()=>{
       try {
+        if(raw&&!localStorage.getItem(CUSTOM_BACKUP_KEY))localStorage.setItem(CUSTOM_BACKUP_KEY,raw);
         if(raw && saved?.layoutVersion!==4 && !localStorage.getItem(VISIBILITY_BACKUP_KEY)) localStorage.setItem(VISIBILITY_BACKUP_KEY,raw);
         if(raw && ![3,4].includes(saved?.layoutVersion) && !localStorage.getItem(BACKUP_KEY)) localStorage.setItem(BACKUP_KEY,raw);
-        localStorage.setItem(KEY,JSON.stringify(preferences));
+        const retained=saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
+        const keptCards=Object.fromEntries(Object.entries(retained.cards||{}).filter(([id])=>!['connection','intro-title','intro-description'].includes(id)));
+        const next={...retained,...preferences,cards:{...keptCards,...preferences.cards},
+          ...(accountScope?{scopes:{...retained.scopes,[accountScope]:structuredClone(preferences)}}:{})};
+        localStorage.setItem(KEY,JSON.stringify(next));saved=next;
       } catch { announce('這個瀏覽器無法保存排版。公司資料不受影響。'); }
     };
     function applyMode() { document.body.dataset.entryMode=preferences.mode;if($('settings-entry-mode'))$('settings-entry-mode').value=preferences.mode; }
-    // Text remains plain text outside edit mode; controls do not occupy grid cells.
-    widgets.forEach((node,id)=>{
+    const textNodes=new Map(TEXT_IDS.map(id=>[id,widgets.get(id)?.querySelector('.text-content')?.firstElementChild||widgets.get(id)?.querySelector('.text-content')]));
+    const defaultText=new Map([...textNodes].map(([id,node])=>[id,node?.textContent||'']));
+    const textFields=document.createElement('fieldset');textFields.id='board-text-fields';textFields.hidden=true;textFields.className='board-visible-modules';
+    const legend=document.createElement('legend');legend.textContent='文字內容';
+    const textInput=document.createElement('textarea');textInput.id='board-text-content';textInput.maxLength=2000;textInput.rows=3;textInput.style.width='100%';textInput.setAttribute('aria-label','顯示文字內容');
+    const applyText=document.createElement('button');applyText.type='button';applyText.id='apply-board-text';applyText.className='button secondary small';applyText.textContent='保存文字';
+    const resetText=document.createElement('button');resetText.type='button';resetText.id='reset-board-text';resetText.className='button quiet small';resetText.textContent='還原預設文字';
+    textFields.append(legend,textInput,applyText,resetText);$('board-editor').append(textFields);
+    function setupWidget(node,id){
       for(const action of ['move','resize']) if(!node.querySelector(`[data-board-action="${action}"]`)) {
         const button=document.createElement('button');button.type='button';button.className=`widget-${action==='move'?'grip':'resize'}`;
         button.dataset.boardAction=action;button.textContent=action==='move'?'⠿':'⌟';
         button.setAttribute('aria-label',`${action==='move'?'移動':'調整大小'}：${LABELS[id]}。可使用方向鍵。`);node.append(button);
       }
       if(isText(id)) node.querySelector('.text-content').title=node.querySelector('.text-content').textContent;
+      if([...$('board-visible-fields').querySelectorAll('input')].some(input=>input.dataset.boardVisible===id))return;
       const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.dataset.boardVisible=id;toggle.disabled=id==='heading';
       toggle.addEventListener('change',()=>setVisible(id,toggle.checked));label.append(toggle,document.createTextNode(LABELS[id]));$('board-visible-fields')?.append(label);
-    });
+    }
+    widgets.forEach((node,id)=>setupWidget(node,id));
+    function applyTexts(){
+      for(const [id,target]of textNodes)if(target&&id!=='date'){
+        target.textContent=Object.hasOwn(preferences.texts,id)?preferences.texts[id]:defaultText.get(id);
+        target.parentElement.title=target.textContent;
+      }
+    }
     function updateDate() {
       const now=new Date(),date=$('board-date');date.dateTime=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-      date.textContent=rectangles.date?.w<=4?`${now.getMonth()+1}/${now.getDate()}`:now.toLocaleDateString('zh-HK',{month:'long',day:'numeric',weekday:'short'});
+      date.textContent=Object.hasOwn(preferences.texts,'date')?preferences.texts.date:rectangles.date?.w<=4?`${now.getMonth()+1}/${now.getDate()}`:now.toLocaleDateString('zh-HK',{month:'long',day:'numeric',weekday:'short'});
       date.parentElement.title=now.toLocaleDateString('zh-HK',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
     }
     function inspector() {
@@ -142,12 +216,16 @@
       $('board-width').value=r.w;$('board-width').min=minimum(selected).w;$('board-width').max=columns();
       $('board-height').value=r.h;$('board-height').min=minimum(selected).h;
       $('text-size-options').hidden=!isText(selected);
+      textFields.hidden=!isText(selected);
+      if(document.activeElement!==textInput)textInput.value=preferences.texts[selected]??textNodes.get(selected)?.textContent??'';
       $('board-page').replaceChildren(...Array.from({length:preferences.pages},(_,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`第 ${i+1} 頁`;return o;}));
       $('board-page').value=Math.floor(r.y/PAGE_ROWS);
     }
     function render(layout) {
       if(!board.clientWidth)return;
       rectangles=layout||fit(preferences,columns());
+      if(!rectangles){announce('版面空間不足。請減少卡片或增加頁面。');return;}
+      board.classList.toggle('responsive-reading',!editing&&Object.values(rectangles).some(rect=>rect.y+rect.h>preferences.pages*PAGE_ROWS));
       widgets.forEach((node,id)=>{
         const r=rectangles[id],card=preferences.cards[id];node.hidden=!r;if(!r)return;
         node.style.gridColumn=`${r.x+1} / span ${r.w}`;node.style.gridRow=`${r.y+1} / span ${r.h}`;
@@ -167,7 +245,7 @@
       $('board-page-count').textContent=`共 ${preferences.pages} 頁`;
       $('add-board-page').disabled=preferences.pages>=MAX_PAGES;
       $('board-extend-label').textContent=preferences.pages>=MAX_PAGES?'已達三頁上限。':'需要更多空間嗎？';
-      updateDate();inspector();
+      applyTexts();updateDate();inspector();
     }
     function adopt() { Object.keys(rectangles).forEach(id=>{const r=rectangles[id],card=preferences.cards[id];Object.assign(card,{x:r.x,y:r.y,w:r.w});if(!card.collapsed)card.h=r.h;});preferences.columns=columns(); }
     function change(id,changes) {
@@ -178,21 +256,28 @@
       render(layout);adopt();persist();render(layout);announce('排版已保存。');return true;
     }
     function setVisible(id,visible){
-      if(id==='heading'||!widgets.has(id))return;
-      const before=structuredClone(preferences);adopt();
+      if(id==='heading'||!widgets.has(id))return false;
+      const before=structuredClone(preferences);if(board.clientWidth)adopt();
       preferences.visible=IDS.filter(key=>key==='heading'||(key===id?visible:preferences.visible.includes(key)));
-      const layout=arrange(preferences,columns(),visible?id:undefined);
-      if(!layout){preferences=before;render();announce('這裏的空間不足。請縮小項目，或增加一頁。');return;}
-      if(visible)selected=id;render(layout);adopt();persist();render(layout);announce(visible?'已加入總覽。':'已從總覽收起，資料仍然保留。');
+      const layout=arrange(preferences,board.clientWidth?columns():preferences.columns,visible?id:undefined);
+      if(!layout){preferences=before;render();announce('這裏的空間不足。請縮小項目，或增加一頁。');return false;}
+      if(visible)selected=id;render(layout);if(board.clientWidth)adopt();persist();render(layout);announce(visible?'已加入總覽。':'已從總覽收起，資料仍然保留。');
+      root.dispatchEvent(new CustomEvent('blueprint:overview-visibility',{detail:{id,visible}}));return true;
     }
     function select(id){if(!preferences.visible.includes(id))return;selected=id;widgets.forEach((node,key)=>node.classList.toggle('selected',editing&&key===id));inspector();}
     $('edit-board').addEventListener('click',event=>{
       if(pointer)endPointer(true);
       editing=!editing;board.classList.toggle('editing',editing);$('board-editor').hidden=!editing;$('reset-board').hidden=!editing;
-      event.currentTarget.setAttribute('aria-pressed',String(editing));event.currentTarget.textContent=editing?'完成調整':'調整排版';render();
+      event.currentTarget.setAttribute('aria-pressed',String(editing));event.currentTarget.textContent=editing?'完成調整':'調整版面';render();
     });
-    $('reset-board').addEventListener('click',()=>{preferences=preset('balanced',columns(),preferences.mode,preferences.pages,preferences.visible);persist();render();announce('已還原排版。頁數和公司資料保持不變。');});
-    $('apply-board-preset').addEventListener('click',()=>{preferences=preset($('board-preset').value,columns(),preferences.mode,preferences.pages,preferences.visible);persist();render();announce('已套用排版。公司資料保持不變。');});
+    $('reset-board').addEventListener('click',()=>{preferences=preset('balanced',columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);persist();render();announce('已還原排版。頁數和公司資料保持不變。');});
+    $('apply-board-preset').addEventListener('click',()=>{preferences=preset($('board-preset').value,columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);persist();render();announce('已套用排版。公司資料保持不變。');});
+    applyText.addEventListener('click',()=>{
+      if(!isText(selected)||!textInput.reportValidity())return;
+      if(selected==='heading'&&!textInput.value.trim()){announce('標題不可空白。');return;}
+      preferences.texts[selected]=textInput.value;persist();render();announce('顯示文字已保存。');
+    });
+    resetText.addEventListener('click',()=>{if(!isText(selected))return;delete preferences.texts[selected];textInput.value='';persist();render();announce('已還原預設文字。');});
     $('board-selected').addEventListener('change',event=>select(event.target.value));
     $('apply-board-size').addEventListener('click',()=>{
       if(!$('board-width').reportValidity()||!$('board-height').reportValidity())return;
@@ -261,8 +346,25 @@
     $('refresh-workspace').addEventListener('click',sync);
     window.addEventListener('pagehide',()=>{if(pointer)endPointer(true);});
     new ResizeObserver(()=>{if(pointer)endPointer(true);render();}).observe(board);
+    controller={visible:id=>preferences.visible.includes(id),setVisible,
+      setScope(){
+        try{saved=JSON.parse(localStorage.getItem(KEY)||'null');}catch{saved=null;}
+        preferences=scopedPreferences(saved);selected='heading';render();
+      },
+      attach(id,node,visible){
+        board.append(node);widgets.set(id,node);preferences=normalize(preferences);setupWidget(node,id);
+        if(visible)setVisible(id,true);else render();
+      },
+      detach(id){
+        widgets.get(id)?.remove();widgets.delete(id);delete preferences.cards[id];preferences.visible=preferences.visible.filter(value=>value!==id);
+        if(saved?.cards)delete saved.cards[id];
+        [...$('board-visible-fields').querySelectorAll('input')].find(input=>input.dataset.boardVisible===id)?.closest('label')?.remove();
+        if(selected===id)selected='heading';persist();render();
+        root.dispatchEvent(new CustomEvent('blueprint:overview-visibility',{detail:{id,visible:false}}));
+      },render};
+    for(const id of pendingVisible)setVisible(id,true);pendingVisible.clear();
     applyMode();render();status.textContent='';status.dataset.state='ready';
   }
-  const api={normalize,arrange,fit,preset,overlaps,start,KEY,BACKUP_KEY,VISIBILITY_BACKUP_KEY,IDS,TEXT_IDS,UNIT,PAGE_ROWS,MAX_PAGES,minimum};
+  const api={normalize,arrange,fit,preset,overlaps,start,registerWidget,unregisterWidget,setVisible,isVisible,setScope,scopedPreferences,CORE_IDS,KEY,BACKUP_KEY,VISIBILITY_BACKUP_KEY,CUSTOM_BACKUP_KEY,IDS,TEXT_IDS,UNIT,PAGE_ROWS,MAX_PAGES,minimum};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BlueprintWorkspace=api;
 })(globalThis);

@@ -6,6 +6,7 @@
   const button=(label,run,cls='button secondary small')=>{const e=node('button',cls,label);e.type='button';e.addEventListener('click',()=>Promise.resolve().then(run).catch(error=>app.notice(error.message,true)));return e;};
   let app,state,route='overview',activeTab='',request=0,editing=null,actionSubmit=null,activeRecord=null,navigating=false,ready=false,initialized=false,navigationRequest=0;
   let choices=[],searchText='',pageOffset=0,lastNav='',dragTopic=null;
+  let pageLayout=null,layoutRenderRequest=0;
   const pageNames={leads:'潛在客戶分析',quotes:'智能報價單與合約流水線',customers:'現有客戶檔案庫',feedback:'客戶反饋與客訴追蹤表',suppliers:'供應商與合作夥伴',revenue:'公司營收與發票',costs:'雲端伺服器與 AI 算力成本'};
   const icons={project:'checklist',inbox:'inbox',command:'automation',task:'checklist',lead:'search',quote:'document',customer:'folder',feedback:'chat',member:'settings',supplier:'link',invoice:'document',cost:'automation',specialist:'chat',conversation:'chat',scenario:'checklist',topic:'folder',inspiration:'bookmark',report:'document'};
   const admin=()=>['owner','admin'].includes(state?.identity.role);
@@ -15,6 +16,7 @@
   const schema=kind=>state.schemas[kind];
   function definition(value=route){
     if(NAV.pages[value])return NAV.pages[value];
+    if(value.startsWith('external-work/'))return {...NAV.pages['external-work'],route:value,parentRoute:'external-work'};
     if(value.startsWith('agent/')||value.startsWith('agent-job/'))return {...NAV.pages.agents,route:value,label:value.startsWith('agent-job/')?'Agent 工作':'Agent 設定',parentRoute:'agents'};
     if(value.startsWith('specialist/'))return {...NAV.pages['specialist/specialist-website'],route:value,label:catalog('specialist').find(r=>r.id===value.split('/')[1])?.title||'AI 專員'};
     if(value.startsWith('topic/'))return {...NAV.pages.topics,route:value,label:catalog('topic').find(r=>r.id===value.split('/')[1])?.title||'自訂主題'};
@@ -40,8 +42,8 @@
   }
   function renderNavigation(force=false){
     const preferences=state.preferences.data;
-    document.body.classList.toggle('studio-narrow',!!preferences.narrow);
-    const signature=JSON.stringify([route,state.catalog.map(r=>[r.id,r.version,r.title,r.visibility]),preferences,state.summary.counts]);
+    document.body.classList.remove('studio-narrow');
+    const signature=JSON.stringify([route,state.catalog.map(r=>[r.id,r.version,r.title,r.visibility]),preferences,state.summary.counts,state.capabilities?.integration_v1,state.integration_count]);
     if(!force&&lastNav===signature)return;lastNav=signature;
     const holder=$('studio-navigation');holder.replaceChildren();
     const current=definition();
@@ -56,6 +58,7 @@
     const secondary=$('studio-section-navigation');secondary.replaceChildren();
     const group=NAV.groups.find(group=>group.id===current.group);
     const items=(group?.items||[]).filter(Array.isArray).filter(entry=>entry[5]!=='admin'||admin());
+    if(group?.id==='work'&&admin()&&state.capabilities?.integration_v1&&state.integration_count>0)items.push(['external-work','外部工作','automation']);
     secondary.hidden=items.length<2;
     items.forEach(([value,label,icon])=>{
       const link=routeButton(value,label,icon);link.className='studio-section-link';
@@ -99,6 +102,7 @@
     else if(record.kind==='task')actions.append(button(record.data.done?'設為未完成':'完成',()=>patch(record,{data:{done:!record.data.done}})));
     else actions.append(button('查看',()=>openRecord(record.id)));
     if(!record.archived&&['inbox','inspiration','report','feedback'].includes(record.kind))actions.append(button('轉成待辦',()=>run(record,'to_task')));
+    if(!record.archived)actions.append(button('放到總覽',()=>root.BlueprintOverviewCards.pin({kind:'studio_record',id:record.id,label:record.title})));
     card.append(actions);return card;
   }
   function empty(copy,action){const e=node('div','studio-empty');e.append(app.icon('folder'),node('h3','',copy),node('p','muted','新增內容，或交給已連接的 AI 整理。'));if(action)e.append(action);return e;}
@@ -124,7 +128,87 @@
     $('breadcrumb-current').textContent=page.label;app.closeSidebar();renderNavigation(true);
     await renderPage();
   }
+  function resetPageLayout(){
+    pageLayout?.destroy();pageLayout=null;
+    if(route!=='overview'&&$('workspace-board').classList.contains('editing'))$('edit-board').click();
+    const toolbar=$('dashboard-panel').querySelector('.board-toolbar');
+    if(toolbar&&!toolbar.contains($('edit-board'))){
+      const actions=toolbar.querySelector('.board-actions');actions.append($('edit-board'),$('reset-board'));
+    }
+    if(toolbar)toolbar.hidden=false;
+    $('page-layout-tools').replaceChildren();
+  }
   async function renderPage(){
+    const layoutRequest=++layoutRenderRequest;
+    resetPageLayout();
+    const work=renderPageContent(),sequence=request;
+    await work;
+    if(layoutRequest!==layoutRenderRequest||sequence!==request)return;
+    if(!pageLayout)personalizeCurrentPage();
+  }
+  function layoutCallbacks(sequence){
+    return {beforeRender:()=>{if(sequence===request)resetPageLayout();},
+      onRendered:()=>{if(sequence===request)personalizeCurrentPage();}};
+  }
+  function cardPin(element){
+    const data=element.dataset;
+    if(data.recordId)return {kind:'studio_record',id:data.recordId};
+    if(data.agentId)return {kind:'agent',id:data.agentId};
+    if(data.agentJobId)return {kind:'agent_job',id:data.agentJobId};
+    if(data.workdayId)return {kind:'workday',id:data.workdayId};
+    if(data.itemId)return {kind:'item',id:data.itemId};
+    return null;
+  }
+  function personalizeCurrentPage(){
+    if(!ready||!root.BlueprintPageLayout)return;
+    if(pageLayout){if(pageLayout.isBusy())return;pageLayout.destroy();pageLayout=null;}
+    if(route==='overview'){
+      $('page-layout-tools').append($('edit-board'),$('reset-board'));
+      $('dashboard-panel').querySelector('.board-toolbar').hidden=true;
+      return;
+    }
+    const panel=!$('studio-panel').hidden?$('studio-panel'):!$('workdays-panel').hidden?$('workdays-panel'):$('library-panel');
+    if(!panel||panel.hidden)return;
+    const items=[],used=new Set();
+    const add=(element,id,label,type='card',textNode=null,pin=null)=>{
+      if(!element||used.has(element))return;
+      used.add(element);items.push({id,label,node:element,type,textNode: textNode||undefined,
+        required:type==='text'&&id==='title',pin:pin||undefined});
+    };
+    const title=panel.querySelector('.studio-page-header h1');
+    const subtitle=panel.querySelector('.studio-page-header p');
+    add(title,'title','頁面標題','text',title);
+    add(subtitle,'subtitle','頁面說明','text',subtitle);
+    if(!title&&!$('view-heading').hidden){
+      add($('page-title'),'title','頁面標題','text',$('page-title'));
+      add($('page-description'),'subtitle','頁面說明','text',$('page-description'));
+    }
+    const candidates=[...panel.querySelectorAll('.studio-card, .studio-detail, .work-card, .work-todo, .item-card, .skill-brief-form, .skill-preview, .skill-reusable-rules, .integration-compose')];
+    const cards=candidates.filter(element=>!candidates.some(parent=>parent!==element&&parent.contains(element)));
+    cards.forEach((element,index)=>{
+      const pin=cardPin(element),id=element.dataset.todoId?'todo-'+element.dataset.todoId:pin?pin.kind+'-'+pin.id:element.id||'section-'+index;
+      const label=element.querySelector('h2,h3,.studio-record-title,legend')?.textContent?.trim()||'內容區塊 '+(index+1);
+      add(element,id,label,'card',null,pin);
+    });
+    if(!cards.length){
+      [...panel.children].filter(element=>!element.hidden&&!element.matches('.studio-page-header,.page-layout-editor,.pagination')&&!used.has(element)).forEach((element,index)=>{
+        if(element.matches('p,h2,h3'))add(element,element.id||'text-'+index,element.textContent.trim().slice(0,40)||'說明文字','text',element);
+        else add(element,element.id||'content-'+index,element.getAttribute('aria-label')||element.querySelector('h2,h3,legend')?.textContent||'內容區塊 '+(index+1));
+      });
+    }
+    if(panel===$('workdays-panel')||panel===$('library-panel')){
+      for(const id of cards.length?[]:panel===$('workdays-panel')?['work-list','work-empty']:['item-grid','empty-state']){
+        const element=$(id);if(element&&!element.hidden&&!used.has(element))add(element,id,id==='work-list'?'工作卡片':id==='item-grid'?'文件與收藏':'空白提示');
+      }
+    }
+    if(!items.length)add(panel.firstElementChild,'content','頁面內容');
+    const layoutRoute=route.startsWith('specialist/')&&activeTab?route+'/'+activeTab:route;
+    pageLayout=root.BlueprintPageLayout.mount({route:layoutRoute,scope:location.origin+'|'+state.identity.username,
+      container:panel,items,toolbarContainer:$('page-layout-tools'),
+      onPin:descriptor=>root.BlueprintOverviewCards.pin(descriptor),
+      isBusy:()=>!!document.querySelector('dialog[open]')});
+  }
+  async function renderPageContent(){
     const seq=++request;
     if(route==='overview'||route==='overview/workdays'||route==='overview/todos'||route==='documents'){
       navigating=true;app.setView(route==='documents'?'files':route.endsWith('/workdays')?'workdays':route.endsWith('/todos')?'todos':'dashboard');navigating=false;
@@ -132,11 +216,12 @@
       const bar=$('studio-view-tabs');bar.hidden=route!=='documents'&&route!=='overview/todos';bar.replaceChildren();
       if(route==='documents')bar.append(tabs([['documents','文件'],['reports','報告與交付物']],v=>v==='documents'?navigate(v):navigate('reports'),'documents'));
       if(route==='overview/todos'){const wrap=node('div','studio-inline-tasks');const data=await api('/records?kind=task&limit=100');if(seq!==request)return;wrap.append(header('其他待辦','由收件匣、靈感和項目加入。',[button('新增待辦',()=>editRecord('task'))]),...data.records.map(recordCard));bar.append(wrap);}
-      renderOverview();return;
+      await renderOverview();return;
     }
     hideLegacy();const panel=$('studio-panel');panel.replaceChildren(node('p','muted','正在讀取…'));
-    if(route==='skills')return root.BlueprintSkills.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request});
-    if(route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))return root.BlueprintAgents.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request});
+    if(route==='skills')return root.BlueprintSkills.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request,...layoutCallbacks(seq)});
+    if(route==='external-work'||route.startsWith('external-work/'))return root.BlueprintIntegrations.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request,...layoutCallbacks(seq)});
+    if(route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))return root.BlueprintAgents.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request,...layoutCallbacks(seq)});
     if(route.startsWith('specialist/'))return specialistPage(route.split('/')[1],seq);
     if(route.startsWith('topic/'))return topicPage(route.split('/')[1],seq);
     if(route.startsWith('record/'))return detailPage(route.split('/')[1],seq);
@@ -154,6 +239,7 @@
   }
   async function listPage({kind,category='',archived=false,title,description,seq,extra=[]}){
     const data=await api('/records?'+new URLSearchParams({kind,category,archived:archived?'1':'0',q:searchText,offset:pageOffset,limit:30}));if(seq!==request)return;
+    resetPageLayout();
     const panel=$('studio-panel'),actions=[];
     if(!archived){actions.push(button('交給 AI',()=>openCommand('請幫我整理'+title+'。')));actions.push(button('新增'+(schema(kind)?.label||'內容'),()=>kind==='inspiration'?addInspiration():editRecord(kind)));}
     actions.push(button('釘選頁面',()=>pinPage()));
@@ -167,6 +253,7 @@
     const filter=node('form','studio-filter');filter.append(search);const submit=node('button','button secondary small','搜尋');submit.type='submit';filter.append(submit);filter.addEventListener('submit',event=>{event.preventDefault();searchText=search.value;pageOffset=0;listPage({kind,category,archived,title,description,seq:++request,extra}).catch(e=>app.notice(e.message,true));});panel.append(filter);
     const grid=node('div','studio-grid');data.records.forEach(r=>grid.append(recordCard(r)));panel.append(data.records.length?grid:empty(archived?'沒有已封存的內容。':'這裏還沒有內容。'));
     const pagination=node('div','pagination');if(pageOffset)pagination.append(button('上一頁',()=>{pageOffset=Math.max(0,pageOffset-30);return listPage({kind,category,archived,title,description,seq:++request,extra});}));pagination.append(node('span','muted',`共 ${data.total} 項`));if(pageOffset+30<data.total)pagination.append(button('下一頁',()=>{pageOffset+=30;return listPage({kind,category,archived,title,description,seq:++request,extra});}));panel.append(pagination);
+    personalizeCurrentPage();
   }
   function openLegacyLibrary(view){navigating=true;app.setView(view);navigating=false;$('studio-panel').hidden=true;$('studio-view-tabs').hidden=false;$('studio-view-tabs').replaceChildren(button('返回 '+definition().label,()=>renderPage(),'text-button'));}
   function financeSummary(){
@@ -235,6 +322,8 @@
     const panel=$('studio-panel');panel.replaceChildren(header(record.title,'先設定角色與規則，再接入實際服務。',[button('釘選',()=>pinRecord(record)),...(admin()?[button(record.data.state==='paused'?'繼續設定':'暫停',()=>run(record,'specialist_state',{state:record.data.state==='paused'?'configuring':'paused'}))]:[])]));
     const body=node('div','studio-tab-content');const views=[['overview','總覽'],['settings','設定'],['conversations','對話紀錄'],['tests','測試'],['metrics','數據']];
     const select=async key=>{
+      if(seq!==request)return;
+      resetPageLayout();
       activeTab=key;bar.replaceWith(makeBar());body.replaceChildren();
       if(key==='overview'){
         body.append(node('p','studio-callout',statusLabel('specialist','state',record.data.state||'unconnected')+'。目前是專員設定空間，尚未接入對外執行服務。'),node('h2','',record.data.role||'先寫下這位專員的工作。'),node('p','muted',record.data.goal||'設定目標、知識、渠道、技能、模型和交接規則。'),...(admin()?[button('設定七個部分',()=>editRecord('specialist',record))]:[]));
@@ -246,9 +335,10 @@
         if(!metric?.conversations)body.append(empty('尚未有正式對話紀錄。'));else{const row=node('div','studio-summary-row');[['今日對話',metric.conversations],['自動處理',metric.automatic_ratio+'%'],['需要人手',metric.human],['錯誤',metric.errors]].forEach(([label,value])=>row.append(node('p','',label+'：'+value)));body.append(row);}
       }else{
         const kind=key==='tests'?'scenario':'conversation';const result=await api('/records?'+new URLSearchParams({kind,relation:id,limit:100}));
-        if(activeTab!==key)return;
+        if(activeTab!==key||seq!==request)return;
         body.append(node('p','studio-callout',key==='tests'?'可先保存測試問題及預期表現。沒有模型接入時，不會生成模擬回覆。':'目前未接入渠道。可透過已授權工具匯入真實對話，並保留來源。'),button(key==='tests'?'新增情景':'新增真實紀錄',()=>editRecord(kind,null,{specialist_id:id})),...(result.records.length?result.records.map(recordCard):[empty(key==='tests'?'還沒有情景測試。':'未接入，尚未收到對話。')]));
       }
+      if(seq===request&&activeTab===key)personalizeCurrentPage();
     };
     let bar;function makeBar(){bar=tabs(views,select,activeTab||'overview');return bar;}panel.append(makeBar(),body);await select(activeTab||'overview');
   }
@@ -397,7 +487,7 @@
     let holder=$('studio-preferences');if(!holder){holder=node('section','studio-preferences');holder.id='studio-preferences';$('settings-dialog').append(holder);}
     document.querySelectorAll('[data-admin-only]').forEach(section=>{section.hidden=!admin();});
     holder.replaceChildren(node('h3','','登入帳戶的偏好'),node('p','muted','以下選擇保存在這個工作台，按登入帳戶分開。'));
-    [['narrow','使用窄側欄'],['notifications','顯示工作台提醒'],['monthly_review','每月建立一次靈感回顧指令']].forEach(([key,title])=>{
+    [['notifications','顯示工作台提醒'],['monthly_review','每月建立一次靈感回顧指令']].forEach(([key,title])=>{
       const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.checked=!!state.preferences.data[key];input.addEventListener('change',()=>savePrefs({[key]:input.checked}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',title));holder.append(label);
     });
     holder.append(node('p','muted','側欄固定顯示總覽、工作、AI 和資料。'));
@@ -412,6 +502,7 @@
     if(!state)return;
     const reminders=$('studio-reminders');if(reminders){reminders.replaceChildren();if(state.preferences.data.notifications&&state.summary.reminders.length){reminders.append(node('h4','','公司提醒'));state.summary.reminders.slice(0,3).forEach(r=>reminders.append(button(r.reason+' · '+r.title,()=>openRecord(r.id),'studio-focus-line')));}}
     const tasks=await api('/records?kind=task&limit=100');const holderTasks=$('studio-dashboard-tasks');holderTasks.replaceChildren();tasks.records.filter(r=>!r.data.done).slice(0,5).forEach(r=>{const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.addEventListener('change',()=>patch(r,{data:{done:true}}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',r.title));holderTasks.append(label);});
+    if(route==='overview')await root.BlueprintOverviewCards.refresh();
   }
   async function refresh({background=false,transition=navigationRequest,renderCurrent=false}={}){
     if(!ready)return false;
@@ -419,7 +510,7 @@
     if(background&&(app.isBusy()||transition!==navigationRequest))return false;
     if(state.preferences.version>next.preferences.version)next.preferences=state.preferences;
     state=next;renderNavigation();preferencesPanel();await renderOverview();
-    if(renderCurrent&&transition===navigationRequest&&!route.startsWith('overview')&&route!=='documents'&&!(route==='skills'&&root.BlueprintSkills?.isBusy()))await renderPage();
+    if(renderCurrent&&transition===navigationRequest&&!route.startsWith('overview')&&route!=='documents'&&!agentBusy())await renderPage();
     return true;
   }
   async function search(query){const result=await api('/records?'+new URLSearchParams({q:query,limit:12}));return result;}
@@ -434,7 +525,17 @@
     app=context;
     state=await api('/state');
     ready=true;$('legacy-navigation').hidden=true;$('studio-sidebar-tools').hidden=false;$('studio-nav-scroll').hidden=false;$('studio-account').hidden=false;$('studio-mobile-command').hidden=false;
-    const top=$('studio-sidebar-tools');top.append(button('收窄側欄',()=>savePrefs({narrow:!state.preferences.data.narrow}),'studio-narrow-toggle'));
+    $('studio-sidebar-tools').replaceChildren();
+    root.BlueprintOverviewCards.init({api:app.api,navigate,notice:app.notice,identity:state.identity,
+      openWorkday:id=>root.BlueprintWorkdays.openReport(id),openItem:id=>app.openDetail(id)});
+    document.addEventListener('blueprint:before-content-render',event=>{
+      const expected={workdays:'overview/workdays',todos:'overview/todos',files:'documents'}[event.detail?.view];
+      if(expected===route)resetPageLayout();
+    });
+    document.addEventListener('blueprint:content-rendered',event=>{
+      const expected={workdays:'overview/workdays',todos:'overview/todos',files:'documents'}[event.detail?.view];
+      if(expected===route&&!pageLayout?.isBusy())personalizeCurrentPage();
+    });
     const company=document.querySelector('.workspace-label');company.tabIndex=0;company.setAttribute('role','button');company.setAttribute('aria-label','切換公司與工作空間');company.addEventListener('click',companySwitcher);company.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();companySwitcher();}});
     $('studio-account').addEventListener('click',()=>{$('settings-dialog').close();navigate('account').catch(error=>app.notice(error.message,true));});
     $('studio-mobile-command').addEventListener('click',()=>openCommand());
@@ -468,6 +569,8 @@
     const options=[['task','待辦'],['project','項目'],['inspiration','靈感'],['customer','客戶'],['topic','主題'],...(admin()?[['specialist','AI 專員']]:[])];
     options.forEach(([kind,label])=>$('studio-action-fields').append(button(label,()=>{closeDialog('studio-action-dialog');$('studio-action-submit').hidden=false;return kind==='inspiration'?addInspiration():kind==='specialist'?navigate('templates'):editRecord(kind);})));$('studio-action-dialog').addEventListener('close',()=>{$('studio-action-submit').hidden=false;},{once:true});
   }
-  const agentBusy=()=>((route==='skills'&&root.BlueprintSkills?.isBusy())||((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy()));
-  root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,refreshVisible:async()=>{if(!ready||app.isBusy()||agentBusy())return false;const transition=navigationRequest;if(await refresh({background:true,transition})===false||app.isBusy()||agentBusy()||transition!==navigationRequest)return false;if(!route.startsWith('overview')&&route!=='documents')await renderPage();return true;}};
+  const agentBusy=()=>!!pageLayout?.isBusy()||((route==='skills'&&root.BlueprintSkills?.isBusy())||((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy())||((route==='external-work'||route.startsWith('external-work/'))&&root.BlueprintIntegrations?.isBusy()));
+  root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,
+    isLayoutBusy:()=>!!pageLayout?.isBusy(),
+    refreshVisible:async()=>{if(!ready||app.isBusy()||agentBusy())return false;const transition=navigationRequest;if(await refresh({background:true,transition})===false||app.isBusy()||agentBusy()||transition!==navigationRequest)return false;if(!route.startsWith('overview')&&route!=='documents')await renderPage();return true;}};
 })(globalThis);

@@ -1,0 +1,45 @@
+/* A shared 24px presentation grid; records and form elements remain native nodes. */
+.page-layout-toolbar { display:flex; align-items:center; gap:8px; }
+.page-layout-editor { display:grid; gap:16px; margin:0 0 24px; padding:18px; border:1px solid var(--line,#ddd); border-radius:10px; background:rgba(255,255,255,.96); }
+.page-layout-editor[hidden], .page-layout-item[hidden], .page-layout-content[hidden] { display:none !important; }
+.page-layout-editor p { margin:0; font-size:12px; }
+.page-layout-editor fieldset { border:0; margin:0; padding:0; }
+.page-layout-editor legend { margin-bottom:10px; font-size:12px; font-weight:600; }
+.page-layout-visible { display:flex; flex-wrap:wrap; gap:10px 18px; font-size:12px; }
+.page-layout-visible label { display:flex; align-items:center; gap:6px; }
+.page-layout-size-fields { display:flex; flex-wrap:wrap; align-items:end; gap:12px; }
+.page-layout-field { display:grid; gap:6px; font-size:12px; }
+.page-layout-field input { width:100px; }
+.page-layout-field input, .page-layout-field select, .page-layout-field textarea { min-width:0; max-width:100%; border:1px solid var(--line,#ddd); border-radius:6px; padding:8px 10px; background:#fff; font:inherit; }
+.page-layout-field textarea { width:100%; box-sizing:border-box; resize:vertical; }
+.page-layout-field .button { justify-self:start; }
+.page-layout-board { display:grid; grid-auto-rows:24px; justify-content:start; position:relative; margin-top:12px; }
+.page-layout-item { min-width:0; min-height:0; position:relative; box-sizing:border-box; overflow:hidden; }
+.page-layout-content { height:100%; overflow:auto; box-sizing:border-box; min-width:0; min-height:0; }
+.page-layout-card { border:1px solid var(--line,#ddd); border-radius:10px; background:rgba(255,255,255,.94); }
+.page-layout-card > .page-layout-content > :is(.studio-card,.studio-detail,.studio-list,.studio-empty) { border:0; margin:0; max-width:none; min-width:0; box-sizing:border-box; }
+.page-layout-text { background:none; border:0; }
+.page-layout-text > .page-layout-content { overflow:hidden; }
+.page-layout-text :is(h1,h2,p) { margin:0; overflow-wrap:anywhere; }
+.page-layout-text h1 { font-size:clamp(18px,2.4vw,30px); line-height:1.3; }
+.page-layout-text p { font-size:13px; line-height:1.7; white-space:pre-wrap; }
+.page-layout-controls { display:none; position:absolute; z-index:2; top:2px; left:2px; right:2px; align-items:center; gap:6px; min-width:0; background:rgba(249,250,251,.96); border-radius:5px; font-size:10px; }
+.page-layout-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.page-layout-controls button, .page-layout-resize { border:0; background:#f2f4f6; color:#565e68; padding:4px 6px; font:inherit; cursor:pointer; border-radius:4px; }
+.page-layout-move { cursor:move !important; touch-action:none; }
+.page-layout-resize { display:none; position:absolute; right:1px; bottom:1px; z-index:3; cursor:nwse-resize; touch-action:none; font-size:16px; }
+.page-layout-editing .page-layout-controls { display:flex; }
+.page-layout-editing .page-layout-resize { display:block; }
+.page-layout-editing .page-layout-item { outline:1px dashed #bbc2ca; outline-offset:-1px; }
+.page-layout-editing .page-layout-content { padding-top:29px; }
+.page-layout-editing .page-layout-text .page-layout-content { padding-top:0; }
+.page-layout-editing .page-layout-text .page-layout-controls { top:auto; bottom:0; }
+.page-layout-editing .page-layout-selected { outline:2px solid #77899d; outline-offset:-2px; }
+.page-layout-collapsed::after { content:attr(aria-label); display:block; padding:40px 14px 10px; font-size:13px; color:var(--muted,#737b84); }
+.page-layout-adjusting { user-select:none; }
+.page-layout-announcement { margin:8px 0; font-size:12px; color:var(--muted,#737b84); }
+.page-layout-announcement:empty { display:none; }
+.page-layout-flow { display:flex; flex-direction:column; gap:16px; min-height:0 !important; }
+.page-layout-flow .page-layout-item { min-height:120px; max-height:720px; }
+.page-layout-flow .page-layout-text { min-height:48px; }
+@media(max-width:700px) { .page-layout-editor { padding:12px; } .page-layout-controls { font-size:9px; gap:2px; } .page-layout-pin { max-width:65px; } .page-layout-toolbar .button { padding-inline:8px; } }

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "integration_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "record_type": {
+      "enum": [
+        "thread",
+        "message",
+        "work_item",
+        "artifact",
+        "note",
+        "status",
+        "knowledge"
+      ]
+    },
+    "external_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "source_revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "expected_version": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Updates require the exact current integer version; omit or use 0/null only for a new source record."
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "causation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    }
+  },
+  "required": [
+    "schema_version",
+    "record_type",
+    "external_id",
+    "event_id",
+    "source_revision",
+    "source",
+    "occurred_at",
+    "payload",
+    "idempotency_key"
+  ],
+  "description": "Admin requests require integration_id. Bearer identity supplies it; a mismatching supplied value is forbidden. Updates require expected_version and a higher source_revision. Messages append new event evidence instead of rewriting an earlier event. Knowledge writes require workspace administrator identity."
+}

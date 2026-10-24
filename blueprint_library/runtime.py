@@ -21,5 +21,7 @@ def runtime_contract(*, managed):
         'agent_executor': 'not_configured',
         'agent_contract': 'blueprint-agent/1',
         'agent_handoff': 'connected_client',
+        'integration_contract': 'blueprint-integration/1.0',
+        'integration_authentication': 'scoped_bearer',
         'autonomous_agents': False,
     }

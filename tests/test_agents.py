@@ -15,7 +15,7 @@ from urllib.request import Request, urlopen
 from blueprint_library import backup
 from blueprint_library.agents import Agents, validate_manifest
 from blueprint_library.server import initialize_library, make_server
-from blueprint_library.store import Store, LibraryError
+from blueprint_library.store import Store, LibraryError, SCHEMA_VERSION
 from blueprint_library.studio import Studio
 
 
@@ -287,7 +287,7 @@ class AgentTests(unittest.TestCase):
         self._make_v5()
         upgraded = Store(self.directory)
         with upgraded._connection() as conn:
-            self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], 6)
+            self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], SCHEMA_VERSION)
         self.assertEqual(Studio(upgraded).get(report['id']), report)
         self.assertEqual(upgraded.get_file(item['id'])[0].read_bytes(), b'original attachment')
         self.assertEqual((self.directory / 'access.json').read_bytes(), auth)

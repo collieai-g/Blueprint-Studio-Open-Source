@@ -1,9 +1,32 @@
 # Blueprint Studio Open Source
 
+V2.8 adds native Blueprint Integration Contract 1.0 and additive schema 7. Read
+docs/INTEGRATION_GUIDE.md and contracts/integration-v1 before changing it. Each
+private Store represents one company; dedicated hashed bearer credentials are
+bound to an integration and current grants, never to an owner/admin identity.
+Keep the old blueprint-agent/1 connected_client workflow independent. Persist
+records, deduplication receipts, commands, results and cursor events atomically;
+detect cursor gaps and restored branches. Pending is an intention, unknown needs
+reconciliation, and external services alone execute their business operations.
+Policy content is platform approved/versioned with explicit validity/revocation.
+The generic external-work view remains under Work, appears only for authorized
+users with registered integrations, and updates manually. Registration stays in
+the authenticated left-client API; do not restore a connection wizard. No live
+customer-service connection, message sending or private deployment is implied.
+
 Current UI uses exactly four primary entries: 總覽, 工作, AI, 資料. Keep core
 work and data pages in secondary navigation; retain existing records, deep links,
 server permissions and preference keys. Idle timers, focus, visibility changes and
 browser history restoration must not refresh company data or replace active views.
+Secondary navigation sits in the top bar; omit visible workspace/page breadcrumbs.
+Keep one top-right Operations menu for search, explicit refresh and manual actions.
+Remove the narrow-sidebar option and ignore its stored display flag. Every page
+supports independent local layout and plain display-text overrides using the same
+bounded grid rules. Keep actual form nodes and drafts alive during layout changes.
+Overview modules and pinned Work/AI cards are opt-in, save stable references only,
+and reread current authorized data; never persist private card snapshots or clone
+credentials/forms into the overview. Keep presentation preferences scoped to the
+authenticated account and retain legacy overview geometry and raw backups.
 Refresh on explicit user actions and successful in-workbench writes. Boot through
 one loading/error shell with retry; never fall back silently to the legacy UI.
 The sidebar footer has one Settings entry for help and account/preferences;

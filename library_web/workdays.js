@@ -406,6 +406,7 @@
   }
   function workdayCard(workday, compact = false) {
     const card = node('article', compact ? 'work-card compact' : 'work-card');
+    card.dataset.workdayId = workday.id;
     const open = button(workday.title || '工作紀錄', () => openReport(workday.id), 'work-title-button');
     card.append(node('p', 'work-meta', `${workday.date || ''} · ${workday.source || 'AI'}`), open);
     if (workday.summary && !compact) card.append(node('p', 'work-summary', workday.summary));
@@ -416,6 +417,7 @@
   function todoKey(todo, context) { return `work-todo-${context}-${todo.id}`; }
   function todoRow(todo, context, compact = false) {
     const row = node('article', compact ? 'work-todo compact' : 'work-todo');
+    row.dataset.todoId = todo.id; row.dataset.workdayId = todo.workday_id;
     row.classList.toggle('is-done', !!todo.done);
     const label = node('label', 'work-todo-label');
     const check = node('input'); check.type = 'checkbox'; check.id = todoKey(todo, context); check.checked = !!todo.done; check.disabled = state.pending.has(todo.id);
@@ -497,9 +499,10 @@
     try {
       const data = await deps.api(`/api/${view}?${params}`);
       if (request !== state.request || state.view !== view) return;
-      if (background === true && (document.querySelector('dialog[open]') || state.pending.size || state.saving || state.reloading)) return false;
+      if (background === true && (document.querySelector('dialog[open]') || state.pending.size || state.saving || state.reloading || window.BlueprintStudio?.isLayoutBusy?.())) return false;
       const items = view === 'todos' ? data.todos : data.workdays;
       if (!Array.isArray(items)) throw new Error('未能讀取工作清單，請重新載入。');
+      document.dispatchEvent(new CustomEvent('blueprint:before-content-render', {detail: {view}}));
       state.items = items; state.total = Math.max(0, Number(data.total) || 0);
       $('work-list').replaceChildren(...items.map((item) => view === 'todos' ? todoRow(item, 'list') : workdayCard(item)));
       $('work-result-count').textContent = `共 ${state.total} ${view === 'todos' ? '項待辦' : '份紀錄'}`;
@@ -513,12 +516,15 @@
       $('work-next').disabled = state.offset + items.length >= state.total;
       $('work-prev').hidden = state.offset === 0;
       $('work-next').hidden = state.offset + items.length >= state.total;
+      document.dispatchEvent(new CustomEvent('blueprint:content-rendered', {detail: {view}}));
       return true;
     } catch (error) {
       if (request !== state.request || state.view !== view) return;
+      document.dispatchEvent(new CustomEvent('blueprint:before-content-render', {detail: {view}}));
       $('work-list').replaceChildren(node('p', 'error-text', message(error)), button('重新載入', loadList));
       $('work-result-count').textContent = '未能載入'; $('work-page').textContent = '';
       $('work-empty').hidden = true;
+      document.dispatchEvent(new CustomEvent('blueprint:content-rendered', {detail: {view}}));
       if (background === true) throw error;
     } finally { if (request === state.request) $('work-list').removeAttribute('aria-busy'); }
   }

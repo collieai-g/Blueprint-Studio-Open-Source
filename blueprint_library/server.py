@@ -164,16 +164,28 @@ class LibraryHandler(BaseHTTPRequestHandler):
         self._headers(status, length=len(data), extra=extra)
         self.wfile.write(data)
 
-    def _authorized(self):
+    def _authorized(self, integration_route=False):
+        from .integrations_http import error_body
         address = self.client_address[0]
         now = time.monotonic()
         with self.server.auth_lock:
             count, until = self.server.failures.get(address, (0, now))
             if count >= 8 and until > now:
-                self._json({"error": "登入嘗試過多，請稍後再試。"}, 429, {"Retry-After": "60"})
+                message = '登入嘗試過多，請稍後再試。'
+                self._json(error_body(message, 429) if integration_route else {'error': message},
+                           429, {"Retry-After": "60"})
                 return False
         valid = False
         raw = self.headers.get("Authorization", "")
+        if integration_route and raw.startswith('Bearer ') and len(raw) <= 8192:
+            from .integrations import authenticate
+            try:
+                integration_id = authenticate(self.server.store, raw[7:])
+                self.identity = {'username': 'integration:' + integration_id, 'role': 'integration',
+                                 'integration_id': integration_id}
+                valid = True
+            except LibraryError:
+                pass
         if raw.startswith("Basic ") and len(raw) <= 8192:
             try:
                 decoded = base64.b64decode(raw[6:], validate=True).decode("utf-8")
@@ -203,8 +215,10 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 previous = count if until > now else 0
                 self.server.failures[address] = (previous + 1, now + 60)
         if not valid:
-            self._json({"error": "請使用管理員帳號登入。"}, 401,
-                       {"WWW-Authenticate": 'Basic realm="Blueprint Library", charset="UTF-8"'})
+            message = '請提供有效的登入或外部服務憑證。' if integration_route else '請使用管理員帳號登入。'
+            challenge = 'Bearer realm="Blueprint Integration"' if integration_route else 'Basic realm="Blueprint Library", charset="UTF-8"'
+            self._json(error_body(message, 401) if integration_route else {'error': message},
+                       401, {"WWW-Authenticate": challenge})
         return bool(valid)
 
     def _write_allowed(self):
@@ -249,10 +263,13 @@ class LibraryHandler(BaseHTTPRequestHandler):
         path = parsed.path
         if method == "GET" and path == "/health":
             return self._json({"status": "ok"})
-        if not self._authorized():
+        from .integrations_http import handle as integration_handler, is_integration_path
+        if not self._authorized(integration_route=is_integration_path(path)):
             return
         if method in {"POST", "PATCH"}:
             self._write_allowed()
+        if integration_handler(self, method, path, parse_qs(parsed.query, keep_blank_values=True)):
+            return
         if method == 'GET' and path == '/api/runtime':
             from .runtime import runtime_contract
             return self._json(runtime_contract(managed=self.server.maintenance is not None))
@@ -434,7 +451,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 self._headers(200, "text/markdown; charset=utf-8", len(data))
                 self.wfile.write(data)
                 return
-            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/skills.js", "/skills.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/page-layout.js", "/page-layout.css", "/overview-cards.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/integrations.js", "/integrations.css", "/skills.js", "/skills.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()
@@ -451,18 +468,22 @@ class LibraryHandler(BaseHTTPRequestHandler):
         raise LibraryError("找不到此內容。", status=404)
 
     def _dispatch(self, method):
+        from .integrations_http import error_body, is_integration_path
+        def fail(message, status, code=None):
+            value = error_body(message, status, code) if is_integration_path(urlsplit(self.path).path) else {'error': str(message)}
+            self._json(value, status)
         try:
             self._route(method)
         except (BrokenPipeError, ConnectionResetError):
             pass
         except LibraryError as exc:
-            self._json({"error": str(exc)}, exc.status)
+            fail(exc, exc.status, getattr(exc, 'code', None))
         except (ValueError, TypeError, UnicodeError) as exc:
-            self._json({"error": "資料格式不正確：" + str(exc)}, 400)
+            fail('資料格式不正確：' + str(exc), 400)
         except (TimeoutError, OSError):
-            self._json({"error": "文件或資料庫暫時無法使用，請檢查服務日誌及儲存空間。"}, 500)
+            fail('文件或資料庫暫時無法使用，請檢查服務日誌及儲存空間。', 500)
         except Exception:
-            self._json({"error": "暫時無法完成操作，請檢查資料庫狀態。"}, 500)
+            fail('暫時無法完成操作，請檢查資料庫狀態。', 500)
 
     def do_GET(self):
         self._dispatch("GET")

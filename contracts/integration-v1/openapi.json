@@ -1,0 +1,2037 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Blueprint Integration Contract",
+    "version": "1.0",
+    "description": "Native backend external service boundary. One company per private Store; scoped dedicated integration credentials; durable records, pending commands, execution evidence and recoverable event replay. Independent from blueprint-agent/1 and the product version."
+  },
+  "servers": [
+    {
+      "url": "https://blueprint.example.test",
+      "description": "Replace with the verified existing backend origin; never put credentials in the URL."
+    }
+  ],
+  "paths": {
+    "/api/integrations/v1/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "summary": "Read the authenticated contract and effective scopes",
+        "description": "Registration and last-sync metadata do not prove that the external service is healthy or can execute an action.",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capabilities"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        }
+      }
+    },
+    "/api/integrations/v1/registry": {
+      "get": {
+        "operationId": "listIntegrations",
+        "summary": "List real registered integration instances",
+        "description": "",
+        "security": [
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "integrations"
+                  ],
+                  "properties": {
+                    "integrations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Integration"
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        }
+      },
+      "post": {
+        "operationId": "registerIntegration",
+        "summary": "Register a declarative instance and issue its dedicated secret once",
+        "description": "The credential is bound to this company Store and integration. Persist the token in the independent service secret store. The server stores its digest and does not return it on subsequent reads. No provider is connected or code executed.",
+        "security": [
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "integration",
+                    "token",
+                    "created"
+                  ],
+                  "properties": {
+                    "integration": {
+                      "$ref": "#/components/schemas/Integration"
+                    },
+                    "token": {
+                      "type": "string",
+                      "writeOnly": true
+                    },
+                    "created": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created and durably stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "integration",
+                    "token",
+                    "created"
+                  ],
+                  "properties": {
+                    "integration": {
+                      "$ref": "#/components/schemas/Integration"
+                    },
+                    "token": {
+                      "type": "string",
+                      "writeOnly": true
+                    },
+                    "created": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/manifest.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Blueprint-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1"
+            },
+            "description": "Existing workspace write marker. Browser Origin must match Host."
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/registry/{integration_id}": {
+      "get": {
+        "operationId": "getIntegration",
+        "summary": "Read one registered instance",
+        "description": "",
+        "security": [
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "integration"
+                  ],
+                  "properties": {
+                    "integration": {
+                      "$ref": "#/components/schemas/Integration"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "updateIntegration",
+        "summary": "Change effective scopes or enabled state with a version guard",
+        "description": "",
+        "security": [
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "integration"
+                  ],
+                  "properties": {
+                    "integration": {
+                      "$ref": "#/components/schemas/Integration"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "X-Blueprint-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1"
+            },
+            "description": "Existing workspace write marker. Browser Origin must match Host."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/registry-update.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrations/v1/registry/{integration_id}/revoke": {
+      "post": {
+        "operationId": "revokeIntegration",
+        "summary": "Revoke the dedicated bearer permanently",
+        "description": "Every later request and retry rechecks revocation; registered history is preserved.",
+        "security": [
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "integration"
+                  ],
+                  "properties": {
+                    "integration": {
+                      "$ref": "#/components/schemas/Integration"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "X-Blueprint-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1"
+            },
+            "description": "Existing workspace write marker. Browser Origin must match Host."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "expected_version"
+                ],
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrations/v1/records": {
+      "get": {
+        "operationId": "listRecords",
+        "summary": "Read current authorized record snapshots",
+        "description": "",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "records",
+                    "total",
+                    "limit",
+                    "offset"
+                  ],
+                  "properties": {
+                    "records": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Record"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "query",
+            "description": "Workspace administrators may select an instance; bearer identity cannot select another.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "record_type",
+            "in": "query",
+            "description": "Optional declared record kind.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "external_id",
+            "in": "query",
+            "description": "Exact source ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "record_id",
+            "in": "query",
+            "description": "Exact platform ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 1–100.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Zero-based offset.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "writeRecord",
+        "summary": "Append a source event or commit a versioned record revision",
+        "description": "The event, new snapshot, history and idempotency receipt commit in the same transaction. Equal key/equal body returns the same receipt; equal key/different body conflicts. Updates require expected_version and strictly increasing source_revision. Only administrators write authoritative knowledge; external note/message synchronization never creates a send command.",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "record",
+                    "record_id",
+                    "version",
+                    "cursor",
+                    "created"
+                  ],
+                  "properties": {
+                    "record": {
+                      "$ref": "#/components/schemas/Record"
+                    },
+                    "record_id": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created and durably stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "record",
+                    "record_id",
+                    "version",
+                    "cursor",
+                    "created"
+                  ],
+                  "properties": {
+                    "record": {
+                      "$ref": "#/components/schemas/Record"
+                    },
+                    "record_id": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/record-write.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Blueprint-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1"
+            },
+            "description": "Existing workspace write marker. Browser Origin must match Host."
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/records/{record_id}": {
+      "get": {
+        "operationId": "getRecord",
+        "summary": "Read the same authorized record by platform ID",
+        "description": "Knowledge content is returned only if the current policy is approved and effective. A cached snapshot cannot prove current approval.",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "record"
+                  ],
+                  "properties": {
+                    "record": {
+                      "$ref": "#/components/schemas/Record"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/records/{record_id}/history": {
+      "get": {
+        "operationId": "getRecordHistory",
+        "summary": "Read immutable authorized record revisions",
+        "description": "External knowledge history never bypasses current policy validity or current authorization.",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "versions"
+                  ],
+                  "properties": {
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Record"
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/commands": {
+      "get": {
+        "operationId": "listCommands",
+        "summary": "Read authorized durable intentions and current result states",
+        "description": "External representations include current deliverable eligibility. Expired/rejected/unauthorized intentions redact payload and remove control fields; the administrator retains the original evidence.",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "commands",
+                    "total",
+                    "limit",
+                    "offset"
+                  ],
+                  "properties": {
+                    "commands": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Command"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "query",
+            "description": "Instance selected by an administrator; a bearer is bound to its own.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 1–100.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Zero-based offset.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createCommand",
+        "summary": "Persist a real workspace user intention as pending",
+        "description": "The action and primitive payload must match an approved declaration. Originator identity is taken from authentication. HTTP success and pending do not mean the service has accepted or executed it. Provider control_epoch/input_cursor remain distinct from platform version.",
+        "security": [
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "command",
+                    "command_id",
+                    "version",
+                    "cursor",
+                    "created"
+                  ],
+                  "properties": {
+                    "command": {
+                      "$ref": "#/components/schemas/Command"
+                    },
+                    "command_id": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "202": {
+            "description": "Durably queued as pending; external action has not been confirmed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "command",
+                    "command_id",
+                    "version",
+                    "cursor",
+                    "created"
+                  ],
+                  "properties": {
+                    "command": {
+                      "$ref": "#/components/schemas/Command"
+                    },
+                    "command_id": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/command-write.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Blueprint-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1"
+            },
+            "description": "Existing workspace write marker. Browser Origin must match Host."
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/commands/{command_id}": {
+      "get": {
+        "operationId": "getCommand",
+        "summary": "Read one intention and all saved execution evidence",
+        "description": "",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "command"
+                  ],
+                  "properties": {
+                    "command": {
+                      "$ref": "#/components/schemas/Command"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "command_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/events": {
+      "get": {
+        "operationId": "readEvents",
+        "summary": "Resume the durable increment stream without deleting commands",
+        "description": "Save delivered events and this cursor atomically in the external service before returning accepted. Never parse or synthesize cursors. The server checks the store, integration and immutable anchor; unknown/future/restore-diverged cursors return an explicit cursor_gap. Current scopes, originating user, expiry and record visibility are checked when delivering. V1 retains events; no webhook or browser poll is required.",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "events",
+                    "cursor",
+                    "has_more"
+                  ],
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Event"
+                      }
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from the same company and integration. Empty starts from the retained beginning.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1–100.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "integration_id",
+            "in": "query",
+            "description": "Administrator stream selection only; bearer scope is fixed.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/command-results": {
+      "post": {
+        "operationId": "saveCommandResult",
+        "summary": "Append actual execution evidence for the original command ID",
+        "description": "Each result is immutable and scoped to the original command and integration. Evidence cannot silently regress a terminal state. unknown remains unresolved and never authorizes blind resend. accepted proves local persistence only; completed, provider acceptance, delivery and read receipts are different evidence. Reconciliation from unknown to completed/failed/rejected requires nonempty payload.evidence.",
+        "security": [
+          {
+            "integrationBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "command",
+                    "result",
+                    "cursor",
+                    "created"
+                  ],
+                  "properties": {
+                    "command": {
+                      "$ref": "#/components/schemas/Command"
+                    },
+                    "result": {
+                      "type": "object"
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created and durably stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "command",
+                    "result",
+                    "cursor",
+                    "created"
+                  ],
+                  "properties": {
+                    "command": {
+                      "$ref": "#/components/schemas/Command"
+                    },
+                    "result": {
+                      "type": "object"
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/command-result.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Blueprint-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1"
+            },
+            "description": "Existing workspace write marker. Browser Origin must match Host."
+          }
+        ]
+      }
+    },
+    "/api/integrations/v1/resources/{kind}/{resource_id}": {
+      "get": {
+        "operationId": "readSelectedResource",
+        "summary": "Read one explicitly granted native company reference",
+        "description": "Only explicit resource_refs in current scopes are eligible; current server-side native resource permissions are checked again. This grants no general data API, search, export or attachment-download permission. Supported kinds are item (including uploaded documents) and report.",
+        "security": [
+          {
+            "integrationBearer": []
+          },
+          {
+            "workspaceBasic": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durably stored or current authorized representation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "resource"
+                  ],
+                  "properties": {
+                    "resource": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalid_request"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/cursor_gap"
+          },
+          "413": {
+            "$ref": "#/components/responses/payload_too_large"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupported_media_type"
+          },
+          "429": {
+            "$ref": "#/components/responses/rate_limited"
+          },
+          "500": {
+            "$ref": "#/components/responses/internal_error"
+          },
+          "503": {
+            "$ref": "#/components/responses/temporarily_unavailable"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_data"
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "item",
+                "report"
+              ]
+            }
+          },
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "workspaceBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Existing workspace owner/admin identity; never provision it to the external service."
+      },
+      "integrationBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Once-issued dedicated token. Only this API namespace, this Store and this integration; no general workspace API access."
+      }
+    },
+    "schemas": {
+      "Integration": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "version",
+          "record_types",
+          "commands",
+          "enabled"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "record_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Record": {
+        "type": "object",
+        "required": [
+          "id",
+          "integration_id",
+          "record_type",
+          "external_id",
+          "source_revision",
+          "version",
+          "payload"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "integration_id": {
+            "type": "string"
+          },
+          "record_type": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "source_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Command": {
+        "type": "object",
+        "required": [
+          "id",
+          "integration_id",
+          "name",
+          "state",
+          "version",
+          "payload"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "integration_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "accepted",
+              "running",
+              "completed",
+              "rejected",
+              "expired",
+              "failed",
+              "unknown"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "type": "object"
+          },
+          "deliverable": {
+            "type": "boolean",
+            "description": "Dynamic read eligibility. Only pending commands with current actor/scope/expiry authorization are deliverable. False does not mean the action failed."
+          }
+        },
+        "additionalProperties": true
+      },
+      "Event": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "type"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "record",
+              "command",
+              "command_result"
+            ]
+          },
+          "record": {
+            "$ref": "#/components/schemas/Record"
+          },
+          "command": {
+            "$ref": "#/components/schemas/Command"
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Capabilities": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "contract_version",
+          "record_types",
+          "commands",
+          "integration_id",
+          "max_page_size",
+          "sync",
+          "knowledge",
+          "company_id"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "1.0"
+          },
+          "contract_version": {
+            "const": "1.0"
+          },
+          "record_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "integration_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_page_size": {
+            "const": 100
+          },
+          "sync": {
+            "type": "object",
+            "required": [
+              "cursor",
+              "replay",
+              "gap_status",
+              "webhook"
+            ],
+            "properties": {
+              "cursor": {
+                "const": true
+              },
+              "replay": {
+                "const": true
+              },
+              "gap_status": {
+                "const": 410
+              },
+              "webhook": {
+                "const": false
+              }
+            }
+          },
+          "knowledge": {
+            "type": "object"
+          },
+          "company_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "responses": {
+      "payload_too_large": {
+        "description": "payload too large",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "cursor_gap": {
+        "description": "cursor gap",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "not_found": {
+        "description": "not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "invalid_request": {
+        "description": "invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "temporarily_unavailable": {
+        "description": "temporarily unavailable",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "internal_error": {
+        "description": "internal error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "forbidden": {
+        "description": "forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "unauthorized": {
+        "description": "unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "rate_limited": {
+        "description": "rate limited",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "conflict": {
+        "description": "conflict",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "unsupported_media_type": {
+        "description": "unsupported media type",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "invalid_data": {
+        "description": "invalid data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/error.schema.json"
+            }
+          }
+        }
+      }
+    }
+  }
+}

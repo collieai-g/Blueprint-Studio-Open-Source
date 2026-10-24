@@ -1,0 +1,30 @@
+[
+  {
+    "schema_version": "1.0",
+    "command_id": "REPLACE_WITH_CREATED_COMMAND_ID",
+    "event_id": "fictional-result-accepted",
+    "idempotency_key": "fictional-result-accepted",
+    "status": "accepted",
+    "occurred_at": "2026-10-24T08:00:01Z",
+    "payload": {
+      "evidence": "fictional-local-service",
+      "inflight": []
+    },
+    "control_epoch": 2,
+    "input_cursor": "fictional-input-001"
+  },
+  {
+    "schema_version": "1.0",
+    "command_id": "REPLACE_WITH_CREATED_COMMAND_ID",
+    "event_id": "fictional-result-completed",
+    "idempotency_key": "fictional-result-completed",
+    "status": "completed",
+    "occurred_at": "2026-10-24T08:00:01Z",
+    "payload": {
+      "evidence": "fictional-local-service",
+      "inflight": []
+    },
+    "control_epoch": 2,
+    "input_cursor": "fictional-input-001"
+  }
+]

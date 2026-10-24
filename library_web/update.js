@@ -1,7 +1,11 @@
 /* Same-site update handoff and browser preference backup; no pretend deployment. */
 'use strict';
 ((root) => {
-  const KEYS = ['blueprint-workspace-v2', 'blueprint-workspace-v2.2-backup', 'blueprint-workspace-v2.7.3-backup', 'blueprint-backend-display-v1'];
+  const KEYS = ['blueprint-workspace-v2', 'blueprint-workspace-v2.2-backup', 'blueprint-workspace-v2.7.3-backup', 'blueprint-workspace-v2.8-backup', 'blueprint-backend-display-v1', 'blueprint-page-layouts-v1', 'blueprint-page-layouts-v1-backup'];
+  const PIN_PREFIX='blueprint-overview-cards-v1:';
+  const PAGE_KEYS=['blueprint-page-layouts-v1','blueprint-page-layouts-v1-backup'];
+  const WORKSPACE_KEYS=['blueprint-workspace-v2','blueprint-workspace-v2.2-backup','blueprint-workspace-v2.7.3-backup','blueprint-workspace-v2.8-backup'];
+  const CORE_CARDS=['heading','description','date','files','links','youtube','unfiled','workdays','todos','recent','projects','inbox','ai-agents','ai-skills','commands'];
   const BACKUP = 'blueprint-update-browser-backup-v1';
   const REPOSITORY = 'https://github.com/collieai-g/Blueprint-Studio-Open-Source';
   function origin(value) {
@@ -9,11 +13,72 @@
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || !['', '/'].includes(url.pathname)) throw new Error('工作台網址不正確。');
     return url.origin;
   }
+  function pinScope(key,site){
+    if(typeof key!=='string'||key.length>1200||!key.startsWith(PIN_PREFIX))return null;
+    try{
+      const parts=key.slice(PIN_PREFIX.length).split('|').map(decodeURIComponent);
+      if(parts.length!==3||origin(parts[0])!==origin(site)||parts[0]!==origin(site)||parts.some(value=>/[\x00-\x1f\x7f]/.test(value)))return null;
+      return {company:parts[1],username:parts[2]};
+    }catch{return null;}
+  }
+  function preferenceKey(key,site){return KEYS.includes(key)||pinScope(key,site)!==null;}
+  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  function identityScope(site,identity){return typeof identity?.username==='string'&&identity.username&&identity.username.length<=80&&!/[\x00-\x1f\x7f]/.test(identity.username)?origin(site)+'|'+identity.username:'';}
+  function scopedDocument(value,scope){
+    if(!object(value))return value;
+    const selected=object(value.scopes)&&object(value.scopes[scope])?value.scopes[scope]:{};
+    return {version:1,pages:{},...(scope?{scopes:{[scope]:selected}}:{})};
+  }
+  function selectedWorkspace(value,scope,allowed){
+    if(!object(value))return value;
+    const selected=scope&&object(value.scopes)&&object(value.scopes[scope])?value.scopes[scope]:value;
+    const result={};
+    for(const field of ['version','layoutVersion','mode','pages','columns'])if(selected[field]!==undefined)result[field]=selected[field];
+    if(object(selected.cards))result.cards=Object.fromEntries(Object.entries(selected.cards).filter(([id])=>allowed.has(id)));
+    if(Array.isArray(selected.visible))result.visible=selected.visible.filter(id=>allowed.has(id));
+    result.texts=scope&&object(value.scopes)&&object(value.scopes[scope])&&object(selected.texts)?selected.texts:{};
+    return scope?{...result,scopes:{[scope]:result}}:result;
+  }
+  function storedKeys(storage){
+    if(Number.isInteger(storage.length)&&typeof storage.key==='function')return Array.from({length:Math.min(storage.length,2000)},(_,index)=>storage.key(index));
+    return storage.data&&typeof storage.data==='object'?Object.keys(storage.data):Object.keys(storage);
+  }
+  function preferenceValue(key,value,site){
+    if(value===null)return;
+    if(typeof value!=='string'||value.length>1024*1024)throw new Error('排版備份格式不正確。');
+    const parsed=JSON.parse(value);
+    if(pinScope(key,site)){
+      if(!parsed||parsed.version!==1||!Array.isArray(parsed.refs)||parsed.refs.length>24||Object.keys(parsed).some(name=>!['version','refs'].includes(name)))throw new Error('總覽卡片備份格式不正確。');
+      const routes=['projects','inbox','agents','skills','command'];
+      for(const ref of parsed.refs){
+        if(!ref||typeof ref!=='object'||Array.isArray(ref))throw new Error('總覽卡片備份格式不正確。');
+        const fields=Object.keys(ref);
+        if(ref.kind==='route'){
+          if(fields.some(name=>!['kind','route'].includes(name))||!routes.includes(ref.route))throw new Error('總覽卡片備份格式不正確。');
+        }else if(!['studio_record','agent','agent_job','skill','workday','item'].includes(ref.kind)||fields.some(name=>!['kind','id'].includes(name))||typeof ref.id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$/.test(ref.id)||(ref.kind==='skill'&&!['video','general'].includes(ref.id)))throw new Error('總覽卡片備份格式不正確。');
+      }
+    }
+  }
   function handoff(site, info, storage, route) {
     const preferences = {};
-    for (const key of KEYS) {
-      const value = storage.getItem(key);
-      if (value !== null) JSON.parse(value);
+    const scope=identityScope(site,info.account);
+    const names=[...KEYS,...storedKeys(storage).filter(key=>{
+      const pin=pinScope(key,site);return scope&&pin&&pin.username===info.account.username;
+    })];
+    const allowedCards=new Set(CORE_CARDS);
+    for(const key of names.filter(name=>pinScope(name,site))){
+      const value=storage.getItem(key);preferenceValue(key,value,site);
+      if(value!==null)for(const ref of JSON.parse(value).refs)if(ref.kind!=='route')allowedCards.add('pin-'+ref.kind+'-'+ref.id);
+    }
+    for (const key of new Set(names)) {
+      let value = storage.getItem(key);
+      preferenceValue(key,value,site);
+      if(value!==null&&PAGE_KEYS.includes(key))value=scope?JSON.stringify(scopedDocument(JSON.parse(value),scope)):null;
+      if(value!==null&&WORKSPACE_KEYS.includes(key)){
+        const parsed=JSON.parse(value);
+        const privateFields=object(parsed)&&(object(parsed.scopes)||object(parsed.texts)||Object.keys(parsed.cards||{}).some(id=>!allowedCards.has(id))||(Array.isArray(parsed.visible)&&parsed.visible.some(id=>!allowedCards.has(id))));
+        if(privateFields)value=JSON.stringify(selectedWorkspace(parsed,scope,allowedCards));
+      }
       preferences[key] = value;
     }
     const deployment = info.deployment_mode === 'sites_native' ? {
@@ -24,6 +89,7 @@
       version: String(info.version || '待核對').slice(0, 80),
       route: ['native', 'sites'].includes(route) ? route : 'unknown',
       ...deployment,
+      ...(scope?{account_scope:scope}:{}),
       created_at: new Date().toISOString(), preferences,
       scope: '只有目前瀏覽器的排版與顯示偏好；不包含伺服器資料、附件或登入。' };
     return validate(result, site);
@@ -31,27 +97,44 @@
   function validate(data, site) {
     if (!data || data.format !== 'blueprint-update-handoff' || data.format_version !== 1 || data.origin !== origin(site) ||
         !data.preferences || typeof data.preferences !== 'object' || Array.isArray(data.preferences) ||
-        Object.keys(data.preferences).some(key => !KEYS.includes(key))) throw new Error('請使用同一個工作台的排版備份。');
-    for (const value of Object.values(data.preferences)) {
-      if (value !== null) {
-        if (typeof value !== 'string' || value.length > 1024 * 1024) throw new Error('排版備份格式不正確。');
-        JSON.parse(value);
-      }
+        Object.keys(data.preferences).some(key => !preferenceKey(key,site))) throw new Error('請使用同一個工作台的排版備份。');
+    if(data.account_scope!==undefined&&(typeof data.account_scope!=='string'||!data.account_scope.startsWith(origin(site)+'|')||!data.account_scope.slice(origin(site).length+1)||data.account_scope.length>origin(site).length+81||/[\x00-\x1f\x7f]/.test(data.account_scope)))throw new Error('排版備份的帳戶不正確。');
+    for (const [key,value] of Object.entries(data.preferences))preferenceValue(key,value,site);
+    for(const [key,value] of Object.entries(data.preferences))if(value!==null){
+      const scoped=pinScope(key,site),parsed=JSON.parse(value);
+      if(scoped&&(!data.account_scope||data.account_scope!==origin(site)+'|'+scoped.username))throw new Error('總覽卡片備份的帳戶不正確。');
+      if((PAGE_KEYS.includes(key)||WORKSPACE_KEYS.includes(key))&&object(parsed)&&object(parsed.scopes)&&Object.keys(parsed.scopes).some(scope=>scope!==data.account_scope))throw new Error('排版備份包含其他帳戶的內容。');
+      if(PAGE_KEYS.includes(key)&&(!data.account_scope||Object.keys(parsed.pages||{}).length))throw new Error('頁面排版備份缺少正確帳戶。');
     }
     if (data.deployment_mode !== undefined && (data.deployment_mode !== 'sites_native' || data.route !== 'sites' ||
         origin(data.backend_origin) !== data.backend_origin || !data.backend_origin.startsWith('https://') ||
         data.backend_origin === data.origin)) throw new Error('請核對 Sites 入口與獨立原生後台，保留 Sites 接駁方式。');
     return data;
   }
-  function restore(data, site, storage) {
+  function restore(data, site, storage, identity) {
     validate(data, site);
+    const scope=identityScope(site,identity);
+    if(data.account_scope&&scope!==data.account_scope)throw new Error('請使用建立此排版備份的同一帳戶。');
     const before = {};
     for (const key of Object.keys(data.preferences)) before[key] = storage.getItem(key);
     // Keep the current arrangement before replacing it, including on repeated restores.
     storage.setItem(BACKUP + ':before-restore:' + Date.now(), JSON.stringify({ ...data, preferences: before }));
     const set = (key, value) => value === null ? storage.removeItem(key) : storage.setItem(key, value);
     try {
-      for (const [key, value] of Object.entries(data.preferences)) set(key, value);
+      for (const [key, value] of Object.entries(data.preferences)){
+        if(value!==null&&scope&&(PAGE_KEYS.includes(key)||WORKSPACE_KEYS.includes(key))){
+          let current={};try{current=JSON.parse(storage.getItem(key)||'{}');}catch{}
+          const incoming=JSON.parse(value),selected=incoming.scopes?.[scope]||(WORKSPACE_KEYS.includes(key)?incoming:{});
+          const merged={...(object(current)?current:{}),version:incoming.version||1,
+            scopes:{...(object(current?.scopes)?current.scopes:{}),[scope]:selected}};
+          set(key,JSON.stringify(merged));
+        }else if(value===null&&scope&&(PAGE_KEYS.includes(key)||WORKSPACE_KEYS.includes(key))){
+          let current={};try{current=JSON.parse(storage.getItem(key)||'{}');}catch{}
+          const cleared=PAGE_KEYS.includes(key)?{pages:{}}:{version:1,layoutVersion:4,cards:{},visible:['heading'],texts:{}};
+          set(key,JSON.stringify({...(object(current)?current:{}),version:1,
+            scopes:{...(object(current?.scopes)?current.scopes:{}),[scope]:cleared}}));
+        }else set(key, value);
+      }
     } catch (error) {
       for (const [key, value] of Object.entries(before)) set(key, value);
       throw error;
@@ -164,15 +247,17 @@
         const file = $('update-backup-file').files[0];
         if (!file) throw new Error('請先選擇之前下載的排版接續資料。');
         if (file.size > 2 * 1024 * 1024) throw new Error('排版接續資料過大。');
-        restore(JSON.parse(await file.text()), location.origin, localStorage);
+        const currentInfo=await api('/api/info');
+        restore(JSON.parse(await file.text()), location.origin, localStorage,currentInfo.account);
         location.reload();
       } catch (e) { error('未能還原排版：' + e.message); }
     });
-    $('update-restore-local').addEventListener('click', () => {
+    $('update-restore-local').addEventListener('click', async () => {
       try {
         const saved = localStorage.getItem(BACKUP);
         if (!saved) throw new Error('這個瀏覽器尚未保存更新前排版。');
-        restore(JSON.parse(saved), location.origin, localStorage);
+        const currentInfo=await api('/api/info');
+        restore(JSON.parse(saved), location.origin, localStorage,currentInfo.account);
         location.reload();
       } catch (e) { error('未能還原排版：' + e.message); }
     });

@@ -28,7 +28,24 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
             'docs/USER_GUIDE.md', 'artifacts/codex-blueprint-workflow.svg',
             'artifacts/codex-blueprint-workspace-redraw.png',
             'templates/skills/personal-video/SKILL.md', 'templates/skills/personal-video/README.md',
-            'templates/agent/agent.json', 'docs/OPERATING_MODEL.md'}
+            'templates/agent/agent.json', 'docs/OPERATING_MODEL.md',
+            'blueprint_library/integrations.py', 'blueprint_library/integrations_http.py',
+            'library_web/integrations.js', 'library_web/integrations.css',
+            'library_web/page-layout.js', 'library_web/page-layout.css', 'library_web/overview-cards.js',
+            'contracts/integration-v1/openapi.json', 'contracts/integration-v1/README.md',
+            'contracts/integration-v1/SHA256SUMS',
+            'contracts/integration-v1/schemas/manifest.schema.json',
+            'contracts/integration-v1/schemas/record-write.schema.json',
+            'contracts/integration-v1/schemas/command-write.schema.json',
+            'contracts/integration-v1/schemas/command-result.schema.json',
+            'contracts/integration-v1/schemas/knowledge-payload.schema.json',
+            'contracts/integration-v1/schemas/error.schema.json',
+            'contracts/integration-v1/fixtures/manifest.json',
+            'contracts/integration-v1/fixtures/record.json',
+            'contracts/integration-v1/fixtures/command.json',
+            'contracts/integration-v1/fixtures/command-results.json',
+            'docs/INTEGRATION_GUIDE.md',
+            'examples/integration_service.py'}
 
 
 def build(output):
@@ -46,6 +63,7 @@ def build(output):
         files[name] = path.read_bytes()
     manifest = {'product': 'Blueprint Studio Open Source', 'version': __version__,
                 'entrypoint': 'INSTALL_AI.txt', 'ai_connection_entrypoint': 'AI_CONNECT.md', 'database_schema': SCHEMA_VERSION, 'private_data_included': False,
+                'integration_contract': '1.0', 'integration_backend': 'native',
                 'files': {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}}
     with zipfile.ZipFile(output, 'x', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in files.items():
