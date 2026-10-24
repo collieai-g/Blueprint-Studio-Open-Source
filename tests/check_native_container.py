@@ -59,6 +59,9 @@ try:
     instructions = remote._request('GET', '/api/install-instructions')['instruction']
     assert instructions == (Path(__file__).resolve().parents[1] / 'INSTALL_AI.txt').read_text(encoding='utf-8')
     assert 'docs/LEFT_RIGHT_WORKFLOW.md' in instructions
+    request = Request(remote.url + '/AI_CONNECT.md', headers={'Authorization': remote._authorization()})
+    with build_opener(_NoRedirect()).open(request, timeout=10) as response:
+        assert response.read() == (Path(__file__).resolve().parents[1] / 'AI_CONNECT.md').read_bytes()
     assert docker('exec', name, 'id', '-u') == '10001'
     bridge = Bridge(remote.url)
     assert len(bridge.tools()) == 42

@@ -7,11 +7,12 @@ function storage(initial = {}) {
 }
 const site = 'https://studio.example';
 test('handoff selects layout only and never exports credentials, connection challenges or company data', () => {
-  const store = storage({ 'blueprint-workspace-v2': '{"pages":2}', token: 'secret', 'blueprint-ai-connection-v1': '{"challenge":"private"}' });
+  const store = storage({ 'blueprint-workspace-v2': '{"pages":2}', 'blueprint-workspace-v2.7.3-backup': '{"layoutVersion":3,"cards":{}}', token: 'secret', 'blueprint-ai-connection-v1': '{"challenge":"private"}' });
   const data = handoff(site, { version: '2.4.0', company_name: 'Private company' }, store, 'sites');
   const text = JSON.stringify(data);
   for (const absent of ['secret', 'challenge', 'Private company']) assert.ok(!text.includes(absent));
   assert.equal(data.preferences['blueprint-workspace-v2'], '{"pages":2}');
+  assert.equal(data.preferences['blueprint-workspace-v2.7.3-backup'], '{"layoutVersion":3,"cards":{}}');
   assert.ok(prompt(data).includes(site));
   assert.ok(prompt(data).includes('UPDATE_AI.txt'));
   assert.ok(prompt(data).includes('不要叫我重複加入'));

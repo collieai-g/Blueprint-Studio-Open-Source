@@ -1,7 +1,7 @@
 /* Same-site update handoff and browser preference backup; no pretend deployment. */
 'use strict';
 ((root) => {
-  const KEYS = ['blueprint-workspace-v2', 'blueprint-workspace-v2.2-backup', 'blueprint-backend-display-v1'];
+  const KEYS = ['blueprint-workspace-v2', 'blueprint-workspace-v2.2-backup', 'blueprint-workspace-v2.7.3-backup', 'blueprint-backend-display-v1'];
   const BACKUP = 'blueprint-update-browser-backup-v1';
   const REPOSITORY = 'https://github.com/collieai-g/Blueprint-Studio-Open-Source';
   function origin(value) {

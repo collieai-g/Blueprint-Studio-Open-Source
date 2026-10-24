@@ -1,6 +1,6 @@
 # 雲端安裝：由帳戶設定到自己的完整工作台
 
-V2.6 新安裝優先使用原生後台，先完成 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 的儲存、完整備份下載、還原、重啟保存及再次部署驗收。新容器資料放 `/data/library`，備份放 `/data/backups`，兩者都在持久磁碟；已有安裝保留原路徑。Sites 仍須另行實作及驗證備份還原，不能視為同等完成。
+V2.7.4 新安裝優先使用原生後台，先完成 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 的儲存、完整備份下載、還原、重啟保存及再次部署驗收。新容器資料放 `/data/library`，備份放 `/data/backups`，兩者都在持久磁碟；已有安裝保留原路徑。Sites 仍須另行實作及驗證備份還原，不能視為同等完成。
 
 [安裝總入口](INSTALL.md) · [本機路線](INSTALL_LOCAL.md) · [後台功能與 API](LIBRARY.md)
 
@@ -230,11 +230,13 @@ AI 提供一個**已核對的實際網址**，帶使用者登入並看到原版�
 接著驗證同一網站在新登入工作階段仍可讀取原記錄，並在保留同一資料儲存的服務重啟／部署後再次查回。
 AI 記錄網站、資料庫／磁碟及附件儲存的實際位置。生產網址受網絡或登入限制無法實測時，明確標示尚待使用者配合的驗證項。
 
-## C8. 讓不同 AI 透過 MCP 寫入同一個工作台
+## C8. 由左側 Codex 設定 AI 操作
 
-先完成 [AI_CONNECTION.md](AI_CONNECTION.md)：原生雲端使用 MCP stdio 橋接到既有 HTTPS API；Sites 使用平台已驗證身份的 HTTP MCP 外掛。支援相容的 Codex、Claude、Gemini 等客戶端，各自授權並完成寫入與讀回。
+由左側讀取 [AI_CONNECT.md](../AI_CONNECT.md)，核對 C7 已驗證的正式 origin、公司與身份，以及目前對話實際提供的工具。能控制同一個已登入工作台時，優先使用正式表單保存並重新開啟相同紀錄；僅有網站預覽不能當成畫面控制。
 
-以下是原有每日工作 CLI 綁定的補充；外掛工作方式仍要實際安裝及載入 MCP 工具。
+MCP 是可選路徑。選用時再按 [AI_CONNECTION.md](AI_CONNECTION.md) 接通：原生雲端以 stdio 橋接原 HTTPS 後台，Sites 使用同一網站的已驗證 HTTP MCP 外掛。客戶端產生 32 位十六進位 challenge，記錄實際 client 及有效 date，透過真正 `blueprint_verify_connection` 保存、讀回並更新待辦，再核對相同紀錄。重試沿用 challenge，不依賴右側接駁精靈，也不以畫面或直接 API 冒充 MCP 驗收。
+
+以下是原有每日工作 CLI 綁定的補充，已有綁定者可沿用，畫面路徑不必使用。CLI 寫入及目前對話已載入 MCP 是不同證據。
 
 **原生 Python 後台**：在 AI 執行環境的安全設定提供 `BLUEPRINT_BACKEND_USERNAME` 及 `BLUEPRINT_BACKEND_PASSWORD`。
 確認後台的實際主機可被該環境存取，再使用：
@@ -263,6 +265,6 @@ Sites 登入與原生 HTTP Basic API 未必相同，不能直接套用 `workday-
 
 遇到問題時，AI 在原安裝進度上修正，列出「目前階段、已完成項、實際錯誤、下一個操作」，保留原始資料與完整介面。
 
-## V2.4：由介面接續到真正使用
+## 由左側完成驗收與第一項工作
 
-工作台可開啟後，按已選定的操作方式完成驗收。使用真正畫面控制時，依 [左右協作流程](LEFT_RIGHT_WORKFLOW.md) 在同一個已登入工作台保存並重新開啟相同紀錄。選用 MCP 時，從「設定 → 進階連接（選用）」開啟接駁中心，依 [CONNECT.md](CONNECT.md) 完成客戶端設定、必要登入／工具載入及 blueprint_verify_connection，等右側讀到相同驗收結果。最後帶使用者完成第一項真實工作；換對話沿用私人進度，不重建工作台。
+工作台可開啟後，按 [AI_CONNECT.md](../AI_CONNECT.md) 在左側完成能力核對、必要登入及所選路徑的真實保存／讀回，不再以右側精靈作設定入口。新總覽只顯示標題與「調整排版」，卡片按需要加入；側欄保留四個主入口與「設定」。最後完成第一項真實工作；換對話沿用私人進度，不重建工作台，網站部署成功與目前 AI 可操作分別記錄。

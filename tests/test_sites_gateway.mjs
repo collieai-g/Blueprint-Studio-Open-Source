@@ -113,7 +113,7 @@ test('original assets and attachment streams pass through; runtime facts stay se
   const f = fixture(url => new URL(url).pathname === '/api/info'
     ? Response.json({ company_name: 'Test', version: '9.1.0', connection_mode: 'native', maintenance: { supported: true } })
     : new Response(bytes, { headers: { 'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment', 'Set-Cookie': 'never=forward', 'Content-Security-Policy': "default-src 'self'" } }));
-  for (const path of ['/app.js', '/skills.js', '/skills.css', '/api/files/test-file', '/api/maintenance/backups/test']) {
+  for (const path of ['/app.js', '/AI_CONNECT.md', '/skills.js', '/skills.css', '/api/files/test-file', '/api/maintenance/backups/test']) {
     const response = await f.handle(req(path));
     assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
     assert.equal(response.headers.get('Set-Cookie'), null);

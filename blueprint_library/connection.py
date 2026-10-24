@@ -1,6 +1,6 @@
 """Real, repeatable connection acceptance using the existing authenticated API.
 
-No new database or migration. One explicitly labelled workday per browser nonce.
+No new database or migration. One explicitly labelled workday per client attempt.
 """
 from datetime import date as calendar_date
 import re
@@ -46,7 +46,7 @@ def verify_connection(request, args):
             or len(entries) != 2 or entries[0]['type'] != 'outcome' or entries[0]['title'] != TITLE
             or entries[1]['type'] != 'todo' or entries[1]['title'] != TODO
             or any(e['content'] != challenge for e in entries)):
-        raise LibraryError('測試紀錄已被修改，未覆寫；請在接駁中心建立新的測試。', 409)
+        raise LibraryError('測試紀錄已被修改，未覆寫；請在目前 AI 對話核對，只有要求另一次驗收才建立新的測試。', 409)
     todo = entries[1]
     # On retry this still checks current write permission, without duplicating data.
     request('PATCH', '/api/todos/' + todo['id'],
@@ -65,5 +65,5 @@ def verify_connection(request, args):
         raise LibraryError('驗收結果未能讀回。', 502)
     return {'verified': True, 'client': client, 'challenge': challenge,
             'workday_id': report_id, 'checked_at': report['updated_at'],
-            'next_step': '回到同一工作台的 AI 接駁中心，等候顯示這筆測試；上次成功不代表其他對話已載入工具。',
+            'next_step': '在目前 AI 對話按 workday_id 另行讀回紀錄，並按待辦 ID 核對測試待辦已完成；可到工作台「工作 → 工作紀錄」查看同一筆。新對話須重新檢查實際工具。',
             'workday': report}

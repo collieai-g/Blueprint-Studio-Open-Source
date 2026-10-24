@@ -3,7 +3,7 @@
 ((root)=>{
   const groups=[
     {id:'overview',label:'總覽',icon:'dashboard',route:'overview',items:[
-      ['overview','今日總覽','dashboard','今天要做甚麼，工作進展如何。']]},
+      ['overview','總覽','dashboard','查看及安排公司的工作。']]},
     {id:'work',label:'工作',icon:'checklist',route:'projects',items:[
       ['projects','項目','checklist','查看階段、里程碑及相關成果。','project'],
       ['inbox','收件匣','inbox','集中處理新收到的內容。','inbox'],
@@ -12,8 +12,7 @@
     {id:'specialists',label:'AI',icon:'chat',route:'skills',items:[
       ['skills','Skill 與交接','document','準備專業指引與指定素材，交給目前使用的 AI。'],
       ['agents','Agent 工作台','automation','管理獨立 Agent，將工作交給目前使用的 AI。'],
-      ['command','工作指令','automation','寫下指令，交給已連接的 AI 處理。','command'],
-      ['connections','外部接入','link','登記模型、外掛、技能和渠道。','integration','admin']]},
+      ['command','工作指令','automation','保存工作要求及處理結果。','command']]},
     {id:'inspiration',label:'資料',icon:'folder',route:'documents',items:[
       ['documents','文件','folder','找回文件、報告和項目交付物。'],
       ['inspirations','收藏','bookmark','保存網站、影片及其他參考資料。','inspiration'],
@@ -30,6 +29,7 @@
   // Retain records, deep links and permissions without filling the primary menu
   // with preset channels, collection categories and company management modules.
   add('specialists',[
+    ['connections','舊接入紀錄','link','查看以往保存的接入設定。','integration','admin'],
     ['specialists','專員設定','chat','集中查看專員的角色、知識及規則。','specialist'],
     ['specialist/specialist-website','網站客服 AI','chat','設定網站查詢的處理方式。','specialist'],
     ['specialist/specialist-whatsapp','WhatsApp 客服 AI','chat','設定查詢及預約的處理方式。','specialist'],

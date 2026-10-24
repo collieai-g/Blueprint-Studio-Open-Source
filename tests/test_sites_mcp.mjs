@@ -111,7 +111,7 @@ test('read-only connections cannot call hidden mutations; notifications never wr
   assert.equal((await handler(request(notification), {})).status, 202);
   assert.equal(writes, 0);
 });
-test('guided acceptance uses existing API, resumes partial writes and keeps client identities separate', async () => {
+test('client-led acceptance uses existing API, resumes partial writes and keeps identities separate', async () => {
   const records = new Map(), calls = [];
   let next = 1, failRead = true;
   const dispatch = async req => {
@@ -157,6 +157,9 @@ test('guided acceptance uses existing API, resumes partial writes and keeps clie
   const resumed = await call(args);
   assert.equal(resumed.isError, false);
   assert.equal(resumed.structuredContent.verified, true);
+  assert.ok(resumed.structuredContent.next_step.includes('workday_id'));
+  assert.ok(resumed.structuredContent.next_step.includes('工作紀錄'));
+  assert.ok(!resumed.structuredContent.next_step.includes('接駁中心'));
   assert.equal(records.size, 1);
   const again = await call(args);
   assert.equal(again.structuredContent.workday_id, resumed.structuredContent.workday_id);

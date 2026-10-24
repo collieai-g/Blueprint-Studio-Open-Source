@@ -684,12 +684,11 @@ input, textarea, select { border-color: #dfe4e8; }
   .page-date { display: none; } .widget-heading { gap: 5px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
-/* V2.2 guided connection: a calm path from first visit to actual AI writes. */
-.connection-banner{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:24px;padding:22px 26px;border:1px solid #e5e5e3;border-radius:18px;background:linear-gradient(120deg,#fff,#f7f7f5);box-shadow:0 8px 24px #18202005}
-.connection-banner strong{font-size:16px;letter-spacing:.02em}.connection-banner p{margin:6px 0 0;color:#686c70;font-size:13px;line-height:1.7}.connection-banner .button{flex-shrink:0}
-.connection-dialog{width:min(760px,calc(100vw - 32px));max-width:760px;padding:32px}.connection-dialog>p{line-height:1.8}.connection-backend{padding:12px 16px;background:#f5f5f3;border-radius:10px;font-size:12px;overflow-wrap:anywhere}
-.connection-step{display:grid;grid-template-columns:32px minmax(0,1fr);gap:16px;padding:24px 0;border-top:1px solid #ececea}.connection-step h3{margin:0 0 10px;font-size:17px}.connection-step p{line-height:1.8;font-size:13px}.connection-number{width:30px;height:30px;display:grid;place-items:center;border:1px solid #deded9;border-radius:50%;font-size:11px;color:#676b6b;background:#fff}.connection-step .actions{display:flex;gap:10px;flex-wrap:wrap}.connection-step details{margin-top:14px}.connection-step summary{cursor:pointer;font-size:12px;color:#60656a}.connection-step textarea{width:100%;margin-top:12px;box-sizing:border-box}.connection-progress{padding-left:20px;margin:12px 0;line-height:2.1;font-size:13px}.connection-progress li{color:#767a7d}.connection-progress li.complete{color:#27674a}.connection-examples{display:flex;flex-wrap:wrap;gap:8px}.connection-dialog #connection-evidence{overflow-wrap:anywhere}
-@media(max-width:600px){.connection-banner{align-items:flex-start;flex-direction:column;padding:20px;gap:14px}.connection-dialog{padding:22px 18px}.connection-step{gap:10px;grid-template-columns:26px minmax(0,1fr)}.connection-step .field-row{grid-template-columns:1fr}.connection-step .actions .button{width:100%;justify-content:center}.connection-number{width:24px;height:24px}.connection-examples .button{white-space:normal;text-align:left}}
+/* Update and backup details stay available in Settings. */
+.update-dialog { width:min(760px,calc(100vw - 32px)); max-width:760px; padding:32px; }
+.update-dialog > p { line-height:1.8; }
+.update-backend { padding:12px 16px; background:#f5f5f3; border-radius:10px; font-size:12px; overflow-wrap:anywhere; }
+@media(max-width:600px) { .update-dialog { padding:22px 18px; } }
 
 /* V2.3: one quiet grid, with editing controls shown only when needed. */
 .board-toolbar { margin: 0 0 24px; }
@@ -719,12 +718,6 @@ input, textarea, select { border-color: #dfe4e8; }
 .small-widget .widget-heading { gap:4px; }
 .small-widget .widget-heading h3 { font-size:11px; }
 .small-widget .widget-heading>.ui-icon { display:none; }
-.workspace-widget .connection-banner { margin:0; height:100%; padding:18px; display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; gap:8px; }
-.workspace-widget .connection-banner strong { font-size:14px; font-weight:550; }
-.workspace-widget .connection-banner p { font-size:11px; line-height:1.6; max-height:3.2em; overflow:auto; }
-.workspace-widget.small-widget .connection-banner { padding:10px; gap:3px; }
-.workspace-widget.small-widget .connection-banner p { display:none; }
-.workspace-widget .connection-banner .button { white-space:normal; }
 [data-widget=recent] .widget-surface { padding:20px; }
 #dashboard-library-slot { padding:0; }
 #dashboard-library-slot .library-panel { margin:0; }
@@ -753,7 +746,6 @@ input, textarea, select { border-color: #dfe4e8; }
   .text-content h1 { font-size:30px; }
   .text-content h2 { font-size:18px; }
   .text-content p,.text-content time { font-size:11px; }
-  .workspace-widget .connection-banner { padding:12px; }
   [data-widget=recent] .widget-surface { padding:12px; }
   #dashboard-library-slot .library-heading { flex-wrap:wrap; }
   .board-end { gap:8px; flex-wrap:wrap; }

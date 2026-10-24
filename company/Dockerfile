@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-COPY blueprint.py INSTALL_AI.txt ./
+COPY blueprint.py INSTALL_AI.txt AI_CONNECT.md ./
 COPY blueprint_folders/ ./blueprint_folders/
 COPY blueprint_library/ ./blueprint_library/
 COPY library_web/ ./library_web/

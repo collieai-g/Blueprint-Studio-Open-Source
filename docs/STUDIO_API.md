@@ -83,3 +83,10 @@ const response = await retainProtectedRequest(ctx, () => handleProtectedRequest(
 保留工作受平台持續時間限制，不是任意長時間的背景執行器。不要為避免衝突而縮短或任意刪除仍有效的鎖，也不要移除版本檢查。這是自行移植 Workers 後台的指引，不表示原生 Python 伺服器需要 `waitUntil`，也不提供通用 D1／R2 完整後台。
 
 平台適配驗收應覆蓋：取得鎖後延遲回應、前景中斷、成功提交、失敗清理、MCP 及隔離還原只讀保護。確認清理完成後下一項請求可正常取得資料，錯誤與資料內容不被改寫。本機中止測試可驗證生命週期登記及清理，平台實際取消行為仍需在正式執行環境核對。
+
+
+## V2.7.4 左側 AI 接駁入口
+
+`AI_CONNECT.md` 為客戶端閱讀的共用入口，連同已驗證身份下的 `/api/info`、`/connection-guide.json` 及現有 MCP 描述核對 origin、身份、規則與工具。它不授予控制權，也不自行寫入測試。MCP 驗收由實際客戶端產生並私人保存 challenge／client／date，透過真正工具保存，再另行讀回核對。
+
+右側不載入接駁精靈，正常 AI 區不列模型／外部接入登記；舊 `#/connections` 管理員唯讀頁面保留已有紀錄與權限。工具 API、來源保護和 schema 6 不因導覽簡化而移除或放寬。

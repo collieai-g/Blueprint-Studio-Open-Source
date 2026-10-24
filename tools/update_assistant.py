@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 from blueprint_folders import __version__
 
 MAX_BYTES = 128 * 1024 * 1024
-PREFERENCES = {'blueprint-workspace-v2', 'blueprint-workspace-v2.2-backup', 'blueprint-backend-display-v1'}
+PREFERENCES = {'blueprint-workspace-v2', 'blueprint-workspace-v2.2-backup', 'blueprint-workspace-v2.7.3-backup', 'blueprint-backend-display-v1'}
 
 
 def now():

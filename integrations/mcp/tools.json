@@ -899,7 +899,7 @@
     {
       "name": "blueprint_connection_guide",
       "title": "讀取內置接駁及工作規則",
-      "description": "Read at the start of every chat: client setup, troubleshooting and rules for routing user requests to workbench tools. Does not grant permission or confirm connection.",
+      "description": "Read at the start of every chat: active-client setup via AI_CONNECT.md, troubleshooting and work routing. The current AI client handles setup; no right-side wizard is required. Does not grant permission or confirm connection.",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -920,7 +920,7 @@
     {
       "name": "blueprint_verify_connection",
       "title": "實際驗證 AI 與工作台讀寫",
-      "description": "Only after the user starts the connection wizard, use its challenge, client and date. Creates one clearly labelled test workday, reads it back, completes its test todo and reads back again through the same authenticated API. Reuse the same challenge on retry. Return the record ID; the user checks the same workbench. Never invent a success receipt.",
+      "description": "Only after the user explicitly authorizes a connection acceptance test. The active AI client generates a cryptographic 32-lowercase-hex challenge, records its actual client name and user-local date in private resumable progress, and reuses the same parameters on retry. Creates one labelled test workday, reads it back and completes its test todo through the authenticated API. Independently call blueprint_get_workday by returned ID and blueprint_list_todos to verify the same todo. No browser wizard or fabricated receipt.",
       "inputSchema": {
         "type": "object",
         "properties": {

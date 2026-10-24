@@ -252,21 +252,6 @@
       if (error.status === 409) $('reload-company-profile').hidden = false;
     } finally { state.profileBusy = false; controls.forEach((control) => { control.disabled = false; }); }
   }
-  async function copyInstallInstruction() {
-    const control = $('copy-install-instruction'); control.disabled = true;
-    $('install-instruction-status').textContent = '正在準備安裝指令…';
-    try {
-      const data = await api('/api/install-instructions');
-      if (typeof data.instruction !== 'string' || !data.instruction.trim()) throw new Error('未能取得安裝指令，請稍後再試。');
-      const text = $('install-instruction-text'); text.value = data.instruction;
-      let copied = false;
-      try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(data.instruction); copied = true; } } catch { /* Visible manual copy is available below. */ }
-      if (!copied) { text.closest('details').open = true; text.focus(); text.select(); try { copied = document.execCommand('copy'); } catch { /* Browser can use native text selection. */ } }
-      $('install-instruction-status').textContent = copied ? '已複製，貼到具備工具執行能力的 AI 即可開始設定。' : '指令已展開及選取，請用瀏覽器的複製功能，貼到你使用的 AI。';
-    } catch (error) { $('install-instruction-status').textContent = error.message; }
-    finally { control.disabled = false; }
-  }
-
   function makeCard(item) {
     const card = element('article', 'item-card'); card.dataset.itemId = item.id; card.classList.toggle('selected', state.selected.has(item.id));
     const controls = element('div', 'card-controls');
@@ -685,13 +670,10 @@
   });
   window.addEventListener('resize', () => { if (window.innerWidth > 900) closeSidebar(); });
   $('help-button').addEventListener('click', () => { $('settings-dialog').close(); openDialog('help-dialog'); });
-  $('footer-help').addEventListener('click', () => openDialog('help-dialog'));
   $('settings-button').addEventListener('click', () => openDialog('settings-dialog'));
-  $('connection-settings-open').addEventListener('click', () => $('settings-dialog').close());
   $('company-profile-form').addEventListener('submit', saveCompanyProfile);
   $('edit-company-profile').addEventListener('click', openCompanyProfile); $('reload-company-profile').addEventListener('click', reloadCompanyProfile);
   $('company-profile-dialog').addEventListener('close', () => { ++state.profileRequest; });
-  $('copy-install-instruction').addEventListener('click', copyInstallInstruction);
   $('grid-view').addEventListener('click', () => setLayout('grid')); $('list-view').addEventListener('click', () => setLayout('list')); $('settings-layout').addEventListener('change', () => setLayout($('settings-layout').value));
   $('sort-order').addEventListener('change', () => setSort($('sort-order').value)); $('settings-sort').addEventListener('change', () => setSort($('settings-sort').value));
   $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => refresh(), 250); });
@@ -704,7 +686,6 @@
   $('context-download').addEventListener('click', () => { const blob = new Blob([$('context-markdown').value], { type: 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = element('a'); link.href = url; link.download = 'blueprint-ai-handoff.md'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); });
 
   async function init() {
-    window.BlueprintConnection?.init({ api, openDialog, notice, setView });
     window.BlueprintUpdate?.init({ api, openDialog, notice });
     workdaysUI = window.BlueprintWorkdays;
     workdaysUI?.init({ api, element, icon, notice, openDialog, setView, refreshInfo: loadInfo, refreshLibrary: async () => { await loadCollections(); if (!['workdays', 'todos'].includes(state.view)) await refresh(); await window.BlueprintStudio?.refresh({renderCurrent:state.view === 'studio'}); } });

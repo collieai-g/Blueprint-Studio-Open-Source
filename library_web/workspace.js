@@ -1,21 +1,19 @@
 /* Grid preferences are local to this browser, separate from company data. */
 'use strict';
 ((root) => {
-  const KEY = 'blueprint-workspace-v2', BACKUP_KEY = 'blueprint-workspace-v2.2-backup';
+  const KEY = 'blueprint-workspace-v2', BACKUP_KEY = 'blueprint-workspace-v2.2-backup', VISIBILITY_BACKUP_KEY = 'blueprint-workspace-v2.7.3-backup';
   const UNIT = 24, PAGE_ROWS = 48, MAX_PAGES = 3;
-  const TEXT_IDS = ['heading', 'description', 'date', 'intro-title', 'intro-description'];
-  const LABELS = { heading: '工作台標題', description: '工作台副標題', date: '日期', 'intro-title': '介紹標題', 'intro-description': '介紹說明', connection: '連接 AI', files: '文件庫', links: '資料收藏', youtube: 'YouTube 學習', unfiled: '待整理', workdays: '最近工作', todos: '待辦事項', recent: '最近更新' };
+  const TEXT_IDS = ['heading', 'description', 'date'];
+  const LABELS = { heading: '總覽標題', description: '副標題', date: '日期', files: '文件庫', links: '資料收藏', youtube: 'YouTube 學習', unfiled: '待整理', workdays: '最近工作', todos: '待辦事項', recent: '最近更新' };
   const DEFAULTS = { heading: [0,0,16,3], description: [0,3,24,1], date: [32,1,11,2],
-    'intro-title': [0,6,27,2], 'intro-description': [0,8,27,2], connection: [29,6,14,5],
-    files: [0,13,10,7], links: [11,13,10,7], youtube: [22,13,10,7], unfiled: [33,13,10,7],
-    workdays: [0,21,21,10], todos: [22,21,21,10], recent: [0,32,43,14] };
+    files: [0,4,10,7], links: [11,4,10,7], youtube: [22,4,10,7], unfiled: [33,4,10,7],
+    workdays: [0,12,21,10], todos: [22,12,21,10], recent: [0,23,43,14] };
   const IDS = Object.keys(DEFAULTS);
   const isText = id => TEXT_IDS.includes(id);
   const minimum = id => isText(id) ? { w: 1, h: 1 } : { w: 6, h: id === 'recent' ? 6 : 4 };
   const integer = (v, fallback, min, max) => Number.isInteger(v) ? Math.max(min, Math.min(max, v)) : fallback;
   function normalize(value) {
     const valid = value?.version === 1 && value.cards && typeof value.cards === 'object';
-    const legacy = valid && value.layoutVersion !== 3;
     const source = valid ? value.cards : {};
     let pages = integer(value?.pages, 1, 1, MAX_PAGES);
     const cards = {};
@@ -24,13 +22,10 @@
       const card = { x: integer(s.x, x, 0, 95), y: integer(s.y, y, 0, PAGE_ROWS * MAX_PAGES - 1),
         w: integer(s.w, w, min.w, 96), h: integer(s.h, h, min.h, PAGE_ROWS), collapsed: !isText(id) && s.collapsed === true };
       if (card.w * card.h < 2) card.w = 2;
-      if (legacy && source[id]) {
-        card.y = Math.min(PAGE_ROWS * MAX_PAGES - card.h, card.y + 13);
-        pages = Math.min(MAX_PAGES, Math.max(pages, Math.ceil((card.y + card.h) / PAGE_ROWS)));
-      }
       cards[id] = card;
     });
-    return { version: 1, layoutVersion: 3, mode: value?.mode === 'manual' ? 'manual' : 'ai',
+    const visible = ['heading', ...IDS.filter(id => id !== 'heading' && valid && value.layoutVersion === 4 && Array.isArray(value.visible) && value.visible.includes(id))];
+    return { version: 1, layoutVersion: 4, visible, mode: value?.mode === 'manual' ? 'manual' : 'ai',
       pages, columns: integer(value?.columns, 43, 6, 96), cards };
   }
   const overlaps = (a,b) => a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
@@ -53,7 +48,8 @@
   }
   function arrange(value, columns, priority) {
     const cols = integer(Math.floor(columns), 6, 6, 96), placed=[], result={};
-    const ids = IDS.includes(priority) ? [priority,...IDS.filter(id=>id!==priority)] : IDS;
+    const active = IDS.filter(id=>value.visible.includes(id));
+    const ids = active.includes(priority) ? [priority,...active.filter(id=>id!==priority)] : active;
     const responsive = cols < value.columns;
     for (const id of ids) {
       const s=value.cards[id], min=minimum(id);
@@ -72,18 +68,13 @@
   function fit(value, columns) {
     if (columns < 24 && columns < value.columns) {
       // A narrow viewport gets a calm reading order; saved desktop geometry stays intact.
-      const mobile=normalize(value), half=Math.floor((columns-1)/2), paired=columns>=13;
-      const positions={heading:[0,0,Math.max(2,columns-5),2],date:[columns-4,0,4,2],
-        description:[0,3,columns,1], 'intro-title':[0,5,columns,2], 'intro-description':[0,7,columns,2],
-        connection:[0,9,columns,4],workdays:[0,paired?26:34,columns,paired?5:4],
-        todos:[0,paired?32:38,columns,paired?5:4],recent:[0,paired?38:42,columns,paired?10:6]};
-      ['files','links','youtube','unfiled'].forEach((id,i)=>{
-        positions[id]=paired?[i%2*(half+1),14+Math.floor(i/2)*6,half,5]:[0,14+i*5,columns,4];
-      });
-      IDS.forEach(id=>{
-        const [x,y,w,h]=positions[id],saved=value.cards[id],page=Math.min(value.pages-1,Math.floor(saved.y/PAGE_ROWS));
+      const mobile=normalize(value), rows=new Map();
+      IDS.filter(id=>value.visible.includes(id)).forEach(id=>{
+        const saved=value.cards[id],page=Math.min(value.pages-1,Math.floor(saved.y/PAGE_ROWS)),y=rows.get(page)||0;
         const tiny=isText(id)&&saved.w<=4;
-        Object.assign(mobile.cards[id],{x,y:page*PAGE_ROWS+y,w:tiny?saved.w:w,h:tiny?saved.h:h});
+        const h=tiny?saved.h:id==='heading'?2:id==='description'?1:id==='date'?2:minimum(id).h;
+        Object.assign(mobile.cards[id],{x:0,y:page*PAGE_ROWS+y,w:tiny?Math.min(columns,saved.w):columns,h});
+        rows.set(page,y+h+1);
       });
       mobile.columns=columns;
       const layout=arrange(mobile,columns);if(layout)return layout;
@@ -94,8 +85,8 @@
     IDS.forEach(id=> { const min=minimum(id); Object.assign(compact.cards[id],{x:0,y:0,w:isText(id)?Math.min(columns,Math.max(2,compact.cards[id].w)):min.w,h:min.h}); });
     return arrange(compact,columns);
   }
-  function preset(name, columns=43, mode='ai', pages=1) {
-    const value=normalize({mode,pages,columns});
+  function preset(name, columns=43, mode='ai', pages=1, visible=['heading']) {
+    const value=normalize({version:1,layoutVersion:4,cards:{},visible,mode,pages,columns});
     if(name==='focus') {
       Object.assign(value.cards.todos,{x:0,y:13,w:27,h:17});
       Object.assign(value.cards.workdays,{x:28,y:13,w:15,h:17});
@@ -108,7 +99,7 @@
     }
     value.columns=43;
     const rects=fit(value,columns);
-    IDS.forEach(id=>Object.assign(value.cards[id],rects[id]));value.columns=columns;
+    value.visible.forEach(id=>Object.assign(value.cards[id],rects[id]));value.columns=columns;
     return value;
   }
   function start({refresh,isBusy}) {
@@ -116,16 +107,17 @@
     let raw=null,saved;
     try { raw=localStorage.getItem(KEY);saved=JSON.parse(raw||'null'); } catch { /* Safe defaults. */ }
     let preferences=normalize(saved),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame;
-    const widgets=new Map([...board.querySelectorAll('[data-widget]')].map(node=>[node.dataset.widget,node]));
+    const widgets=new Map([...board.querySelectorAll('[data-widget]')].filter(node=>IDS.includes(node.dataset.widget)).map(node=>[node.dataset.widget,node]));
     const status=$('workspace-sync'), columns=()=>integer(Math.floor(board.clientWidth/UNIT),6,6,96);
     const announce=text=>{$('board-announcement').textContent=text;};
     const persist=()=>{
       try {
-        if(raw && saved?.layoutVersion!==3 && !localStorage.getItem(BACKUP_KEY)) localStorage.setItem(BACKUP_KEY,raw);
+        if(raw && saved?.layoutVersion!==4 && !localStorage.getItem(VISIBILITY_BACKUP_KEY)) localStorage.setItem(VISIBILITY_BACKUP_KEY,raw);
+        if(raw && ![3,4].includes(saved?.layoutVersion) && !localStorage.getItem(BACKUP_KEY)) localStorage.setItem(BACKUP_KEY,raw);
         localStorage.setItem(KEY,JSON.stringify(preferences));
       } catch { announce('這個瀏覽器無法保存排版。公司資料不受影響。'); }
     };
-    function applyMode() { document.body.dataset.entryMode=preferences.mode;$('settings-entry-mode').value=preferences.mode; }
+    function applyMode() { document.body.dataset.entryMode=preferences.mode;if($('settings-entry-mode'))$('settings-entry-mode').value=preferences.mode; }
     // Text remains plain text outside edit mode; controls do not occupy grid cells.
     widgets.forEach((node,id)=>{
       for(const action of ['move','resize']) if(!node.querySelector(`[data-board-action="${action}"]`)) {
@@ -134,7 +126,8 @@
         button.setAttribute('aria-label',`${action==='move'?'移動':'調整大小'}：${LABELS[id]}。可使用方向鍵。`);node.append(button);
       }
       if(isText(id)) node.querySelector('.text-content').title=node.querySelector('.text-content').textContent;
-      const option=document.createElement('option');option.value=id;option.textContent=LABELS[id];$('board-selected').append(option);
+      const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.dataset.boardVisible=id;toggle.disabled=id==='heading';
+      toggle.addEventListener('change',()=>setVisible(id,toggle.checked));label.append(toggle,document.createTextNode(LABELS[id]));$('board-visible-fields')?.append(label);
     });
     function updateDate() {
       const now=new Date(),date=$('board-date');date.dateTime=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -142,7 +135,9 @@
       date.parentElement.title=now.toLocaleDateString('zh-HK',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
     }
     function inspector() {
+      if(!rectangles[selected])selected=preferences.visible.find(id=>rectangles[id])||'heading';
       const r=rectangles[selected];if(!r)return;
+      $('board-selected').replaceChildren(...preferences.visible.filter(id=>widgets.has(id)).map(id=>{const option=document.createElement('option');option.value=id;option.textContent=LABELS[id];return option;}));
       $('board-selected').value=selected;
       $('board-width').value=r.w;$('board-width').min=minimum(selected).w;$('board-width').max=columns();
       $('board-height').value=r.h;$('board-height').min=minimum(selected).h;
@@ -154,7 +149,7 @@
       if(!board.clientWidth)return;
       rectangles=layout||fit(preferences,columns());
       widgets.forEach((node,id)=>{
-        const r=rectangles[id],card=preferences.cards[id];
+        const r=rectangles[id],card=preferences.cards[id];node.hidden=!r;if(!r)return;
         node.style.gridColumn=`${r.x+1} / span ${r.w}`;node.style.gridRow=`${r.y+1} / span ${r.h}`;
         node.classList.toggle('collapsed',card.collapsed);node.classList.toggle('small-widget',r.h<=4);node.classList.toggle('short-widget',r.h<=5);
         node.classList.toggle('compact-text',isText(id)&&(r.w<=4||r.h===1));node.classList.toggle('selected',editing&&selected===id);
@@ -163,7 +158,9 @@
         const size=node.querySelector('.widget-size');if(size)size.textContent=`${r.w} × ${r.h}`;
       });
       board.style.gridTemplateColumns=`repeat(${columns()}, ${UNIT}px)`;
-      board.style.height=`${preferences.pages*PAGE_ROWS*UNIT}px`;
+      const rows=editing?preferences.pages*PAGE_ROWS:Math.max(...Object.values(rectangles).map(r=>r.y+r.h));
+      board.style.height=`${rows*UNIT}px`;$('board-end').hidden=!editing;
+      document.querySelectorAll('[data-board-visible]').forEach(toggle=>{toggle.checked=preferences.visible.includes(toggle.dataset.boardVisible);});
       board.style.setProperty('--page-height',`${PAGE_ROWS*UNIT}px`);
       const main=document.querySelector('.app-main'),a=main.getBoundingClientRect(),b=board.getBoundingClientRect();
       main.style.backgroundPosition=`${b.left-a.left}px ${b.top-a.top}px`;
@@ -172,21 +169,30 @@
       $('board-extend-label').textContent=preferences.pages>=MAX_PAGES?'已達三頁上限。':'需要更多空間嗎？';
       updateDate();inspector();
     }
-    function adopt() { IDS.forEach(id=>{const r=rectangles[id],card=preferences.cards[id];Object.assign(card,{x:r.x,y:r.y,w:r.w});if(!card.collapsed)card.h=r.h;});preferences.columns=columns(); }
+    function adopt() { Object.keys(rectangles).forEach(id=>{const r=rectangles[id],card=preferences.cards[id];Object.assign(card,{x:r.x,y:r.y,w:r.w});if(!card.collapsed)card.h=r.h;});preferences.columns=columns(); }
     function change(id,changes) {
+      if(!preferences.visible.includes(id))return false;
       const before=structuredClone(preferences);adopt();Object.assign(preferences.cards[id],changes);
       preferences=normalize(preferences);const layout=arrange(preferences,columns(),id);
       if(!layout){preferences=before;announce('這裏的空間不足。請縮小項目，或在底部增加一頁。');render();return false;}
       render(layout);adopt();persist();render(layout);announce('排版已保存。');return true;
     }
-    function select(id){selected=id;widgets.forEach((node,key)=>node.classList.toggle('selected',editing&&key===id));inspector();}
+    function setVisible(id,visible){
+      if(id==='heading'||!widgets.has(id))return;
+      const before=structuredClone(preferences);adopt();
+      preferences.visible=IDS.filter(key=>key==='heading'||(key===id?visible:preferences.visible.includes(key)));
+      const layout=arrange(preferences,columns(),visible?id:undefined);
+      if(!layout){preferences=before;render();announce('這裏的空間不足。請縮小項目，或增加一頁。');return;}
+      if(visible)selected=id;render(layout);adopt();persist();render(layout);announce(visible?'已加入總覽。':'已從總覽收起，資料仍然保留。');
+    }
+    function select(id){if(!preferences.visible.includes(id))return;selected=id;widgets.forEach((node,key)=>node.classList.toggle('selected',editing&&key===id));inspector();}
     $('edit-board').addEventListener('click',event=>{
       if(pointer)endPointer(true);
       editing=!editing;board.classList.toggle('editing',editing);$('board-editor').hidden=!editing;$('reset-board').hidden=!editing;
       event.currentTarget.setAttribute('aria-pressed',String(editing));event.currentTarget.textContent=editing?'完成調整':'調整排版';render();
     });
-    $('reset-board').addEventListener('click',()=>{preferences=preset('balanced',columns(),preferences.mode,preferences.pages);persist();render();announce('已還原排版。頁數和公司資料保持不變。');});
-    $('apply-board-preset').addEventListener('click',()=>{preferences=preset($('board-preset').value,columns(),preferences.mode,preferences.pages);persist();render();announce('已套用排版。公司資料保持不變。');});
+    $('reset-board').addEventListener('click',()=>{preferences=preset('balanced',columns(),preferences.mode,preferences.pages,preferences.visible);persist();render();announce('已還原排版。頁數和公司資料保持不變。');});
+    $('apply-board-preset').addEventListener('click',()=>{preferences=preset($('board-preset').value,columns(),preferences.mode,preferences.pages,preferences.visible);persist();render();announce('已套用排版。公司資料保持不變。');});
     $('board-selected').addEventListener('change',event=>select(event.target.value));
     $('apply-board-size').addEventListener('click',()=>{
       if(!$('board-width').reportValidity()||!$('board-height').reportValidity())return;
@@ -197,7 +203,7 @@
     $('add-board-page').addEventListener('click',()=>{
       if(preferences.pages>=MAX_PAGES)return;preferences.pages++;persist();render();announce(`已增加第 ${preferences.pages} 頁。`);
     });
-    $('settings-entry-mode').addEventListener('change',event=>{preferences.mode=event.target.value==='manual'?'manual':'ai';applyMode();persist();});
+    $('settings-entry-mode')?.addEventListener('change',event=>{preferences.mode=event.target.value==='manual'?'manual':'ai';applyMode();persist();});
     board.addEventListener('click',event=>{
       const node=event.target.closest('[data-widget]');if(!node)return;const id=node.dataset.widget;if(editing)select(id);
       const action=event.target.closest('[data-board-action]')?.dataset.boardAction;
@@ -255,8 +261,8 @@
     $('refresh-workspace').addEventListener('click',sync);
     window.addEventListener('pagehide',()=>{if(pointer)endPointer(true);});
     new ResizeObserver(()=>{if(pointer)endPointer(true);render();}).observe(board);
-    applyMode();render();status.textContent='資料已載入 · 按更新資料查看最新內容';status.dataset.state='ready';
+    applyMode();render();status.textContent='';status.dataset.state='ready';
   }
-  const api={normalize,arrange,fit,preset,overlaps,start,KEY,BACKUP_KEY,IDS,TEXT_IDS,UNIT,PAGE_ROWS,MAX_PAGES,minimum};
+  const api={normalize,arrange,fit,preset,overlaps,start,KEY,BACKUP_KEY,VISIBILITY_BACKUP_KEY,IDS,TEXT_IDS,UNIT,PAGE_ROWS,MAX_PAGES,minimum};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BlueprintWorkspace=api;
 })(globalThis);
