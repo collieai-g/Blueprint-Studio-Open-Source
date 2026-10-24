@@ -1,12 +1,12 @@
 # V2：在對話交代工作，在工作台查看成果
 
-[返回首頁](../README.md) · [保留資料升級](UPGRADE.md) · [MCP 接駁指南](AI_CONNECTION.md)
+[返回首頁](../README.md) · [左側 AI 接駁](../AI_CONNECT.md) · [保留資料升級](UPGRADE.md) · [MCP 接駁指南](AI_CONNECTION.md)
 
 日常新增工作、更新待辦、保存文件、加入收藏及整理公司報告，都透過可控制的畫面或既有工具保存資料，不修改 GitHub、不重新部署 Sites。公司與 Agent 的現有設定亦直接保存；排版偏好保存於目前瀏覽器。只有修改程式或升級版本時才走程式整合與部署，詳見[主要運作方式](OPERATING_MODEL.md)。
 
 先按[左右協作流程](LEFT_RIGHT_WORKFLOW.md)核對目前客戶端的能力。有獲授權的工作台畫面控制時可直接操作；需要工具路線時按 [AI_CONNECTION.md](AI_CONNECTION.md) 接通實際讀寫工具，支援 Codex、Claude、Gemini 等相容 MCP 客戶端。
 
-MCP 路線內置「AI 接駁中心」。已載入藍圖工具的新對話先讀 blueprint_connection_guide 取得工作規則；把此步驟及後台地址合併到客戶端支援的私人指引。初次接駁使用中心產生的參數呼叫 blueprint_verify_connection，讓右側獨立確認結果，見 [CONNECT.md](CONNECT.md)。
+V2.7.4 由左側 AI 讀 [AI_CONNECT.md](../AI_CONNECT.md) 完成設定；右側沒有接駁精靈。已載入工具的新對話先讀 blueprint_workspace_info 與 blueprint_connection_guide，核對實際站點、身份及規則。只有獲明確授權才由客戶端產生並私人保存測試參數，使用真正 blueprint_verify_connection，再另行讀回同一工作及完成待辦。右側按正常工作紀錄查看結果；見 [CONNECT.md](CONNECT.md)。
 
 V2 預設收起重複的手動填表入口。你可以直接對已連接的 AI 說：
 
@@ -40,3 +40,5 @@ AI 在原有授權範圍內判斷資料類型並寫入同一個工作台，不�
 - 搜尋、上載檔案、下載、勾選待辦、必要修改保留。「備用操作」集中提供手動匯入、收藏及新增收藏集。
 - 偏好設定可切回顯示手動入口；沒有連接 AI 的使用者仍可使用完整後台。
 - 標題、說明和日期是可移動的無框文字，支援兩格／四格；內容卡片保留外觀。按「調整排版」可沿 24px 方格移動或改變大小，也可用方向鍵操作。底部可增加頁面，最多三頁。排列保存在目前瀏覽器，不會改動公司資料；見 [排版指南](LAYOUT.md)。
+
+總覽預設只有標題與「調整排版」，文件、工作、待辦及最近資料卡片需在編輯器勾選。AI 的設定和能力核對留在左側，日常 AI 頁保留 Skill、Agent 及工作指令。

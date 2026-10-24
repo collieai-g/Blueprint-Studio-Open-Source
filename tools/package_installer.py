@@ -15,7 +15,7 @@ from blueprint_library.store import SCHEMA_VERSION
 
 EXCLUDED_PREFIXES = ('research/',)
 
-REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.mjs', 'tools/build_sites_gateway.py', 'docs/SITES_NATIVE_GATEWAY.md', 'docs/AGENT_ROADMAP.md', 'blueprint_library/maintenance.py', 'blueprint_library/backup.py', 'tools/check_installation.py', 'integrations/mcp/maintenance-tools.json', 'docs/NATIVE_LIFECYCLE.md', 'tools/source_checkpoint.py', 'docs/SOURCE_CHECKPOINT.md', 'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'tools/update_assistant.py', 'INSTALL_AI.txt', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
+REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.mjs', 'tools/build_sites_gateway.py', 'docs/SITES_NATIVE_GATEWAY.md', 'docs/AGENT_ROADMAP.md', 'blueprint_library/maintenance.py', 'blueprint_library/backup.py', 'tools/check_installation.py', 'integrations/mcp/maintenance-tools.json', 'docs/NATIVE_LIFECYCLE.md', 'tools/source_checkpoint.py', 'docs/SOURCE_CHECKPOINT.md', 'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'tools/update_assistant.py', 'INSTALL_AI.txt', 'AI_CONNECT.md', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
             'library_web/connection.js', 'library_web/connection-guide.json',
             'blueprint_library/connection.py', 'integrations/mcp/connection.mjs',
             'integrations/mcp/tools.json', 'docs/CONNECT.md', 'docs/UPGRADE.md',
@@ -45,7 +45,7 @@ def build(output):
             raise ValueError('安裝包包含不允許的來源檔案。')
         files[name] = path.read_bytes()
     manifest = {'product': 'Blueprint Studio Open Source', 'version': __version__,
-                'entrypoint': 'INSTALL_AI.txt', 'database_schema': SCHEMA_VERSION, 'private_data_included': False,
+                'entrypoint': 'INSTALL_AI.txt', 'ai_connection_entrypoint': 'AI_CONNECT.md', 'database_schema': SCHEMA_VERSION, 'private_data_included': False,
                 'files': {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}}
     with zipfile.ZipFile(output, 'x', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in files.items():
@@ -55,7 +55,7 @@ def build(output):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='建立完整 AI 引導安裝包，包含來源、內置接駁中心、規則及驗收')
+    parser = argparse.ArgumentParser(description='建立完整 AI 引導安裝包，包含來源、左側 AI 接駁入口、規則及驗收')
     parser.add_argument('--output', required=True)
     args = parser.parse_args()
     print(json.dumps(build(Path(args.output).expanduser().absolute()), ensure_ascii=False))

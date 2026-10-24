@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="/skills.css">
   <script src="/workdays.js" defer></script>
   <script src="/workspace.js" defer></script>
-  <script src="/connection.js" defer></script>
   <script src="/update.js" defer></script>
   <script src="/navigation.js" defer></script>
   <script src="/agents.js" defer></script>
@@ -56,48 +55,16 @@
     </header>
     <main id="main" tabindex="-1" aria-busy="true">
       <section id="workspace-startup" class="studio-empty" role="status" aria-live="polite"><p id="workspace-startup-message">正在載入工作台…</p><button id="retry-workspace" class="button secondary" type="button" hidden>重新連接</button></section>
-      <p class="workspace-status"><span class="sync-dot" aria-hidden="true"></span><span id="workspace-sync" role="status" aria-live="polite">正在連接資料…</span></p>
+      <p class="workspace-status"><span id="workspace-sync" role="status" aria-live="polite">正在載入資料…</span></p>
       <nav id="studio-section-navigation" class="studio-section-nav" aria-label="目前區域" hidden></nav>
       <div class="page-heading" id="view-heading" hidden><div><p class="eyebrow" id="page-eyebrow">YOUR WORKSPACE</p><h1 id="page-title">工作台<span class="title-dot" aria-hidden="true">.</span></h1><p id="page-description">管理公司的日常工作，隨時接續下一步。</p></div><div class="page-date" id="page-date"></div></div>
       <div id="studio-view-tabs" class="studio-tabs" hidden></div>
       <section id="studio-panel" class="studio-panel" hidden aria-label="公司工作內容"></section>
       <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <section id="dashboard-panel" class="dashboard-panel" aria-label="工作台概覽">
-        <details id="collaboration-orientation" class="collaboration-orientation" open>
-          <summary><span class="collaboration-guide-label">使用方式示意</span><strong>左右協作</strong><span class="collaboration-summary-copy">左邊推進工作，右邊管理公司</span><span class="collaboration-summary-toggle" aria-hidden="true"></span></summary>
-          <div class="collaboration-body">
-            <div class="collaboration-grid">
-              <section id="collaboration-codex-pane" class="collaboration-pane" aria-labelledby="collaboration-codex-title">
-                <p class="collaboration-pane-label">左側 · 你向 AI 下指令</p>
-                <h2 id="collaboration-codex-title">Codex</h2>
-                <p class="collaboration-pane-purpose">理解要求，規劃並執行工作。</p>
-                <ol class="collaboration-steps">
-                  <li><strong>說明想完成甚麼</strong><span>例如：用選定的品牌素材準備一條 30 秒影片。</span></li>
-                  <li><strong>套用專業方法</strong><span>用 Skill 規劃腳本、分鏡和檢查步驟。</span></li>
-                  <li><strong>使用實際可用的工具</strong><span>有畫面控制時操作右側，按要求製作內容。</span></li>
-                </ol>
-              </section>
-              <div class="collaboration-exchange" aria-label="右側交接選定資料，左側保存成果後再讀回核對">
-                <p><span class="collaboration-arrow-to-ai" aria-hidden="true"></span><span>交接要求<br>與選定資料</span></p>
-                <p><span class="collaboration-arrow-to-workspace" aria-hidden="true"></span><span>保存成果<br>再讀回核對</span></p>
-              </div>
-              <section id="collaboration-blueprint-pane" class="collaboration-pane" aria-labelledby="collaboration-blueprint-title">
-                <p class="collaboration-pane-label">右側 · 你的公司工作台</p>
-                <h2 id="collaboration-blueprint-title">藍圖工作室</h2>
-                <p class="collaboration-pane-purpose">整理公司資料，保存可接續的成果。</p>
-                <ul class="collaboration-workspace-sections" aria-label="工作台四個主要區域"><li>總覽</li><li>工作</li><li>AI</li><li>資料</li></ul>
-                <ul class="collaboration-responsibilities">
-                  <li><strong>工作有進度</strong><span>項目、待辦與每日紀錄。</span></li>
-                  <li><strong>素材有位置</strong><span>文件、品牌資料與選定來源。</span></li>
-                  <li><strong>成果可核對</strong><span>交接單、報告與最終交付內容。</span></li>
-                </ul>
-              </section>
-            </div>
-            <div class="collaboration-guide-footer"><p>你決定要求與使用哪些資料；目前 AI 的實際工具決定可執行的操作。</p><div class="collaboration-guide-actions"><button class="button primary small" type="button" data-collaboration-route="skills">準備 Skill 與交接單<span aria-hidden="true"> →</span></button><button class="button secondary small" type="button" data-collaboration-route="projects">查看公司工作</button></div></div>
-          </div>
-        </details>
         <div class="board-toolbar"><div class="board-actions"><button id="edit-board" class="button secondary small" type="button" aria-pressed="false">調整排版</button><button id="reset-board" class="button quiet small" type="button" hidden>還原排列</button></div></div>
         <div id="board-editor" class="board-editor" hidden>
+          <fieldset class="board-visible-modules"><legend>顯示的內容</legend><div id="board-visible-fields"></div></fieldset>
           <div class="layout-presets"><label>選擇排版<select id="board-preset"><option value="balanced">整齊排列</option><option value="focus">工作優先</option><option value="compact">簡潔排列</option></select></label><button id="apply-board-preset" class="button secondary small" type="button">套用排版</button></div>
           <div class="layout-selection"><label>調整項目<select id="board-selected"></select></label><label>寬度<input id="board-width" type="number" required min="1" max="96" aria-label="寬度（格）"></label><span class="layout-times" aria-hidden="true">×</span><label>高度<input id="board-height" type="number" required min="1" max="48" aria-label="高度（格）"></label><span>格</span><button id="apply-board-size" class="button secondary small" type="button">設定大小</button><span id="text-size-options"><button class="button quiet small" type="button" data-text-size="2">兩格</button><button class="button quiet small" type="button" data-text-size="4">四格</button></span><label>移到頁面<select id="board-page"></select></label></div>
           <p id="board-help" class="board-help">拖動項目來移動，拉右下角來改變大小。每次調整一格。文字沒有底框；邊線只在調整時顯示。也可選取移動按鈕，用方向鍵調整。</p>
@@ -105,12 +72,9 @@
         </div>
         <p id="board-announcement" class="sr-only" role="status" aria-live="polite"></p>
         <div id="workspace-board" class="workspace-board" aria-label="可調整的工作台版面">
-          <div class="workspace-widget workspace-text" data-widget="heading" data-label="工作台標題"><div class="text-content"><h1>今日總覽<span class="title-dot" aria-hidden="true">.</span></h1></div></div>
+          <div class="workspace-widget workspace-text" data-widget="heading" data-label="工作台標題"><div class="text-content"><h1>總覽</h1></div></div>
           <div class="workspace-widget workspace-text" data-widget="description" data-label="工作台副標題"><div class="text-content"><p>管理公司的日常工作。</p></div></div>
           <div class="workspace-widget workspace-text" data-widget="date" data-label="日期"><div class="text-content"><time id="board-date"></time></div></div>
-          <div class="workspace-widget workspace-text" data-widget="intro-title" data-label="介紹標題"><div class="text-content"><h2>今天先做甚麼？</h2></div></div>
-          <div class="workspace-widget workspace-text" data-widget="intro-description" data-label="介紹說明"><div class="text-content"><div id="studio-focus"><p>選擇最多三件今天要完成的事。</p><button id="studio-focus-edit" type="button" class="text-button">設定今日焦點</button></div></div></div>
-          <article class="workspace-widget" data-widget="connection" data-label="連接 AI"><div class="widget-surface connection-banner"><div><strong>連接 AI</strong><p id="studio-specialist-summary">專員尚未接入。</p><p id="connection-banner-status">讓 AI 幫你完成設定。</p></div><button class="button secondary small" type="button" data-connection-open>開始連接<span aria-hidden="true"> →</span></button></div></article>
           <article class="workspace-widget" data-widget="recent" data-label="最近更新"><div class="widget-surface"><div id="dashboard-library-slot" class="widget-content"></div></div></article>
           <article class="workspace-widget" data-widget="files" aria-labelledby="widget-title-files"><div class="widget-surface"><header class="widget-heading"><span data-icon="folder"></span><h3 id="widget-title-files">文件庫</h3><button class="widget-grip" type="button" data-board-action="move" aria-label="移動文件庫，可用方向鍵移動" title="拖動或用方向鍵移動">⠿</button><button class="widget-collapse" type="button" data-board-action="collapse" aria-label="收起文件庫" aria-expanded="true">−</button></header><div class="widget-content"><strong class="widget-count" data-count="files">0</strong><p class="widget-description">文件有自己的位置。</p></div><button class="widget-open text-button" type="button" data-view="files">查看文件<span data-icon="arrow"></span></button><div class="widget-size-tools"><button type="button" data-board-action="smaller" aria-label="縮小文件庫">−</button><span class="widget-size" aria-hidden="true"></span><button type="button" data-board-action="larger" aria-label="放大文件庫">+</button></div><button class="widget-resize" type="button" data-board-action="resize" aria-label="調整文件庫大小，方向鍵按格調整大小" title="拖動或用方向鍵縮放">⌟</button></div></article>
           <article class="workspace-widget" data-widget="links" aria-labelledby="widget-title-links"><div class="widget-surface"><header class="widget-heading"><span data-icon="bookmark"></span><h3 id="widget-title-links">資料收藏</h3><button class="widget-grip" type="button" data-board-action="move" aria-label="移動資料收藏，可用方向鍵移動" title="拖動或用方向鍵移動">⠿</button><button class="widget-collapse" type="button" data-board-action="collapse" aria-label="收起資料收藏" aria-expanded="true">−</button></header><div class="widget-content"><strong class="widget-count" data-count="links">0</strong><p class="widget-description">保存有用的參考。</p></div><button class="widget-open text-button" type="button" data-view="links">查看收藏<span data-icon="arrow"></span></button><div class="widget-size-tools"><button type="button" data-board-action="smaller" aria-label="縮小資料收藏">−</button><span class="widget-size" aria-hidden="true"></span><button type="button" data-board-action="larger" aria-label="放大資料收藏">+</button></div><button class="widget-resize" type="button" data-board-action="resize" aria-label="調整資料收藏大小，方向鍵按格調整大小" title="拖動或用方向鍵縮放">⌟</button></div></article>
@@ -132,7 +96,6 @@
         <div id="empty-state" class="empty-state" hidden><div class="empty-art"><img src="/icons/general.svg" alt="" width="72" height="72"></div><h3 id="empty-title">這裏準備好，等你的第一份資料。</h3><p id="empty-copy">加入文件或參考連結，逐步建立公司的資料庫。</p><button id="empty-add" class="button secondary manual-entry" type="button">加入資料<span data-icon="plus"></span></button></div>
         <div class="pagination"><button id="previous-page" class="button secondary small" type="button" hidden>上一頁</button><span id="page-label" class="muted"></span><button id="next-page" class="button secondary small" type="button" hidden>下一頁</button></div>
       </section>
-      <footer class="main-footer"><button id="footer-help" type="button">分類方式<span data-icon="help"></span></button></footer>
     </main>
   </div>
   <button id="studio-mobile-command" class="studio-mobile-command" type="button" hidden>指揮中樞</button>
@@ -208,47 +171,25 @@
       <label class="field">預設排序<select id="settings-sort"><option value="updated">最近更新</option><option value="created">最近加入</option><option value="title">名稱排序</option></select></label>
     </section>
     <section id="studio-preferences" class="studio-preferences"></section>
-    <details class="settings-section settings-advanced"><summary>進階連接（選用）</summary><p class="muted">左側 Codex 若已有控制右側工作台的工具，可直接按你的要求操作，不必另接 MCP。能否讀取、操作及保存，仍取決於目前對話的實際工具、登入和授權。</p><p class="muted">需要透過工作台工具處理資料，或檢查工具連接時，再使用下方指引。</p><button id="connection-settings-open" class="button secondary small" type="button" data-connection-open>設定及檢查工具連接</button></details>
     <div class="settings-export"><h3>更新工作台</h3><p class="muted">由 AI 接續更新，保留原網站與資料。</p><button class="button secondary" type="button" data-update-open>開啟更新助手</button></div>
     <div class="settings-export" data-admin-only hidden><h3>匯出資料清單</h3><p class="muted">包含文字、分類及標記；原始檔案需另外下載，不是完整檔案備份。</p><a class="button secondary" href="/api/export" download><span data-icon="download"></span>匯出 JSON</a></div>
   </dialog>
-  <dialog id="help-dialog" aria-labelledby="help-heading"><div class="dialog-heading"><h2 id="help-heading">藍圖工作室使用說明</h2><button class="icon-button" type="button" data-close aria-label="關閉使用說明">×</button></div><div class="help-section"><h3>左邊交代工作，右邊管理公司</h3><p>在左側向 Codex 或目前使用的 AI 說明要求，讓它按選定資料規劃和處理。右側的藍圖保存工作、素材與成果，分為「總覽、工作、AI、資料」四個主要區域。AI 有實際可用的畫面控制工具時，可按要求操作右側；也可使用已接通的工作台工具。</p></div><div class="help-section"><h3>用 Skill 準備專業工作</h3><p>到「AI」的「技能與工作交接」，填寫這次要求、選定來源及可重用的專業步驟，再把交接內容交給目前的 AI。Skill 提供處理方法；實際製作影片或其他成果，使用該 AI 當時可用的工具。</p></div><div class="help-section"><h3>保存後查看最新內容</h3><p>在工作台內保存後會即時顯示結果。AI 從外部保存後，按「更新資料」查看最新內容；閒置或切回視窗不會自動更新。沒有畫面控制或工作台工具時，可從「備用操作」匯入 JSON，再預覽和保存。</p><p><a class="button secondary small" href="https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noopener noreferrer">閱讀完整使用手冊<span aria-hidden="true"> ↗</span></a></p></div><div class="help-section"><h3>安裝與 AI 接駁</h3><p>把安裝指令交給具備檔案或工具執行能力的 AI，讓它設定你公司的專屬後台。按需要選擇雲端或本機模式。</p><p>完成連接後，可以在 AI 裏說「今日收工」，整理目前可見或你提供的工作。一般瀏覽器聊天工具可輸出 JSON，再回到這裏預覽保存。</p><button id="copy-install-instruction" class="button secondary" type="button">交給 AI 安裝</button><details class="instruction-details"><summary>查看安裝指令</summary><textarea id="install-instruction-text" rows="7" readonly aria-label="給 AI 的安裝指令"></textarea></details><p id="install-instruction-status" class="muted" role="status" aria-live="polite"></p></div><div class="help-section"><h3>先收藏，再慢慢整理</h3><p>文件庫保存原始檔案；資料收藏保存網站、UI 參考與 YouTube 連結。未分配收藏集的資料會出現在「待整理」。</p></div><div class="help-section"><h3>分類可以隨時修改</h3><p>圖案與標籤由檔名、格式及你提供的文字按規則分類，並非 AI 模型分析。詳情內可以修改分類，或重新按規則整理。</p></div><div class="help-section"><h3>把選定資料交給 AI</h3><p>勾選最多 20 項資料，再按「交給 AI」，即可取得有來源的 Markdown 內容。你決定交給哪個 AI，不會自動上傳。</p></div><div class="help-section"><h3>資料與快捷鍵</h3><p>公司資料與附件保存在已設定的工作台後台，排版偏好保存在目前瀏覽器。用 <kbd>Ctrl / ⌘ K</kbd> 搜尋全部資料；用 <kbd>Esc</kbd> 關閉視窗。</p></div></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-heading">
+    <div class="dialog-heading"><h2 id="help-heading">使用說明</h2><button class="icon-button" type="button" data-close aria-label="關閉使用說明">×</button></div>
+    <div class="help-section"><h3>工作與資料</h3><p>「工作」保存項目、待辦與每日紀錄；「資料」整理文件、收藏、主題及封存內容。你可在左側向 Codex 說明要求，在右側核對保存結果。</p></div>
+    <div class="help-section"><h3>調整總覽</h3><p>按「調整排版」選擇要顯示的內容，再移動、調整大小或收合。排版只保存在目前瀏覽器，不會刪除公司資料。</p></div>
+    <div class="help-section"><h3>查看最新資料</h3><p>在工作台內保存後會更新相關內容；外部保存後，按「更新資料」查看。閒置或切回視窗不會自動重建畫面。</p></div>
+    <div class="help-section"><h3>常用操作</h3><p>用 Ctrl／⌘ K 搜尋資料，按 Esc 關閉視窗。需要手動上載、收藏或匯入工作時，使用上方「備用操作」。</p><p><a class="button secondary small" href="https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noopener noreferrer">閱讀完整使用手冊<span aria-hidden="true"> ↗</span></a></p></div>
+  </dialog>
 
   <dialog id="work-import-dialog" class="work-import-dialog" aria-labelledby="work-import-heading"><div class="dialog-heading"><div><p class="eyebrow">DAILY WORK</p><h2 id="work-import-heading">今日收工</h2></div><button class="icon-button" type="button" data-close aria-label="關閉今日收工">×</button></div><div id="work-import-start"><div class="import-guide"><h3>一句「今日收工」，留下值得接續的工作。</h3><p>已連接工具的 AI 可整理並保存目前可見或你提供的工作。一般聊天工具可用下方指令輸出 JSON，再貼回這裏預覽及修改。</p><div class="actions"><button id="copy-work-instruction" class="button primary" type="button">複製整理指令</button><button id="download-work-template" class="button secondary" type="button">下載 JSON 範本</button></div><details class="instruction-details"><summary>查看整理指令</summary><textarea id="work-instruction-text" rows="7" readonly aria-label="給 AI 的整理指令"></textarea></details></div><p class="muted import-limit">每份紀錄最多 80 項、200,000 字元；保存的 JSON 上限為 512 KiB。可選取最多 1 MB 的 JSON 檔案預覽。</p><label class="field">貼上 AI 整理的 JSON<textarea id="work-json-input" rows="8" spellcheck="false" placeholder='{"date":"…","source":"Codex","source_key":"…","entries":[…]}'></textarea></label><label class="field">或選擇 JSON 檔案<input id="work-json-file" type="file" accept=".json,application/json"></label><div class="dialog-actions spread"><button id="work-manual" class="button secondary" type="button">自行新增紀錄</button><button id="work-preview" class="button primary" type="button">預覽內容<span data-icon="arrow"></span></button></div></div><div id="work-preview-panel" hidden><form id="work-preview-form"><p class="muted">可刪除不需要的項目，或修改內容。確認後才會保存。</p><div class="field-row"><label class="field">日期<input id="draft-date" type="date" required></label><label class="field">來源<input id="draft-source" maxlength="80" required placeholder="Codex、Gemini、Claude…"></label></div><label class="field">紀錄標題<input id="draft-title" maxlength="240" placeholder="今天主要處理甚麼？"></label><label class="field">工作摘要<textarea id="draft-summary" rows="3" maxlength="8000"></textarea></label><details class="source-key-details"><summary>紀錄識別碼</summary><p class="muted">用來避免同一份紀錄重複匯入；保留 AI 提供的識別碼。</p><label class="field">識別碼<input id="draft-source-key" maxlength="200" required></label></details><div class="section-title draft-section-heading"><h3>保存項目</h3><button id="draft-add" class="button secondary small" type="button"><span data-icon="plus"></span>加入項目</button></div><div id="draft-entries"></div><div class="dialog-actions spread"><button id="draft-back" class="button secondary" type="button">返回 JSON</button><button id="draft-save" class="button primary" type="submit">確認保存</button></div></form></div><button id="draft-reload" class="button secondary small" type="button" hidden>重新讀取最新紀錄</button><p id="work-import-error" class="form-error" role="alert" hidden></p><p id="work-import-status" class="muted" role="status" aria-live="polite"></p></dialog>
   <dialog id="work-report-dialog" class="work-report-dialog" aria-labelledby="work-report-title"><div class="dialog-heading"><h2 id="work-report-title">每日工作紀錄</h2><button class="icon-button" type="button" data-close aria-label="關閉工作紀錄">×</button></div><p id="work-report-meta" class="muted"></p><p id="work-report-summary" class="work-report-summary"></p><div id="work-report-entries"></div><div class="dialog-actions spread"><button id="work-report-history" class="button secondary small" type="button" aria-expanded="false" aria-controls="work-report-history-list">版本紀錄</button><button id="work-report-edit" class="button primary small" type="button">修整紀錄</button></div><div id="work-report-history-list" class="work-history-list" hidden></div><p id="work-report-error" class="form-error" role="alert" hidden></p><button id="work-report-reload" class="button secondary small" type="button" hidden>重新讀取最新版本</button></dialog>
 
   <dialog id="company-profile-dialog" class="company-profile-dialog" aria-labelledby="company-profile-heading"><form id="company-profile-form"><div class="dialog-heading"><div><p class="eyebrow">YOUR COMPANY</p><h2 id="company-profile-heading">設定你公司的專屬後台</h2></div><button class="icon-button" type="button" data-close aria-label="關閉公司設定">×</button></div><p class="muted">先留下公司名稱，其他資料可以慢慢補充。</p><label class="field">公司名稱<input id="profile-name" required maxlength="120" autocomplete="organization" placeholder="你的公司或工作室名稱"></label><label class="field">行業 <span class="optional">選填</span><input id="profile-industry" maxlength="120" placeholder="例如：AI 服務、設計、教育"></label><label class="field">公司簡介 <span class="optional">選填</span><textarea id="profile-description" rows="3" maxlength="4000" placeholder="公司主要提供甚麼服務？"></textarea></label><label class="field">目前目標 <span class="optional">選填</span><textarea id="profile-goals" rows="3" maxlength="4000" placeholder="目前想完成或持續推進的事"></textarea></label><p id="company-profile-error" class="form-error" role="alert" hidden></p><button id="reload-company-profile" class="button secondary small" type="button" hidden>重新讀取最新資料</button><div class="dialog-actions spread"><button class="button secondary" type="button" data-close>稍後再填</button><button id="save-company-profile" class="button primary" type="submit">保存公司資料</button></div></form></dialog>
-<dialog id="connection-dialog" class="connection-dialog" aria-labelledby="connection-heading">
-    <div class="dialog-heading"><div><p class="eyebrow">CONNECT YOUR AI</p><h2 id="connection-heading">連接 AI 與工作台</h2></div><button class="icon-button" type="button" data-close aria-label="關閉 AI 接駁中心">×</button></div>
-    <p class="muted">由 AI 帶你完成設定。接通後，你在對話交代工作，成果就會回到這裏。</p>
-    <p id="connection-backend" class="connection-backend" role="status">正在核對這個工作台…</p>
-    <section class="connection-step" aria-labelledby="connection-choose"><span class="connection-number" aria-hidden="true">01</span><div><h3 id="connection-choose">選擇你使用的 AI</h3>
-      <div class="field-row"><label class="field">AI 客戶端<select id="connection-client"><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="gemini">Gemini CLI</option><option value="other">其他 MCP 客戶端</option></select></label>
-      <label class="field">工作台安裝方式<select id="connection-route"><option value="">請選擇</option><option value="native">本機／一般雲端後台</option><option value="sites">Sites 工作台</option></select></label></div>
-      <label id="connection-other-field" class="field" hidden>客戶端名稱<input id="connection-other" maxlength="80" placeholder="填寫實際使用的 AI 客戶端"></label>
-      <p id="connection-client-help" class="muted"></p></div></section>
-    <section class="connection-step" aria-labelledby="connection-handoff"><span class="connection-number" aria-hidden="true">02</span><div><h3 id="connection-handoff">把接駁交給 AI</h3>
-      <p>複製一次指令，貼到你使用的 AI。它會沿用這個工作台，帶你完成連接、登入及工具載入。</p>
-      <p class="muted">此指令授權新增一筆「AI 接駁測試」及測試待辦，讀回並完成該待辦；不改動你的其他工作資料。</p>
-      <div class="actions"><button id="connection-copy" class="button primary" type="button" disabled>複製接駁及測試指令</button><button id="connection-download" class="button secondary" type="button" disabled>下載接駁指令</button></div>
-      <details><summary>查看交給 AI 的內容</summary><textarea id="connection-prompt" rows="8" readonly aria-label="AI 接駁及測試指令"></textarea></details>
-      <p id="connection-copy-status" class="muted" role="status" aria-live="polite"></p></div></section>
-    <section class="connection-step" aria-labelledby="connection-check-heading"><span class="connection-number" aria-hidden="true">03</span><div><h3 id="connection-check-heading">在這裏確認接駁結果</h3>
-      <ol id="connection-progress" class="connection-progress" aria-live="polite"><li>等待 AI 接駁</li></ol>
-      <p id="connection-evidence" class="muted"></p>
-      <div class="actions"><button id="connection-check" class="button secondary" type="button">檢查進度</button><button id="connection-retest" class="button secondary" type="button">建立新測試指令</button><button id="connection-workdays" class="text-button" type="button" hidden>查看測試紀錄</button></div>
-      <p class="muted">開啟此視窗時每 5 秒檢查。成功紀錄只證明當次連接；換 AI、對話或帳號後請重新驗證。新的測試指令會使用另一筆測試紀錄。</p></div></section>
-    <section class="connection-step" aria-labelledby="connection-help-heading"><span class="connection-number" aria-hidden="true">?</span><div><h3 id="connection-help-heading">卡住了？繼續目前這一步</h3>
-      <label class="field">目前情況<select id="connection-problem"><option value="tools">外掛已安裝，但對話沒有工具</option><option value="auth">登入失敗／401／403</option><option value="network">網絡規則阻擋／逾時</option><option value="old">找不到新版工具／404</option><option value="wrong">寫入後，工作台看不到</option><option value="sync">畫面未更新</option></select></label>
-      <p id="connection-help-text"></p><button id="connection-help-copy" class="button secondary" type="button">複製這一步給 AI</button></div></section>
-    <section class="connection-step"><span class="connection-number" aria-hidden="true">04</span><div><h3>開始你的第一項工作</h3><p>完成接駁後，選一句貼給 AI，再換成你的真實內容。</p>
-      <div class="connection-examples"><button class="button secondary" type="button" data-connection-example="請將我接下來提供的內容整理成文件，存入藍圖工作台，選擇合適收藏集，保存後按 ID 讀回確認。">整理一份文件</button><button class="button secondary" type="button" data-connection-example="請保存我提供的網站或 YouTube 連結及學習重點到藍圖工作台，不猜測未讀取的全文或字幕，保存後讀回確認。">保存學習資料</button><button class="button secondary" type="button" data-connection-example="今日收工，請整理目前可見的成果、決定及下一步，更新藍圖工作台，保留已完成待辦及歷史，再讀回確認。">整理工作及待辦</button></div></div></section>
-    <p id="connection-error" class="form-error" role="alert" hidden></p>
-  </dialog>
-  <dialog id="update-dialog" class="connection-dialog" aria-labelledby="update-heading">
+  <dialog id="update-dialog" class="update-dialog" aria-labelledby="update-heading">
     <div class="dialog-heading"><div><p class="eyebrow">KEEP YOUR WORK</p><h2 id="update-heading">更新工作台</h2></div><button class="icon-button" type="button" data-close aria-label="關閉更新助手">×</button></div>
     <p class="muted">把更新交給 AI。沿用你的網站、工作資料及排版。</p>
-    <p id="update-backend" class="connection-backend" role="status"></p>
+    <p id="update-backend" class="update-backend" role="status"></p>
     <label class="field">現有安裝方式<select id="update-route"><option value="unknown">讓 AI 核對</option><option value="native">本機／一般雲端後台</option><option value="sites">Sites 工作台</option></select></label>
     <p id="update-backup-status" class="muted" role="status"></p>
     <section id="native-backup" hidden>

@@ -143,11 +143,13 @@ AI 同時驗證未登入不能讀取公司資料。沒有實際執行的檢查�
 
 **本步完成：** 本機工作台已可日常使用，重啟後資料仍在。
 
-## L6. 連接所用 AI 的 MCP 工具
+## L6. 由左側 Codex 設定 AI 操作
 
-依 [AI_CONNECTION.md 的原生路線](AI_CONNECTION.md#1-原生後台codexclaude-codegemini-cli-共用-mcp)，安裝專用 MCP 環境，使用 `mcp-config` 產生 Codex／Claude／Gemini 設定，並完成寫入及讀回驗收。這條路線提供文件、收藏、工作及待辦的完整工具；不是只在對話貼提示詞。
+由左側 Codex 讀取 [AI_CONNECT.md](../AI_CONNECT.md)，核對目前工具、實際本機 origin 及已登入工作台。若客戶端真的可以控制同一個登入分頁，優先使用正式表單保存一筆已授權資料，再重新開啟相同紀錄；看得到頁面本身不代表可以控制。
 
-以下 `workday-connect` 是保留的命令列每日工作路線，可供已有終端機綁定的使用者沿用，不能代替 MCP 外掛接駁。
+選擇 MCP 時，再依 [AI_CONNECTION.md 的原生路線](AI_CONNECTION.md#1-原生後台codexclaude-codegemini-cli-共用-mcp)準備專用環境，以 `mcp-config` 合併 Codex／Claude／Gemini 設定。由客戶端產生 32 位十六進位 challenge，連同實際 client、有效 date 透過真正 `blueprint_verify_connection` 驗證保存、讀回及待辦更新；保留同一測試的編號與重試參數。這些步驟在左側完成，不要求開啟右側接駁精靈，也不能用畫面或直接 API 製造 MCP 通過紀錄。
+
+以下 `workday-connect` 是保留的命令列每日工作路線，可供已有終端機綁定的使用者沿用；畫面路徑不必使用。CLI 保存與 MCP 驗收分開記錄，不能把 CLI 寫入當成目前對話已載入外掛。
 
 保持後台服務運行，另開一個終端機並進入同一程式目錄。先在該終端機的安全環境設定 `BLUEPRINT_BACKEND_USERNAME` 及 `BLUEPRINT_BACKEND_PASSWORD`；不要將值貼到對話或寫入公開檔案。
 Windows PowerShell：
@@ -212,6 +214,6 @@ AI 最後在私人目錄的 `INSTALL_PROGRESS.md` 記錄：實際程式及資料
 
 每次修正後接續原進度；只有真實啟動、登入、原版功能及重啟保存驗證通過，才標記本機安裝完成。
 
-## V2.4：由介面接續到真正使用
+## 由左側完成驗收與第一項工作
 
-工作台可開啟後，按已選定的操作方式完成驗收。使用真正畫面控制時，依 [左右協作流程](LEFT_RIGHT_WORKFLOW.md) 在同一個已登入工作台保存並重新開啟相同紀錄。選用 MCP 時，從「設定 → 進階連接（選用）」開啟接駁中心，依 [CONNECT.md](CONNECT.md) 完成客戶端設定、必要登入／工具載入及 blueprint_verify_connection，等右側讀到相同驗收結果。最後帶使用者完成第一項真實工作；換對話沿用私人進度，不重建工作台。
+工作台可開啟後，將 [AI_CONNECT.md](../AI_CONNECT.md) 交給左側 Codex，按已選路徑核對正式 origin、身份及實際能力，完成保存並重新開啟同一筆結果。MCP 驗收由客戶端建立 challenge 並使用真正工具完成，不依賴右側精靈。最後完成第一項真實工作；換對話沿用私人進度，不重建工作台。新總覽只顯示標題與排版入口，所需卡片由編輯器加入；四個主入口與「設定」保持可用。

@@ -1,10 +1,10 @@
 # 不同 AI 都能讀寫同一個藍圖工作台
 
-[安裝指南](INSTALL.md) · [保留資料升級](UPGRADE.md) · [AI 工作方式](AI_WORKSPACE.md) · [日常操作與客製更新](OPERATING_MODEL.md)
+[左側 AI 接駁入口](../AI_CONNECT.md) · [安裝指南](INSTALL.md) · [保留資料升級](UPGRADE.md) · [AI 工作方式](AI_WORKSPACE.md) · [日常操作與客製更新](OPERATING_MODEL.md)
 
 **先按目前客戶端的真實能力選擇路線。** 有控制同一個已登入工作台的工具時，可以直接用畫面填表、上載、保存並讀回，不要求使用者另外接 API。只有右側畫面可見、沒有控制工具時，不能聲稱已能操作。詳見[左右協作流程](LEFT_RIGHT_WORKFLOW.md)。
 
-**以下保留 MCP 工具層及內置接駁中心的完整設定。** Codex 或目前相容 AI 客戶端理解你的要求，呼叫已授權工具，將內容存入原來的後台；工作台顯示同一份資料。藍圖提供共用操作工具；獨立業務 Agent 另行按共同規格接入。安裝工作台、建立專員設定或取得開發範本，都不代表已有正在運行的客服或其他業務 Agent。
+**V2.7.4 的 AI 設定由左側客戶端讀取 [AI_CONNECT.md](../AI_CONNECT.md) 完成；右側沒有接駁精靈。以下是可選 MCP 路徑的技術參考。** Codex 或目前相容 AI 客戶端理解你的要求，呼叫已授權工具，將內容存入原來的後台；工作台顯示同一份資料。藍圖提供共用操作工具；獨立業務 Agent 另行按共同規格接入。安裝工作台、建立專員設定或取得開發範本，都不代表已有正在運行的客服或其他業務 Agent。
 
 ```text
 Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
@@ -30,12 +30,15 @@ Codex／Claude／Gemini／其他支援 MCP 的 AI 客戶端
 
 Sites 入口配原生後台時，資料操作只保存到後台。若程式改動只影響原生後台，而且接駁合約相容，部署及驗證後台即可；只有 Sites Worker、工具定義或平台設定受影響時，才更新相應 Sites 入口。原生及 Sites 原生接駁的擁有人可以使用原生備份工具；純 Sites D1／R2 儲存仍須使用其已驗證的平台備份方式。
 
-## MCP 路線：從內置接駁中心開始
+## MCP 路線：由左側讀取 AI_CONNECT.md
 
-選用 MCP 時，安裝完成後從「設定 → 進階連接（選用）」開啟工作台「AI 接駁中心」，按 [CONNECT.md](CONNECT.md) 由選擇客戶端、複製接駁指令、處理卡點一路完成驗收及第一項真實工作。下方技術步驟由安裝 AI 執行，不要求使用者自行拼接設定。
+選用 MCP 時，把 [AI_CONNECT.md](../AI_CONNECT.md) 交給目前 Codex 或相容 AI。AI 先沿用已有工作台地址及設定，讀取已驗證的 `blueprint_workspace_info` 與 `blueprint_connection_guide`，核對 origin、公司、身份、目前能力及規則，再完成客戶端授權與工具載入。不需要到右側選模型或複製精靈指令。
 
-新增 blueprint_connection_guide 直接提供工作台共用規則、各客戶端設定及卡點處理；原生 MCP 初始化亦載入同一份規則。每個新對話先讀取，客戶端支援的私人專案指引亦應記下這一步。
-新增 blueprint_verify_connection 以接駁中心提供的 challenge、client、date 在原後台做真實保存、讀回及測試待辦更新。它不會修改正常工作紀錄；只讀連接不能執行。右側獨立讀回同一筆驗收紀錄才顯示完成。共通 40 個工具的完整參數由 tools/list 提供；原生版另有 2 個擁有人備份工具，共 42 個，見 [原生維護](NATIVE_LIFECYCLE.md)。
+HTTP 對應入口是同一個已驗證後台的 `/api/info` 與 `/connection-guide.json`；保留身份驗證、代理與 TLS，不能把公開來源 JSON 當作私人站已部署能力。MCP 工具描述以目前工具清單為準，原有名稱及 schema 保持相容。
+
+只有獲明確測試授權後，AI 才用客戶端的密碼學隨機來源產生 16 bytes、編碼為 32 位小寫十六進位 `challenge`，配合真實 `client` 與使用者時區的 `date`，私人保存後呼叫真正的 `blueprint_verify_connection`。重試沿用相同參數。工具完成真實工作／待辦保存及更新後，還需用返回 ID 另行讀取工作與待辦核對。流程見 [CONNECT.md](CONNECT.md)；不得用右側或直接 API 偽造 MCP 驗收標記。
+
+共通工具為 40 個；原生及 Sites 原生接駁另有 2 個擁有人備份工具，共 42 個。畫面控制路徑不必先安裝 MCP；真正控制能力仍由目前客戶端提供。
 
 ## 1. 原生後台：Codex、Claude Code、Gemini CLI 共用 MCP
 
@@ -117,7 +120,7 @@ import catalog from './mcp/tools.json' with { type: 'json' };
 
 const mcp = createMcpHandler({
   tools: catalog.tools,
-  version: '2.6.0',
+  version: '2.7.4',
   authorize: (request, env) => requireVerifiedPlatformUser(request, env),
   dispatch: (request, env) => existingAuthenticatedApi.fetch(request, env)
 });
@@ -131,7 +134,7 @@ const mcp = createMcpHandler({
 
 ## 3. 每個 AI 都要完成的驗收
 
-先在工作台內置接駁中心取得本次 challenge、client、date，呼叫 blueprint_verify_connection，按返回 ID 讀回並等待工作台顯示同一結果；詳見 [CONNECT.md](CONNECT.md)。此工具自動完成測試紀錄及待辦驗收，然後再以第一項真實工作驗證日常使用。
+依 [AI_CONNECT.md](../AI_CONNECT.md) 在左側核對能力與授權，建立並私人保存本次 challenge、client、date，呼叫真正 blueprint_verify_connection，再用 blueprint_get_workday 與 blueprint_list_todos 按返回編號核對。工作台只負責查看同一紀錄，沒有精靈或測試輪詢；詳見 [CONNECT.md](CONNECT.md)。然後再以第一項真實工作驗證日常使用。
 
 用一項使用者已要求保存的真實內容驗收，或清楚命名測試資料，不混入虛構公司工作。
 

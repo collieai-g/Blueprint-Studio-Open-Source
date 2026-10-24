@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blueprint_folders import __version__
 from blueprint_library.store import SCHEMA_VERSION
-FILES = ['UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'library_web/index.html', 'library_web/style.css', 'library_web/app.js',
+FILES = ['AI_CONNECT.md', 'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'library_web/index.html', 'library_web/style.css', 'library_web/app.js',
          'library_web/workdays.js', 'library_web/workspace.js', 'library_web/brand.svg',
          'library_web/navigation.js', 'library_web/studio.js', 'library_web/studio.css',
          'library_web/agents.js', 'library_web/agents.css', 'docs/AGENT_CONTRACT.md',
@@ -32,8 +32,8 @@ def main():
     output = Path(args.output).expanduser().absolute()
     paths = FILES + sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / 'assets/icons').glob('*.svg'))
     manifest = {'product': 'Blueprint Studio Open Source', 'version': __version__, 'database_schema': SCHEMA_VERSION,
-                'database_migration': 'Required: additive schema 6 Agent tables; this UI package does not perform backend migration', 'requires': 'V2.6 Agent API (docs/AGENT_CONTRACT.md) plus the existing authenticated Blueprint Studio API. UI-only upgrade is insufficient. Sites backend adaptation is not included.',
-                'mcp_adapter': 'Integrate with the existing verified platform identity and API; see docs/AI_CONNECTION.md.',
+                'database_migration': 'Schema 6 retained; this UI package does not perform backend migration. Older backends require their existing schema 6 migration.', 'requires': 'V2.6 Agent API (docs/AGENT_CONTRACT.md) plus the existing authenticated Blueprint Studio API. UI-only upgrade is insufficient. Sites backend adaptation is not included.',
+                'ai_connection_entrypoint': 'AI_CONNECT.md', 'mcp_adapter': 'Integrate with the existing verified platform identity and API; see docs/AI_CONNECTION.md.',
                 'files': {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in paths}}
     with zipfile.ZipFile(output, 'x', compression=zipfile.ZIP_DEFLATED) as archive:
         for name in paths: archive.write(ROOT / name, name)

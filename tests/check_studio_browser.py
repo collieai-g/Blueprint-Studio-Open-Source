@@ -25,8 +25,10 @@ def main():
         initialize_library(data, 'owner', password, company_profile={'name':'Blueprint Studio'})
         store = Store(data); studio = Studio(store)
         project = studio.create({'kind':'project','title':'整理新季度網站','data':{'stage':'development','progress':40,'summary':'示範內容：保持簡單清楚的網站。','milestones':[{'title':'確認內容','done':True},{'title':'檢查手機版','done':False}]}})['record']
-        store.create_item({'kind':'link','title':'學習參考（示範）','url':'https://example.com/learning'})
-        store.add_file('設計方向（示範）.md', '# 保持簡潔\n沿用白色與淺灰色。'.encode())
+        reference=store.create_item({'kind':'link','title':'學習參考（示範）','url':'https://example.com/learning'})
+        document_bytes='# 保持簡潔\n沿用白色與淺灰色。'.encode()
+        document=store.add_file('設計方向（示範）.md', document_bytes)
+        integration=studio.create({'kind':'integration','title':'保留的接入設定（示範）','data':{'category':'model','provider':'示範服務','enabled':False}})['record']
         studio.create({'kind':'inbox','title':'整理這次會議的重點','data':{'source':'示範內容','content':'先確定下一步，再分配工作。'}})
         studio.save_user({'username':'staff','role':'member','password':'test-member-password'})
         member_studio = Studio(store, {'username':'staff','role':'member','name':'職員'})
@@ -37,7 +39,9 @@ def main():
                 executable=os.environ.get('BLUEPRINT_TEST_BROWSER') or shutil.which('chromium')
                 browser=p.chromium.launch(**({'executable_path':executable} if executable else {}),headless=True,args=['--no-sandbox','--disable-dev-shm-usage'])
                 context=browser.new_context(viewport={'width':1440,'height':1050},http_credentials={'username':'owner','password':password})
-                page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+                page=context.new_page();errors=[];requests=[]
+                page.on('pageerror',lambda error:errors.append(str(error)))
+                page.on('request',lambda request:requests.append(request.url))
                 base=f'http://127.0.0.1:{server.server_port}'
                 page.goto(base);page.wait_for_function('() => BlueprintStudio.isReady()')
                 page.wait_for_selector('#workspace-board[style]')
@@ -52,12 +56,20 @@ def main():
                     target.get_by_role('button',name='設定',exact=True).click()
                     target.wait_for_selector('#settings-dialog[open]')
                     assert target.locator('dialog[open]').count()==1
-                def assert_connection_open(target=page):
-                    target.wait_for_selector('#connection-dialog[open]')
-                    assert target.locator('#settings-dialog').is_hidden()
-                    assert target.locator('dialog[open]').count()==1
-                    target.wait_for_function("() => document.getElementById('connection-backend').textContent.includes('Blueprint Studio')")
-                    assert target.locator('#connection-error').is_hidden()
+                def assert_no_connection_wizard(target=page):
+                    assert target.locator('[data-connection-open], #connection-dialog, #connection-settings-open').count()==0
+                    assert target.locator('script[src$="/connection.js"]').count()==0
+                    assert target.evaluate("() => typeof window.BlueprintConnection === 'undefined'")
+                def visible_widgets():
+                    return page.locator('#workspace-board [data-widget]:visible').evaluate_all('(nodes) => nodes.map(node => node.dataset.widget)')
+                assert_no_connection_wizard()
+                assert page.locator('#collaboration-orientation, [data-collaboration-route]').count()==0
+                assert page.locator('[data-widget=intro-title], [data-widget=intro-description], [data-widget=connection]').count()==0
+                assert visible_widgets()==['heading']
+                assert page.locator('#edit-board').is_visible()
+                assert page.locator('#board-editor').is_hidden()
+                assert page.locator('#workspace-sync').inner_text()==''
+                page.screenshot(path=str(output/'studio-overview-minimal.png'),full_page=True)
 
                 # The footer has one settings entry. Secondary actions keep their
                 # own destinations without leaving overlapping modal dialogs.
@@ -79,75 +91,52 @@ def main():
                 assert page.evaluate('location.hash')=='#/account'
                 assert page.locator('#settings-dialog').is_hidden()
                 assert page.locator('dialog[open]').count()==0
-                open_settings()
-                advanced=page.locator('#settings-dialog details.settings-advanced')
-                assert advanced.get_attribute('open') is None
-                assert page.locator('#connection-settings-open').is_hidden()
-                advanced.locator('summary').click()
-                page.locator('#connection-settings-open').click()
-                assert_connection_open()
-                page.locator('#connection-dialog [data-close]').click()
                 go('connections')
-                page.get_by_role('button',name='設定工具連接',exact=True).click()
-                assert_connection_open()
-                page.locator('#connection-dialog [data-close]').click()
+                page.wait_for_selector('#studio-panel h1:text-is("舊接入紀錄")')
+                assert page.locator('#studio-panel h2:text-is("保留的接入設定（示範）")').is_visible()
+                assert page.locator('#studio-panel button').all_text_contents()==['查看紀錄']
+                assert page.locator('#studio-panel input, #studio-panel select, #studio-panel textarea, #studio-panel .studio-tabs').count()==0
+                assert page.locator('#studio-section-navigation [data-studio-route=connections]').count()==0
+                assert_no_connection_wizard()
+                assert page.request.get(base+'/api/studio/records/'+integration['id']).json()['record']['version']==integration['version']
                 go('overview')
 
-                # Orientation is outside the editable board: its real links
-                # explain the two work areas without migrating saved card data.
-                orientation=page.locator('#collaboration-orientation')
-                assert orientation.is_visible()
-                assert orientation.get_attribute('open') is not None
-                assert page.locator('#workspace-board #collaboration-orientation').count()==0
-                def board_geometry():
-                    return page.evaluate('''() => {
-                      const board=document.getElementById('workspace-board'),box=board.getBoundingClientRect();
-                      return [...board.querySelectorAll('[data-widget]')].map(node=>{
-                        const rect=node.getBoundingClientRect();
-                        return {id:node.dataset.widget,x:rect.x-box.x,y:rect.y-box.y,w:rect.width,h:rect.height};
-                      });
-                    }''')
-                original_cards=board_geometry()
-                assert len(original_cards)==13
-                original_preferences=page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")
-                codex=page.locator('#collaboration-codex-pane').bounding_box()
-                blueprint=page.locator('#collaboration-blueprint-pane').bounding_box()
-                assert abs(codex['y']-blueprint['y'])<2 and codex['x']+codex['width']<=blueprint['x'], (codex,blueprint)
-                orientation.locator('[data-collaboration-route=skills]').click()
-                page.wait_for_selector('#skill-workspace[data-skills-ready=true]')
-                assert page.evaluate('location.hash')=='#/skills'
-                page.locator('#studio-navigation [data-group=overview]').click()
-                page.wait_for_selector('#collaboration-orientation')
-                page.locator('#collaboration-orientation [data-collaboration-route=projects]').click()
-                page.wait_for_selector('#studio-panel h1:text-is("項目")')
-                assert page.evaluate('location.hash')=='#/projects'
-                page.locator('#studio-navigation [data-group=overview]').click()
-                page.wait_for_selector('#collaboration-orientation')
-                assert board_geometry()==original_cards
-                assert page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")==original_preferences
-                page.evaluate('() => window.scrollTo(0,0)')
-                page.screenshot(path=str(output/'studio-orientation-desktop.png'),full_page=True)
-                page.set_viewport_size({'width':390,'height':844})
-                page.wait_for_timeout(200)
-                codex=page.locator('#collaboration-codex-pane').bounding_box()
-                blueprint=page.locator('#collaboration-blueprint-pane').bounding_box()
-                assert abs(codex['x']-blueprint['x'])<2 and codex['y']+codex['height']<=blueprint['y'], (codex,blueprint)
-                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-                assert page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")==original_preferences
-                page.screenshot(path=str(output/'studio-orientation-mobile.png'),full_page=True)
-                page.set_viewport_size({'width':1440,'height':1050})
-                page.wait_for_timeout(200)
-                assert board_geometry()==original_cards
-                assert page.evaluate("() => localStorage.getItem('blueprint-workspace-v2')")==original_preferences
+                # Overview visibility changes display only. An optional real-data
+                # card can be enabled and reopened without changing stored records.
+                page.locator('#edit-board').click()
+                page.wait_for_selector('#board-visible-fields')
+                assert page.locator('#board-visible-fields [data-board-visible=heading]').is_checked()
+                assert page.locator('#board-visible-fields [data-board-visible=heading]').is_disabled()
+                assert page.locator('#board-visible-fields input:checked').count()==1
+                page.locator('#board-visible-fields [data-board-visible=recent]').check()
+                page.locator('#edit-board').click()
+                assert set(visible_widgets())=={'heading','recent'}
+                page.wait_for_selector('#dashboard-library-slot .item-title:text-is("設計方向（示範）.md")')
+                page.reload();page.wait_for_function('() => BlueprintStudio.isReady()')
+                assert set(visible_widgets())=={'heading','recent'}
+                assert set(page.evaluate("() => JSON.parse(localStorage.getItem('blueprint-workspace-v2')).visible"))=={'heading','recent'}
+                page.screenshot(path=str(output/'studio-overview-with-real-data.png'),full_page=True)
+                page.locator('#edit-board').click()
+                page.locator('#board-visible-fields [data-board-visible=recent]').uncheck()
+                page.locator('#edit-board').click()
+                assert visible_widgets()==['heading']
+                assert page.request.get(base+'/api/files/'+document['id']).body()==document_bytes
+                assert page.request.get(base+'/api/items/'+reference['id']).json()['item']['url']==reference['url']
+                assert page.request.get(base+'/api/studio/records/'+project['id']).json()['record']['title']==project['title']
 
                 page.locator('#studio-navigation [data-group=work]').click()
                 page.wait_for_selector('#studio-panel h1:text-is("項目")')
                 assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['項目','收件匣','待辦','工作紀錄']
+                assert page.get_by_role('button',name='整理新季度網站',exact=True).is_visible()
                 page.locator('#studio-navigation [data-group=specialists]').click()
                 page.wait_for_selector('#skill-workspace[data-skills-ready=true]')
+                assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['Skill 與交接','Agent 工作台','工作指令']
+                assert_no_connection_wizard()
                 page.locator('#studio-navigation [data-group=inspiration]').click()
                 page.wait_for_function("() => !document.getElementById('library-panel').hidden && document.getElementById('studio-panel').hidden")
                 assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['文件','收藏','主題','釘選','已封存']
+                page.wait_for_selector('#item-grid .item-title:text-is("設計方向（示範）.md")')
+                assert_no_connection_wizard()
                 page.locator('#studio-section-navigation [data-studio-route=archived]').click()
                 page.wait_for_selector('#studio-panel h1:text-is("已封存")')
                 assert page.evaluate('location.hash')=='#/archived'
@@ -225,10 +214,14 @@ def main():
                 open_settings()
                 page.locator('#settings-dialog [data-close]').click()
                 page.locator('.studio-narrow-toggle').click()
-                page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(100)
+                page.set_viewport_size({'width':390,'height':844})
+                page.locator('#mobile-menu').wait_for(state='visible')
                 assert page.locator('#studio-mobile-command').is_visible()
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-                page.locator('#mobile-menu').click();assert page.locator('#sidebar.open').is_visible()
+                page.locator('#mobile-menu').click()
+                page.locator('#sidebar.open').wait_for(state='visible')
+                assert page.locator('#sidebar.open').is_visible()
+                assert page.locator('#mobile-menu').get_attribute('aria-expanded')=='true'
                 page.screenshot(path=str(output/'studio-mobile.png'),full_page=True)
                 page.locator('#sidebar-backdrop').click(position={'x':350,'y':200})
                 assert page.locator('#sidebar.open').count()==0
@@ -262,11 +255,7 @@ def main():
                 assert '角色：員工' in member.locator('#studio-panel').inner_text()
                 assert member.locator('#settings-dialog').is_hidden()
                 assert member.get_by_role('button',name='管理團隊登入',exact=True).count()==0
-                open_settings(member)
-                member.locator('#settings-dialog details.settings-advanced summary').click()
-                member.locator('#connection-settings-open').click()
-                assert_connection_open(member)
-                member.locator('#connection-dialog [data-close]').click()
+                assert_no_connection_wizard(member)
                 member.locator('#studio-navigation [data-group=work]').click()
                 assert member.locator('[data-studio-route=revenue]').count()==0
                 assert member.locator('[data-studio-route=team]').count()==0
@@ -274,14 +263,17 @@ def main():
                 response=member.request.get(base+'/api/studio/records/'+invoice['id']);assert response.status==403
                 assert member.request.get(base+'/api/studio/records?kind=invoice').status==403
                 assert member.request.get(base+'/api/studio/users').status==403
+                assert member.request.get(base+'/api/studio/records/'+integration['id']).status==403
                 member.goto(base+'/?startup=restricted#/revenue');member.wait_for_function('() => BlueprintStudio.isReady()')
                 assert member.evaluate('() => document.body.dataset.workspaceState')=='ready'
                 assert member.evaluate('() => location.hash')=='#/overview'
+                assert not any(url.split('?')[0].endswith('/connection.js') for url in requests), requests
+                assert_no_connection_wizard()
                 assert not errors, errors
                 browser.close()
         finally:
             server.shutdown();server.server_close()
-    print('Workbench browser checks passed: settings-only footer and secondary dialogs, own account/member permissions, optional AI connection, archived data tab, orientation CTAs/responsive layout, preserved board/preferences, CRUD, search, commands, quote-to-invoice, topics, all pages, drafts, narrow/sidebar/mobile, old URLs.')
+    print('Workbench browser checks passed: minimal overview/optional real cards, no AI wizard/orientation, retained records and integration deep links, settings-only footer and secondary dialogs, own account/member permissions, archived data tab, CRUD, search, commands, quote-to-invoice, topics, all pages, drafts, narrow/sidebar/mobile, old URLs.')
 
 
 if __name__=='__main__':main()

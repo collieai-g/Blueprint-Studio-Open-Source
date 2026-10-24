@@ -22,6 +22,14 @@ class LibraryHTTPTests(unittest.TestCase):
     username = "company-owner"
     password = "Local-only-test-passphrase-2026"
 
+    def test_client_connection_file_requires_login_and_matches_packaged_source(self):
+        self.assertEqual(self.request('GET', '/AI_CONNECT.md', authenticated=False)[0], 401)
+        status, headers, body = self.request('GET', '/AI_CONNECT.md')
+        self.assertEqual(status, 200)
+        self.assertIn('text/markdown', headers['Content-Type'])
+        self.assertEqual(body, (Path(__file__).resolve().parents[1] / 'AI_CONNECT.md').read_bytes())
+        self.assertEqual(self.request('GET', '/AGENTS.md')[0], 404)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="blueprint-private-http-")
         self.data_dir = Path(self.temporary.name) / "company-data"

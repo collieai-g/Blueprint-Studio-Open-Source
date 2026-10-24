@@ -254,15 +254,15 @@
   }
   function templatePage(){const panel=$('studio-panel');panel.replaceChildren(header('從範本新增','範本只帶入角色和規則，其他設定由你決定。'));const grid=node('div','studio-grid');state.templates.forEach(template=>{const card=node('article','studio-card');card.append(node('h2','',template.title),node('p','muted',template.role),node('p','',template.rules),button('使用範本',async()=>{const result=await api('/templates',{method:'POST',body:{template_id:template.id}});await refresh();await navigate('specialist/'+result.record.id);}));grid.append(card);});panel.append(grid);}
   async function connectionPage(seq){
-    const panel=$('studio-panel');panel.replaceChildren(header('雲端與外部接入','統一管理專員可以使用的能力。',[button('設定工具連接',()=>$('connection-settings-open').click()),button('新增接入',()=>editRecord('integration'))]));
-    const body=node('div'),views=[['model','模型 API'],['connector','外掛與連接器'],['skill','技能庫'],['channel','渠道帳戶'],['usage','用量與上限']];let bar;
-    const select=key=>{activeTab=key;bar.replaceWith(makeBar());body.replaceChildren(node('p','studio-callout','這裏保存接入設定。API 金鑰只在伺服器環境或平台秘密設定中填寫；此頁只記錄設定名稱。本版未提供專員執行器，登記後不會自行呼叫模型或對外發送。'));
-      const records=catalog('integration').filter(r=>key==='usage'||r.data.category===key);const grid=node('div','studio-grid');
-      records.forEach(record=>{const card=recordCard(record);const users=catalog('specialist').filter(s=>[s.data.model_id,s.data.fallback_id,s.data.channel_id,...(s.data.skill_ids||[])].includes(record.id));card.append(node('p','muted','使用專員：'+(users.map(s=>s.title).join('、')||'尚未分配')),node('p','muted',`本月已記錄：${record.data.currency||'HKD'} ${record.month_usage||'0.00'} · 上限 ${record.data.monthly_limit==='0.00'?'未設定':record.data.monthly_limit||'未設定'}`),node('p','muted',record.credential_configured?'伺服器已有對應憑證設定。':'伺服器尚未提供對應憑證。'));
-        card.append(button(record.data.enabled?'停用':'啟用設定',()=>record.data.budget_paused?run(record,'resume_budget'):patch(record,{data:{enabled:!record.data.enabled}})),button('記錄實際用量',()=>actionDialog('記錄實際用量','使用服務帳單或量測資料，不要填入估計值。',[['amount',{label:'實際費用',type:'money',required:true}],['date',{label:'日期',type:'date',default:stateDate(),required:true}],['source',{label:'來源',type:'text',required:true}],['source_key',{label:'帳單或紀錄識別碼',type:'text',required:true}]],values=>run(record,'record_usage',values))));grid.append(card);});body.append(records.length?grid:empty('尚未登記這類接入。',button('新增接入',()=>editRecord('integration',null,{category:key==='usage'?'model':key}))));
-      if(key==='usage')body.append(button('查看公司成本',()=>navigate('costs')));
-    };
-    function makeBar(){bar=tabs(views,select,activeTab||'model');return bar;}panel.append(makeBar(),body);if(seq===request)select(activeTab||'model');
+    if(seq!==request)return;
+    const panel=$('studio-panel'),records=catalog('integration');
+    panel.replaceChildren(header('舊接入紀錄','查看以往保存的設定。新的 AI 設定交由左側 Codex 處理。'));
+    if(!records.length){panel.append(node('p','muted','沒有已保存的接入紀錄。'));return;}
+    const grid=node('div','studio-grid');
+    records.forEach(record=>{
+      const card=node('article','studio-card');card.append(node('h2','',record.title),badges(record),fieldDisplay(record),button('查看紀錄',()=>openRecord(record.id)));grid.append(card);
+    });
+    panel.append(grid);
   }
   async function topicPage(id,seq){
     const context=await api(recordUrl(id)+'/context');if(seq!==request)return;const record=context.record;activeRecord=record;
@@ -410,21 +410,8 @@
   }
   async function renderOverview(){
     if(!state)return;
-    const holder=$('studio-focus');if(holder){holder.replaceChildren();
-      for(const ref of state.preferences.data.focus||[]){const label=referenceLabel(ref);holder.append(button(label,()=>activateReference(ref),'studio-focus-line'));}
-      if(!state.preferences.data.focus?.length)holder.append(node('p','muted','選擇最多三件今天要完成的事。'));
-      holder.append(button('設定今日焦點',()=>editFocus(),'text-button'));
-    }
     const reminders=$('studio-reminders');if(reminders){reminders.replaceChildren();if(state.preferences.data.notifications&&state.summary.reminders.length){reminders.append(node('h4','','公司提醒'));state.summary.reminders.slice(0,3).forEach(r=>reminders.append(button(r.reason+' · '+r.title,()=>openRecord(r.id),'studio-focus-line')));}}
-    const metrics=state.summary.specialists.reduce((all,m)=>({conversations:all.conversations+m.conversations,automatic:all.automatic+m.automatic,human:all.human+m.human,errors:all.errors+m.errors}),{conversations:0,automatic:0,human:0,errors:0});
-    $('studio-specialist-summary').textContent=metrics.conversations?`今日 ${metrics.conversations} 則 · 自動 ${metrics.automatic} · 人手 ${metrics.human} · 出錯 ${metrics.errors}`:`${state.summary.specialists.length} 位專員 · 尚無正式對話`;
     const tasks=await api('/records?kind=task&limit=100');const holderTasks=$('studio-dashboard-tasks');holderTasks.replaceChildren();tasks.records.filter(r=>!r.data.done).slice(0,5).forEach(r=>{const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.addEventListener('change',()=>patch(r,{data:{done:true}}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',r.title));holderTasks.append(label);});
-  }
-  async function editFocus(){
-    await loadChoices();await actionDialog('今日焦點','選擇最多三件今天要完成的事。',[],()=>{
-      const selected=[...$('studio-focus-options').selectedOptions].map(o=>JSON.parse(o.value));if(selected.length>3)throw new Error('今日焦點最多三件。');return savePrefs({focus:selected}).then(renderOverview);
-    });
-    const select=node('select');select.id='studio-focus-options';select.multiple=true;select.size=8;select.setAttribute('aria-label','今日焦點');choices.filter(r=>['task','project','inbox'].includes(r.kind)).forEach(r=>{const o=node('option','',r.title);o.value=JSON.stringify({kind:r.kind,id:r.id});o.selected=state.preferences.data.focus?.some(ref=>ref.kind===r.kind&&ref.id===r.id);select.append(o);});$('studio-action-fields').append(select);
   }
   async function refresh({background=false,transition=navigationRequest,renderCurrent=false}={}){
     if(!ready)return false;
@@ -451,7 +438,6 @@
     const company=document.querySelector('.workspace-label');company.tabIndex=0;company.setAttribute('role','button');company.setAttribute('aria-label','切換公司與工作空間');company.addEventListener('click',companySwitcher);company.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();companySwitcher();}});
     $('studio-account').addEventListener('click',()=>{$('settings-dialog').close();navigate('account').catch(error=>app.notice(error.message,true));});
     $('studio-mobile-command').addEventListener('click',()=>openCommand());
-    document.querySelectorAll('[data-collaboration-route]').forEach(control=>control.addEventListener('click',()=>navigate(control.dataset.collaborationRoute).catch(error=>app.notice(error.message,true))));
     document.querySelectorAll('[data-studio-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
     $('studio-form').addEventListener('submit',event=>{event.preventDefault();busy(event.currentTarget,async()=>{
       const data=readFields($('studio-fields')),refs=[...$('studio-refs').selectedOptions].map(o=>JSON.parse(o.value));

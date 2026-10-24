@@ -19,10 +19,18 @@ test('the workspace has four stable primary entries with compact core navigation
   for (const route of ['overview', 'projects', 'inbox', 'overview/todos', 'overview/workdays', 'skills', 'agents', 'command', 'documents', 'inspirations', 'topics', 'pinned', 'archived']) {
     assert.ok(visible.has(route), `${route} remains reachable from a primary entry`);
   }
-  for (const route of ['revenue', 'costs', 'team', 'customers', 'specialists', 'specialist/specialist-website', 'inspirations/web']) {
+  for (const route of ['revenue', 'costs', 'team', 'customers', 'connections', 'specialists', 'specialist/specialist-website', 'inspirations/web']) {
     assert.ok(!visible.has(route), `${route} does not clutter the main navigation`);
     assert.ok(pages[route], `${route} keeps its existing URL`);
   }
+});
+
+test('the AI area keeps work routes without a normal integration setup tab', () => {
+  const ai = groups.find(group => group.id === 'specialists');
+  assert.deepEqual(ai.items.map(item => item[0]), ['skills', 'agents', 'command']);
+  assert.equal(pages.connections.group, ai.id);
+  assert.equal(pages.connections.kind, 'integration');
+  assert.equal(pages.connections.access, 'admin');
 });
 
 test('archived material remains reachable as the last data tab without another primary entry', () => {

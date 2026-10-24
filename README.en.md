@@ -25,7 +25,7 @@
 
 ![Redrawn from an actual two-pane interface reference: Codex on the left and a company Blueprint workspace on the right, with demonstration content](artifacts/codex-blueprint-workspace-redraw.png)
 
-*Redrawn from the user’s actual interface reference; demonstration content. Codex’s original interface is on the left and the company Blueprint workspace on the right. Text, records and result states are illustrative, not evidence of saved work or deployment acceptance.*
+*Redrawn from an earlier two-pane interface reference, with demonstration content rather than evidence of saved work. This is not the default V2.7.4 screen: the new overview starts with its heading and layout entry only, and AI setup happens in the left client.*
 
 Two real interfaces work together:
 
@@ -35,6 +35,14 @@ Two real interfaces work together:
 | Codex uses the AI workflows, automation and authorized tools provided by the active client. | Blueprint supplies the company management UI, persistent records, permissions, versions and Skill handoff. |
 
 Your client or window arrangement places the interfaces side by side. Blueprint works with the existing Codex interface; it does not rebuild or embed Codex as its own chat panel.
+
+## GitHub V2.7.4: setup on the left, a minimal workspace on the right
+
+V2.7.3 grouped sidebar management under Settings. **V2.7.4 moves all AI setup back to the active Codex client.** Give it [AI_CONNECT.md](AI_CONNECT.md) to verify the workspace, capabilities, authentication and real saves. The right-hand workspace has no connection wizard or default orientation panel.
+
+Overview starts with its heading and **Adjust layout** only, including after an upgrade. Existing card positions and company data are retained; opt in to show the cards again. Add file, summary, recent-work, todo or update cards through the layout editor when needed. The sidebar keeps four primary entries and Settings; the regular AI page no longer lists model or external-integration registration.
+
+This publishes GitHub source and packages for 2.7.4; **it does not update existing private or test workspaces automatically**. Schema 6, existing tool names, authentication and company data remain compatible.
 
 ## Built for founders and small teams
 
@@ -62,12 +70,12 @@ If you have not installed the workspace, start with the [installation instructio
 
 | Entry | What you review in Blueprint | What you can ask Codex to do |
 | --- | --- | --- |
-| **Overview** | Today's focus, recent results and a company work summary | “Organize the three most important things for today.” |
+| **Overview** | A heading and layout entry by default; add data cards when needed | “Organize today’s priorities and save them as work and tasks.” |
 | **Work** | Projects, inbox, todos and daily work records | “Summarize progress and update this project's tasks.” |
-| **AI** | Skills and handoff, compatible Agents, commands and connections | “Use this video Skill and the selected material to prepare production.” |
+| **AI** | Skills and handoff, compatible Agents and commands | “Use this video Skill and the selected material to prepare production.” |
 | **Data** | Files, bookmarks, topics and pinned records | “Group this report and its reference links under one topic.” |
 
-The workspace uses white, light gray and a faint grid. Move, resize and collapse overview cards; layout preferences stay in the current browser. Secondary pages retain existing records, permissions and compatible links.
+The workspace uses white, light gray and a faint grid. Add the overview cards you want through Adjust layout, then move, resize or collapse them; preferences stay in the current browser. Secondary pages retain existing records, permissions and compatible links.
 
 Idle time and returning to the window do not rebuild the screen. Workbench writes update their corresponding results; use **Update data** after an external tool saves new records.
 
@@ -92,6 +100,8 @@ The public repository contains reusable software and documentation. Keep company
 The [operating model](docs/OPERATING_MODEL.md) explains company source versions, everyday records, Skills and optional Agents.
 
 ## Installation and updates
+
+[INSTALL_AI.txt](INSTALL_AI.txt) handles installation; [AI_CONNECT.md](AI_CONNECT.md) handles AI setup. The active AI client reads and executes both.
 
 A local installation runs on your computer; a cloud installation provides a website you can sign in to. The AI verifies the latest stable release and reuses your platform choices. Native installation must verify a complete backup download, isolated restore, restart persistence and a supported update route.
 
@@ -147,9 +157,9 @@ If the AI cannot read GitHub, download the full `-installer.zip` package from th
 
 ## Clients, connections and development
 
-The sidebar footer has a single Settings entry for preferences, account details, help and optional advanced AI connection. Archived content and restore remain available under Data.
+The sidebar footer has a single Settings entry for preferences, account details, help and maintenance. All AI setup happens in the active client through AI_CONNECT.md. Archived content and restore remain available under Data.
 
-Codex and other compatible AI apps can only use the tools the active client actually provides. Browser control must reach the correct signed-in tab. Chat or preview alone can prepare instructions and files but cannot prove workbench operation. For MCP, use the [connection guide](docs/AI_CONNECTION.md) and [connection center](docs/CONNECT.md) to verify real writes and readback.
+Codex and other compatible AI apps can only use the tools the active client actually provides. Browser control must reach the correct signed-in tab. Chat or preview alone can prepare instructions and files but cannot prove workbench operation. Start AI setup on the left with [AI_CONNECT.md](AI_CONNECT.md). For MCP, follow the [technical guide](docs/AI_CONNECTION.md) and [acceptance steps](docs/CONNECT.md) to verify real writes and readback without a right-hand wizard.
 
 The project provides 40 shared MCP tools. Native and Sites-to-native deployments add two owner-only backup tools, for 42 in total. These tools are an optional integration route, not a prerequisite for browser-based operation.
 

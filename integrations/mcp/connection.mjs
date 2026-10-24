@@ -23,7 +23,7 @@ export async function verifyConnection(request, { challenge, client, date }) {
   if (report.source_key !== key || report.source !== client || report.date !== date || report.title !== TITLE ||
       ![INITIAL, COMPLETE].includes(report.summary) || e.length !== 2 ||
       e[0].type !== 'outcome' || e[0].title !== TITLE || e[1].type !== 'todo' || e[1].title !== TODO ||
-      e.some(entry => entry.content !== challenge)) fail('測試紀錄已被修改，未覆寫；請在接駁中心建立新的測試。');
+      e.some(entry => entry.content !== challenge)) fail('測試紀錄已被修改，未覆寫；請在目前 AI 對話核對，只有要求另一次驗收才建立新的測試。');
   await request('PATCH', '/api/todos/' + e[1].id, { expected_version: e[1].version, done: true });
   report = (await request('GET', path)).workday;
   if (!report.entries[1].done) fail('待辦更新未能讀回，驗收未完成。', 502);
@@ -33,5 +33,5 @@ export async function verifyConnection(request, { challenge, client, date }) {
   report = (await request('GET', path)).workday;
   if (report.summary !== COMPLETE || !report.entries[1].done) fail('驗收結果未能讀回。', 502);
   return { verified: true, client, challenge, workday_id: id, checked_at: report.updated_at, workday: report,
-    next_step: '回到同一工作台的 AI 接駁中心等候顯示測試。新對話須另行檢查工具。' };
+    next_step: '在目前 AI 對話按 workday_id 另行讀回紀錄，並按待辦 ID 核對測試待辦已完成；可到工作台「工作 → 工作紀錄」查看同一筆。新對話須重新檢查實際工具。' };
 }

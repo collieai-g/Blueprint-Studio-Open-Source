@@ -6,9 +6,14 @@ server permissions and preference keys. Idle timers, focus, visibility changes a
 browser history restoration must not refresh company data or replace active views.
 Refresh on explicit user actions and successful in-workbench writes. Boot through
 one loading/error shell with retry; never fall back silently to the legacy UI.
-The sidebar footer has one Settings entry. Keep help, account details and optional
-advanced AI connection inside Settings; archive/restore belongs under Data.
-Preserve those dialogs, routes and authorization checks when simplifying navigation.
+The sidebar footer has one Settings entry for help and account/preferences;
+archive/restore belongs under Data. V2.7.4 moves all AI connection setup to the
+left client via AI_CONNECT.md and the authenticated connection-guide.json. Do not
+restore right-side connection controls, wizard, polling, specialist counters or
+overview onboarding. Overview starts with its heading only; real data modules
+are opt-in in the layout editor. Retain company records and preserve old layout
+geometry/raw backups when migrating visibility. Existing integration records and
+API/MCP authorization remain available; this release performs no private-site update.
 
 Follow docs/LEFT_RIGHT_WORKFLOW.md for client-controlled UI and Skill handoff.
 docs/USER_GUIDE.md is the user-facing starting point. Product documentation must
@@ -18,9 +23,8 @@ reference, it may show the native Codex interface and company Blueprint side by
 side. Label it as a redraw with demonstration content; illustrated records and
 result states are never evidence of actual saved work or deployment acceptance.
 Do not present concept drawings, redraws or automated-test screenshots as the
-user's authentic company capture. Overview's orientation explains the arrangement;
-it does not embed Codex, open a model session or grant browser control. Keep the
-real customizable dashboard and its saved preferences separate from this guide.
+user's authentic company capture. Explain the two interfaces in documentation;
+the workbench does not embed Codex, open a model session or grant browser control.
 Blueprint supplies selected materials, brief preparation, authorized persistence
 and results; the active Codex or compatible AI supplies reasoning and execution.
 Prefer genuine browser controls when available and authorized; a visible browser
@@ -140,14 +144,15 @@ contract. Native MCP stdio bridges to the existing authenticated HTTP backend,
 never a separate local database. Sites uses an authenticated MCP adapter to its
 existing API, retaining platform identity and storage. Support Codex, Claude,
 Gemini and other compatible MCP clients; do not hardcode Codex as workday source.
-V2.2 includes an in-workbench AI connection center. Start with INSTALL_AI.txt and
+Connection setup is performed by the active AI client. Start with INSTALL_AI.txt and
 START_HERE.md; complete docs/CONNECT.md after the selected install/upgrade route.
-Ship connection.js, connection-guide.json and the Sites connection.mjs module.
+Ship AI_CONNECT.md, connection-guide.json and the Sites connection.mjs module.
+connection.js retains only pure compatibility helpers, with no browser wizard.
 Each new chat reads blueprint_connection_guide for client setup and work routing.
 Merge its entrypoint and backend URL into supported private client instructions.
-Use the wizard-provided challenge/client/date for blueprint_verify_connection;
+Use the client-generated private challenge/client/date from AI_CONNECT.md for blueprint_verify_connection;
 it creates an explicitly labelled acceptance workday in the same existing store,
-reads back and updates its test todo, then the UI independently checks that record.
+reads back and updates its test todo, then read back the same workday and todo; normal work views can display that record.
 Reuse the challenge on retries. Do not manufacture completion receipts via a
 browser or direct API; do not claim a historical check proves a new chat is loaded.
 Follow the six built-in troubleshooting routes, keep proxy/TLS and use supported
