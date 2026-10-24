@@ -147,6 +147,8 @@ If the AI cannot read GitHub, download the full `-installer.zip` package from th
 
 ## Clients, connections and development
 
+The sidebar footer has a single Settings entry for preferences, account details, help and optional advanced AI connection. Archived content and restore remain available under Data.
+
 Codex and other compatible AI apps can only use the tools the active client actually provides. Browser control must reach the correct signed-in tab. Chat or preview alone can prepare instructions and files but cannot prove workbench operation. For MCP, use the [connection guide](docs/AI_CONNECTION.md) and [connection center](docs/CONNECT.md) to verify real writes and readback.
 
 The project provides 40 shared MCP tools. Native and Sites-to-native deployments add two owner-only backup tools, for 42 in total. These tools are an optional integration route, not a prerequisite for browser-based operation.

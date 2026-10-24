@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "2.7.2",
+  "version": "2.7.3",
   "title": "藍圖工作台 AI 接駁與工作規則",
   "rules": [
     "先檢查目前對話真正可用的工具。若已載入藍圖工具，先呼叫 blueprint_workspace_info 核對實際網址及公司，再讀 blueprint_connection_guide；若使用已授權畫面控制，先核對同一個登入工作台與公司。可見網頁不等於可以控制，已安裝外掛不等於已載入。",
