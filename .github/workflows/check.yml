@@ -15,7 +15,7 @@ jobs:
           node-version: '24'
       - run: python -m pip install -r requirements-mcp.txt
       - run: python -m unittest discover -s tests -v
-      - run: node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_workspace_refresh.cjs tests/test_navigation.cjs tests/test_skill_handoff.cjs tests/test_sites_mcp.mjs tests/test_sites_gateway.mjs tests/test_connection.cjs tests/test_update.cjs
+      - run: node --test tests/test_packager.cjs tests/test_workspace.cjs tests/test_workspace_refresh.cjs tests/test_navigation.cjs tests/test_skill_handoff.cjs tests/test_studio_requests.cjs tests/test_sites_d1_store.mjs tests/test_sites_mcp.mjs tests/test_sites_gateway.mjs tests/test_connection.cjs tests/test_update.cjs
       - name: Check native container backup, restore and persistent restart
         run: |
           docker build -f company/Dockerfile -t blueprint-native-test .

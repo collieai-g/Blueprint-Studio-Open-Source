@@ -7,6 +7,14 @@ browser history restoration must not refresh company data or replace active view
 Refresh on explicit user actions and successful in-workbench writes. Boot through
 one loading/error shell with retry; never fall back silently to the legacy UI.
 
+Keep blueprint_connection_guide as the canonical client workflow entrypoint. MCP
+initialization and private client guidance retain a short bootstrap, backend URL
+and setup location; new chats load the current rules and relevant pinned workflow
+instead of accumulating copied rule sets. New installations add specialist presets
+only after an explicit selection. Preserve existing specialists, jobs and history.
+Saving bookmarks or inspiration does not enqueue screenshot/summary commands;
+create them only through an explicit user-requested operation.
+
 Follow docs/LEFT_RIGHT_WORKFLOW.md for client-controlled UI and Skill handoff.
 docs/USER_GUIDE.md is the user-facing starting point. Product documentation must
 identify image provenance and distinguish authentic captures from illustrations.

@@ -1167,7 +1167,7 @@
     {
       "name": "blueprint_studio_action",
       "title": "執行內部工作流程",
-      "description": "Use to_task, ask_ai, create_quote, create_invoice (only after human records signature), plan_command, complete_command or record_usage. Complete results must come from actual visible work; external_action=true leaves a draft awaiting human confirmation. This tool cannot approve or send external messages or spend money. arguments_json is a JSON object.",
+      "description": "Use to_task, ask_ai, capture_request (only when the user asks to capture or organize an inspiration), create_quote, create_invoice (only after human records signature), plan_command, complete_command or record_usage. Complete results must come from actual visible work; external_action=true leaves a draft awaiting human confirmation. This tool cannot approve or send external messages or spend money. arguments_json is a JSON object.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1185,6 +1185,7 @@
             "enum": [
               "to_task",
               "ask_ai",
+              "capture_request",
               "create_quote",
               "create_invoice",
               "plan_command",

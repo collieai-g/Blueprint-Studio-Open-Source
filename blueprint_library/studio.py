@@ -23,6 +23,10 @@ from .store import LibraryError, SCHEMA_VERSION, _now
 ADMIN_ROLES = {'owner', 'admin'}
 PASSWORD_ROUNDS = 310_000
 MAX_RECORDS = 100
+SPECIALIST_PRESETS = [
+    {'id': 'preset:' + slug, 'title': title, 'role': role, 'rules': ''}
+    for slug, title, role in SPECIALISTS
+]
 
 
 def initialize(conn):
@@ -49,12 +53,8 @@ def initialize(conn):
     ):
         conn.execute(statement)
     conn.execute("INSERT OR IGNORE INTO studio_meta VALUES('installed_at',?)", (_now(),))
-    for slug, title, role in SPECIALISTS:
-        record = {'id': 'specialist-' + slug, 'kind': 'specialist', 'title': title,
-                  'data': {'role': role, 'state': 'unconnected'}, 'refs': [], 'visibility': 'team',
-                  'version': 1, 'archived': False, 'created_at': _now(), 'updated_at': _now(), 'actor': 'migration'}
-        if not conn.execute('SELECT 1 FROM studio_records WHERE id=?', (record['id'],)).fetchone():
-            _insert(conn, record, 'default:' + slug)
+    # Specialist presets are offered for explicit selection, never seeded here.
+    # Existing records, including archived legacy IDs and history, stay untouched.
 
 
 def _dump(value):
@@ -359,7 +359,6 @@ class Studio:
                 if existing:
                     return {'record': self._get(conn, existing['id']), 'created': False}
             record = self._make(conn, payload)
-            if record['kind'] == 'inspiration': self._capture_request(conn, record)
             if record['kind'] == 'command': self._command_inbox(conn, record)
             if record['kind'] == 'cost' and record['data'].get('integration_id'):
                 self._enforce_budget(conn, record['data']['integration_id'])
@@ -436,10 +435,15 @@ class Studio:
         return self._make(conn,{'kind':'inbox','title':command['title'],'data':{'source':'指揮中樞','state':'pending','content':'指令已保存，等待已連接的 AI 讀取及處理。'},'refs':[{'kind':'command','id':command['id']}],'visibility':command['visibility'],'source_key':'command-inbox:'+command['id']},internal=True)
 
     def _capture_request(self,conn,inspiration):
+        existing=conn.execute('SELECT id FROM studio_records WHERE source_key=?',('capture:'+inspiration['id'],)).fetchone()
+        if existing:
+            command=self._get(conn,existing['id'])
+            row=conn.execute('SELECT id FROM studio_records WHERE source_key=?',('command-inbox:'+command['id'],)).fetchone()
+            return [command,self._get(conn,row['id'])] if row else [command]
         command=self._make(conn,{'kind':'command','title':'整理靈感：'+inspiration['title'],
             'data':{'instruction':'使用可用的瀏覽工具讀取這則靈感的原始網址，擷取整頁截圖、核對標題並建議分類和摘要。沒有工具時保留未接入狀態，不得猜測網頁內容。','purpose':'capture_inspiration','state':'awaiting_ai'},
             'refs':[{'kind':'inspiration','id':inspiration['id']}], 'visibility':inspiration['visibility'], 'source_key':'capture:'+inspiration['id']},internal=True)
-        self._command_inbox(conn,command)
+        return [command,self._command_inbox(conn,command)]
 
     def sync_legacy(self):
         """Add references to existing material; never rewrite the original rows."""
@@ -455,8 +459,7 @@ class Studio:
                 if (row['collection_id'] is None or row['created_at']>=installed) and not conn.execute('SELECT 1 FROM studio_records WHERE source_key=?',('item-inbox:'+row['id'],)).fetchone():
                     self._make(conn,{'kind':'inbox','title':row['title'],'data':{'source':'文件與成果' if row['kind']=='file' else '新收藏','state':'pending'},'refs':[ref],'source_key':'item-inbox:'+row['id']},internal=True)
                 if row['kind']=='link' and not conn.execute('SELECT 1 FROM studio_records WHERE source_key=?',('item-inspiration:'+row['id'],)).fetchone():
-                    inspiration=self._make(conn,{'kind':'inspiration','title':row['title'],'data':{'item_id':row['id'],'categories':['learning'],'tags':[],'capture_state':'pending'},'refs':[ref],'source_key':'item-inspiration:'+row['id']},internal=True)
-                    if row['created_at']>=installed:self._capture_request(conn,inspiration)
+                    self._make(conn,{'kind':'inspiration','title':row['title'],'data':{'item_id':row['id'],'categories':['learning'],'tags':[],'capture_state':'pending'},'refs':[ref],'source_key':'item-inspiration:'+row['id']},internal=True)
 
     def preferences(self):
         with self.store._connection() as conn:
@@ -501,7 +504,10 @@ class Studio:
             conn.execute('BEGIN IMMEDIATE');record=self._get(conn,record_id);self._expected(record,payload.get('expected_version'))
             kind=record['kind'];new={**record,'data':dict(record['data'])};created=[]
             ref={'kind':kind,'id':record_id}
-            if action=='to_task' and kind in {'inbox','inspiration','report','feedback'}:
+            if action=='capture_request' and kind=='inspiration':
+                if args:raise LibraryError('擷取要求不接受額外參數。')
+                created.extend(self._capture_request(conn,record))
+            elif action=='to_task' and kind in {'inbox','inspiration','report','feedback'}:
                 existing=conn.execute('SELECT id FROM studio_records WHERE source_key=?',('task-from:'+record_id,)).fetchone()
                 task=self._get(conn,existing['id']) if existing else self._make(conn,{'kind':'task','title':record['title'],'data':{'content':record['data'].get('content',record['data'].get('note','')),'done':False},'refs':[ref],'visibility':record['visibility'],'source_key':'task-from:'+record_id},internal=True)
                 created.append(task)
@@ -602,7 +608,7 @@ class Studio:
         return sum((Decimal(json.loads(row['data']).get('amount','0')) for row in rows),Decimal(0))
 
     def create_specialist(self,template_id):
-        template=next((t for t in TEMPLATES if t['id']==template_id),None)
+        template=next((t for t in [*SPECIALIST_PRESETS,*TEMPLATES] if t['id']==template_id),None)
         if not template:raise LibraryError('找不到這個範本。')
         if not self.admin:raise LibraryError('請由管理員新增專員。',403)
         return self.create({'kind':'specialist','title':template['title'],'data':{'role':template['role'],'rules':template['rules']}})
@@ -754,5 +760,5 @@ class Studio:
                     record['runtime_connected']=False
                     record['month_usage']=format(self._usage(conn,record['id'],date.today().strftime('%Y-%m')),'.2f')
         return {'identity':self.identity,'schemas':schema,'catalog':catalog,'preferences':self.preferences(),'summary':self.summary(),
-                'templates':TEMPLATES,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True,'agent_workbench':True,'agent_contract':'blueprint-agent/1'},
+                'templates':TEMPLATES,'specialist_presets':SPECIALIST_PRESETS,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True,'agent_workbench':True,'agent_contract':'blueprint-agent/1'},
                 'schema_version':SCHEMA_VERSION}

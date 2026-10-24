@@ -22,7 +22,7 @@
 - 先讀安裝包的 INSTALL_AI.txt、AGENTS.md、安裝／升級路線，再完成真正網站；維護私人 INSTALL_PROGRESS.md。
 - 同一網站必須提供完整 V2.4 UI，包含 /connection.js 及 /connection-guide.json。不得在打開網頁後停止。
 - 原生路線安裝 MCP 專用依賴、合併客戶端設定及秘密變數參照；Sites 路線取得同一 Site 的真實 plugin_id、mcp_url、oauth_resource 並刷新工具。具體配置見 [AI_CONNECTION.md](AI_CONNECTION.md)。
-- 各個新對話先呼叫 blueprint_workspace_info，再呼叫 blueprint_connection_guide。後者直接讀取與工作台共用的內置規則；把後台地址及如何讀取規則合併到客戶端支援的私人專案指引，保留既有指引，不假設所有產品都有同一記憶機制。
+- 各個新對話先呼叫 blueprint_workspace_info，再呼叫 blueprint_connection_guide。後者直接讀取與工作台共用的內置規則及 workflows 索引；按使用者要求讀取已固定版本的相應流程。把後台地址、設定位置及如何讀取規則合併到客戶端支援的私人專案指引，保留既有指引；不複製整份規則，不假設所有產品都有同一記憶機制。
 - 由使用者啟動接駁中心，或明確授權安裝驗收後，使用中心提供的 challenge、client、date 呼叫 blueprint_verify_connection。不要自行猜測或換識別碼躲避錯誤。
 - 若 AI 無瀏覽器工具，提供本頁的一個明確檢查動作，將畫面驗收記為待使用者確認；不能聲稱看過實際右側。
 - 完成後交付網站、版本、客戶端、設定位置、測試紀錄 ID、工具結果、右側結果及第一項真實工作。只完成一部分就回報具體卡點。

@@ -28,9 +28,9 @@
       ? '這是 Sites 工作台。先用 Sites get_site(include_mcp_connection=true) 讀取同一網站真正的 plugin_id、mcp_url 及 oauth_resource；不可猜 ID。沿用平台登入，選用該外掛並確認目前對話載入工具。其他客戶端先驗證遠端 MCP 及平台 OAuth 相容；不能套用原生 Basic 帳密。'
       : '這是原生後台。沿用原帳號，在 AI 實際執行環境建立專用 Python venv 並安裝 requirements-mcp.txt，以 blueprint.py mcp-config 產生及合併客戶端設定。秘密只在安全環境填入 BLUEPRINT_BACKEND_USERNAME／BLUEPRINT_BACKEND_PASSWORD。先執行 mcp --url 實際網址 --check，再載入目前對話的 MCP 工具。本機與遠端的 localhost 必須分清。';
     return [
-      '請帶我完成 Blueprint Studio Open Source V2.4 的 AI 接駁，直到真正在同一個工作台使用。',
+      '請帶我完成 Blueprint Studio Open Source 的 AI 接駁，直到真正在同一個工作台使用。',
       '現有工作台：' + site, 'AI 客戶端：' + session.client,
-      '先讀 https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/v2.6.0/docs/CONNECT.md 及 docs/AI_CONNECTION.md。',
+      '從本次已核實版本的來源讀取 docs/CONNECT.md 及 docs/AI_CONNECTION.md；沿用已固定的 tag／commit，不以另一版本的指引覆蓋。',
       '先檢查已有安裝與資料；未到 2.6.0 時先按 docs/UPGRADE.md 備份並升級同一網站，不重建或重設資料庫。完整保留原版介面。',
       setup, guide.clients[clientKey][route],
       '需要我登入、授權或按平台按鈕時，只交代當前入口、動作及成功標誌，完成後繼續。已安裝不代表對話工具已載入。',
@@ -39,8 +39,8 @@
       '我授權新增一筆明確標示的接駁測試及測試待辦。呼叫 blueprint_verify_connection，參數完整如下：',
       JSON.stringify(session), '中斷時重試同一組參數，不任意換 challenge。此工具會保存、讀回、更新測試待辦再讀回。回報返回的 workday_id。',
       '提醒我回到工作台「AI 接駁中心」確認同一筆紀錄。只有工具讀寫及右側顯示均驗證才算完成；不能在瀏覽器或直接 API 手工製造驗收成功紀錄。',
-      '將本工作台地址、客戶端設定位置及以下規則寫進此客戶端支援的私人專案指引，保留原有指引；換對話亦要先讀取。無法載入指引時交付接續文字，不假設記憶存在。',
-      ...guide.rules,
+      '將本工作台地址、客戶端設定位置及以下入口規則合併到此客戶端支援的私人專案指引，保留原有指引。每個新對話讀取同一工作台的 blueprint_connection_guide，再依 workflows 選擇日常、安裝、更新、客製或 Agent 流程；不複製整份規則，以免留下過期副本。無法載入指引時交付接續文字，不假設記憶存在。',
+      guide.rules[0],
       '驗收後帶我完成第一項真實工作：整理文件、保存連結或建立工作及待辦。只保存我提供的內容，回報保存位置、ID 及讀回結果。'
     ].join('\n\n');
   }

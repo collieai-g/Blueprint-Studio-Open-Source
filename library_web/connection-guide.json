@@ -4,6 +4,7 @@
   "title": "藍圖工作台 AI 接駁與工作規則",
   "rules": [
     "先檢查目前對話真正可用的工具。若已載入藍圖工具，先呼叫 blueprint_workspace_info 核對實際網址及公司，再讀 blueprint_connection_guide；若使用已授權畫面控制，先核對同一個登入工作台與公司。可見網頁不等於可以控制，已安裝外掛不等於已載入。",
+    "blueprint_connection_guide 是目前工作台共用規則的單一入口。安裝時在客戶端支援的私人指引只保留工作台地址、接駁設定位置及每次讀取本指引的步驟；按 workflows 從已固定版本的來源讀取所需流程。新對話重新核對工具、公司及授權，不把另一對話或舊副本視為已載入。",
     "按 docs/LEFT_RIGHT_WORKFLOW.md 左右協作：使用者偏好畫面操作且目前具備真實控制工具時，直接用正式表單上載、保存並讀回；不要求使用者手動接 API。沒有畫面控制時使用已載入且獲授權的工具；兩者皆無則交付可用內容並清楚標示尚未保存。",
     "專業工作優先用可重用 Skill 加上單次私人交接單。藍圖整理欄位、選定來源和保存結果；目前 Codex 負責理解及執行。Skill 不自帶模型或影片能力，匯出不會自動安裝外掛、啟動 Codex 或生成影片；實際製作使用目前已接通的工具。公司素材與單次要求不自動放進可重用公開 Skill。",
     "按 docs/OPERATING_MODEL.md 分工：藍圖提供共用介面、公司資料及工具；Codex 或目前相容 AI 客戶端理解並處理工作；業務 Agent 各自獨立開發。工作台沒有附帶已運行的客服、影片等業務 Agent，專員設定和範本不等於服務已接通。",
@@ -19,7 +20,7 @@
     "新對話及其他 AI 分別檢查工具與授權。上次驗收只證明當時可用；右側開啟、工具列表或複製指令都不等於已完成讀寫。",
     "V2.4 先讀 blueprint_studio_state 取得身份、能力及欄位定義。項目、收件匣、客戶、報價、發票、成本、靈感、主題使用 studio_list/get/create/update；data_json、refs_json 填 JSON 字串。先搜尋並保留原 ID，修改帶 expected_version。",
     "指揮中樞指令：讀 studio_context，只使用獲授權的選定來源；用 studio_action/plan_command 保存拆解，再執行真正可用的工具。用 complete_command 保存真實結果及來源，對外操作設 external_action=true，最後讀回結果與收件匣。不能把複製指令、待處理或專員空殼當成已完成。",
-    "PDF 所列四位專員目前是未接入的設定空間，不會自動對外回覆或生成影片。網頁截圖與摘要需要客戶端實際可用的瀏覽工具；上載真實圖片後把 item ID 與實際摘要來源寫回 inspiration。沒有工具時保留等待狀態。",
+    "新安裝不預先建立四位專員；使用者選擇範本或預設角色後才新增設定。既有專員、設定、工作及歷史保留，不會自動對外回覆或生成影片。保存收藏或新增靈感不會自動排隊截圖或摘要；只有使用者要求整理時才建立相關工作。網頁截圖與摘要仍需客戶端實際可用的瀏覽工具；上載真實圖片後把 item ID 與實際摘要來源寫回 inspiration，沒有工具時保留等待狀態。",
     "財務、人事與接入設定按登入身份授權；金鑰只存在伺服器秘密設定。用量是已回傳的帳單紀錄，工作台暫停標記不等於第三方帳戶已停費。任何外發及收費先取得明確人工確認。",
     "原生後台及 Sites 入口配原生後台（sites_native）提供 blueprint_backup_status 與 blueprint_backup_create，僅擁有人可用。先核對實際部署模式及工具能力；建立請求不代表完成，讀回新備份 ID、下載並核對私人副本。純 Sites D1／R2 儲存需使用其已驗證的平台備份方式，不套用原生備份工具。備份／還原驗收與目前對話 AI 寫入驗收分開。",
     "獨立 Agent 工作：清單只有摘要，先用 blueprint_agent_job_get 讀取指定工作，再用 blueprint_agent_job_context 取得固定版本設定、操作及獲授權來源。只有使用者要求處理且狀態為 awaiting_codex 時，才以 blueprint_agent_job_action/start 記錄實際客戶端 source 與 context_digest；in_progress 工作須先核對實際客戶端與 started_by_client 相同，且最新 digest 與保存的 context_digest 一致，才接續，不能重複 start 或偽報客戶端；來源改變應記錄失敗或取消並另建工作；由目前 AI 完成工作，再以 complete 保存真實 result、source、source_refs 及相同 digest，最後讀回工作。失敗用 fail 記錄原因。新增工作、開啟頁面或連接介面不會自動啟動 Codex。",
@@ -71,6 +72,49 @@
     "sync": {
       "title": "資料存在，但畫面未更新",
       "action": "完成保存後，在同一工作台按「更新資料」查看最新內容。畫面不會因閒置或切回視窗而自動更新；編輯中的草稿需先保存或關閉。接駁中心開啟時會獨立檢查測試紀錄。請先讀回原紀錄，勿重複保存。"
+    }
+  },
+  "workflows": {
+    "daily": {
+      "when": "保存、整理或修改現有公司資料與設定",
+      "read": [
+        "docs/AI_WORKSPACE.md",
+        "docs/LEFT_RIGHT_WORKFLOW.md"
+      ]
+    },
+    "install": {
+      "when": "首次安裝、接駁客戶端及真實讀寫驗收",
+      "read": [
+        "INSTALL_AI.txt",
+        "docs/INSTALL.md",
+        "docs/CONNECT.md"
+      ]
+    },
+    "update": {
+      "when": "更新現有工作台程式並保留公司資料和客製內容",
+      "read": [
+        "UPDATE_AI.txt",
+        "docs/UPDATE_ROUTE.md"
+      ]
+    },
+    "customization": {
+      "when": "新增尚未支援的功能、行業流程或程式介面",
+      "read": [
+        "docs/OPERATING_MODEL.md",
+        "docs/STUDIO_API.md"
+      ]
+    },
+    "agent": {
+      "when": "登記固定版本 Agent 或處理使用者指定工作",
+      "read": [
+        "docs/AGENT_CONTRACT.md"
+      ]
+    },
+    "skill": {
+      "when": "起草可重用 Skill、選定私人材料及交接執行",
+      "read": [
+        "docs/LEFT_RIGHT_WORKFLOW.md"
+      ]
     }
   }
 }

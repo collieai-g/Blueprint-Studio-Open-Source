@@ -53,8 +53,38 @@ class StudioTests(unittest.TestCase):
         self.assertIn(topic['id'], [row['id'] for row in self.store.list_collections()])
         self.owner.update(topic['id'], {'expected_version': 1, 'title': '改名'})
         self.assertEqual(next(row for row in self.store.list_collections() if row['id'] == topic['id'])['name'], '改名')
-        self.assertEqual(len(self.owner.list('specialist')['records']), 4)
+        self.assertEqual(self.owner.list('specialist')['total'], 0)
         self.assertFalse(self.owner.state()['capabilities']['specialist_runtime'])
+
+    def test_specialist_presets_require_explicit_admin_selection(self):
+        state = self.owner.state()
+        self.assertEqual(self.owner.list('specialist')['total'], 0)
+        self.assertEqual({preset['id'] for preset in state['specialist_presets']},
+                         {'preset:website', 'preset:whatsapp', 'preset:email', 'preset:video'})
+        self.assert_status(403, self.member.create_specialist, 'preset:email')
+        self.assertEqual(self.owner.list('specialist')['total'], 0)
+        specialist = self.owner.create_specialist('preset:email')['record']
+        self.assertEqual(specialist['title'], '電郵 AI')
+        self.assertEqual(specialist['data']['state'], 'unconnected')
+        self.assertEqual(self.owner.list('specialist')['total'], 1)
+        self.assertEqual(len(self.owner.history(specialist['id'])), 1)
+        self.owner.create_specialist('knowledge')
+        self.assertEqual(self.owner.list('specialist')['total'], 2)
+
+    def test_restart_preserves_legacy_specialists_and_does_not_reseed_archived_records(self):
+        with self.store._connection() as conn:
+            legacy = self.owner._make(conn, {'id': 'specialist-email', 'kind': 'specialist',
+                'title': '原有電郵專員', 'data': {'role': '原有規則'}, 'source_key': 'default:email'}, internal=True)
+        archived = self.owner.update(legacy['id'], {'expected_version': legacy['version'], 'archived': True})
+        history = self.owner.history(legacy['id'])
+        for _ in range(2):
+            self.store = Store(self.directory)
+            self.owner = Studio(self.store)
+            self.owner.state()
+            self.assertEqual(self.owner.get(legacy['id']), archived)
+            self.assertEqual(self.owner.history(legacy['id']), history)
+            self.assertEqual(self.owner.list('specialist')['total'], 0)
+            self.assertEqual(self.owner.list('specialist', archived=True)['total'], 1)
 
     def test_inbox_to_todo_deduplicates_and_version_conflict_preserves_completion(self):
         inbox = self.create('inbox', content='安排跟進')
@@ -117,20 +147,57 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(context['scope'], 'selected_references_only')
         self.assertEqual(self.owner.list('project')['total'], 2)
 
-    def test_new_link_inbox_capture_queue_multitag_and_real_summary(self):
+    def test_new_link_keeps_inbox_and_inspiration_without_automatic_capture(self):
         item = self.store.create_item({'kind': 'link', 'url': 'https://example.com', 'title': '設計參考'})
         self.owner.state(); self.owner.state()
         inspiration = self.owner.list('inspiration')['records'][0]
         self.assertEqual(inspiration['data']['item_id'], item['id'])
         self.assertEqual(self.owner.list('inspiration')['total'], 1)
-        self.assertEqual(self.owner.list('command')['total'], 1)
+        self.assertEqual(self.owner.list('command')['total'], 0)
+        self.assertEqual(self.owner.list('inbox')['total'], 1)
         self.assert_status(400, self.owner.update, inspiration['id'], {'expected_version': 1, 'data': {'ai_summary': '沒有來源的摘要'}})
         inspiration = self.owner.update(inspiration['id'], {'expected_version': 1, 'data': {'categories': ['web','brand'], 'ai_summary': '測試工具已閱讀的內容', 'summary_source': '已連接的測試 AI'}})
         self.assertEqual(self.owner.list('inspiration', category='web')['records'][0]['id'], inspiration['id'])
         self.assertEqual(self.owner.list('inspiration', category='brand')['records'][0]['id'], inspiration['id'])
 
+    def test_capture_is_explicit_versioned_and_reuses_existing_queue(self):
+        item = self.store.create_item({'kind': 'link', 'url': 'https://example.com/explicit', 'title': '主動整理'})
+        inspiration = self.create('inspiration', item_id=item['id'])
+        self.assertEqual(self.owner.list('command')['total'], 0)
+        self.assert_status(400, self.act, inspiration, 'capture_request', instruction='額外指令')
+        self.assert_status(409, self.owner.action, inspiration['id'],
+                           {'expected_version': 0, 'action': 'capture_request'})
+        result = self.act(inspiration, 'capture_request')
+        command, inbox = result['created']
+        self.assertEqual(command['data']['purpose'], 'capture_inspiration')
+        self.assertEqual(command['data']['state'], 'awaiting_ai')
+        self.assertEqual(command['refs'], [{'kind': 'inspiration', 'id': inspiration['id']}])
+        self.assertEqual(inbox['refs'], [{'kind': 'command', 'id': command['id']}])
+        history = self.owner.history(command['id'])
+        self.store = Store(self.directory)
+        self.owner = Studio(self.store)
+        self.owner.state()
+        retried = self.act(inspiration, 'capture_request')
+        self.assertEqual(retried['created'], result['created'])
+        self.assertEqual(self.owner.history(command['id']), history)
+        self.assertEqual(self.owner.list('command')['total'], 1)
+        self.assertFalse(result['external_action_executed'])
+
+    def test_capture_keeps_private_source_permissions(self):
+        item = self.store.create_item({'kind': 'link', 'url': 'https://example.com/private', 'title': '私人來源'})
+        inspiration = self.owner.create({'kind': 'inspiration', 'title': '私人靈感',
+            'data': {'item_id': item['id']}, 'visibility': 'admin'})['record']
+        self.assert_status(403, self.member.action, inspiration['id'],
+                           {'expected_version': inspiration['version'], 'action': 'capture_request'})
+        self.assertEqual(self.owner.list('command')['total'], 0)
+        command = self.act(inspiration, 'capture_request')['created'][0]
+        self.assertEqual(command['visibility'], 'admin')
+        self.assert_status(403, self.member.get, command['id'])
+        self.assert_status(403, self.member.context, command['id'])
+        self.assert_status(403, self.member.history, command['id'])
+
     def test_unconnected_specialists_real_only_metrics_and_scenarios(self):
-        specialist = self.owner.get('specialist-email')
+        specialist = self.owner.create_specialist('preset:email')['record']
         self.assert_status(409, self.act, specialist, 'specialist_state', state='live')
         self.assert_status(403, self.member.update, specialist['id'], {'expected_version': 1, 'data': {'role': '改寫'}})
         self.create('conversation', specialist_id=specialist['id'], source='測試', occurred_at=date.today().isoformat(), test_only=True)

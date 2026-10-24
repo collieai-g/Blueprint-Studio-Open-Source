@@ -33,3 +33,18 @@ test('native and Sites handoffs include the actual origin, client, challenge and
   assert.equal(prompt({ origin: 'https://user:secret@example.com', route: 'native', clientKey: 'codex', session, guide }), '');
   assert.equal(prompt({ origin: 'https://own.example', route: '', clientKey: 'codex', session, guide }), '');
 });
+test('new-chat handoffs retain the canonical entrypoint without freezing every workflow rule', () => {
+  const current = { ...guide, rules: ['FIRST_CORE_RULE', 'FULL_AGENT_WORKFLOW_RULE'] };
+  const text = prompt({ origin: 'https://own.example', route: 'native', clientKey: 'codex', session, guide: current });
+  assert.ok(text.includes('blueprint_connection_guide'));
+  assert.ok(text.includes('workflows'));
+  assert.ok(text.includes('FIRST_CORE_RULE'));
+  assert.ok(!text.includes('FULL_AGENT_WORKFLOW_RULE'));
+  assert.ok(text.includes('不複製整份規則'));
+  for (const name of ['daily', 'install', 'update', 'customization', 'agent', 'skill']) {
+    assert.ok(guide.workflows[name].read.length > 0);
+    for (const file of guide.workflows[name].read) {
+      assert.ok(require('node:fs').existsSync(require('node:path').resolve(__dirname, '..', file)), file);
+    }
+  }
+});
