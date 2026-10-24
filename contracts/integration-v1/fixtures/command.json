@@ -1,0 +1,12 @@
+{
+  "integration_id": "REPLACE_WITH_REGISTERED_INTEGRATION_ID",
+  "name": "takeover",
+  "payload": {
+    "reason": "虛構個案驗收"
+  },
+  "idempotency_key": "fictional-takeover-001",
+  "correlation_id": "fictional-case-001",
+  "control_epoch": 1,
+  "input_cursor": "fictional-input-001",
+  "expires_at": "2099-01-01T00:00:00Z"
+}

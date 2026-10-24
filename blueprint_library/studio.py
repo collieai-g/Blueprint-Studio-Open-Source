@@ -748,11 +748,12 @@ class Studio:
         schema={kind:definition for kind,definition in SCHEMAS.items() if self.admin or not definition.get('restricted')}
         with self.store._connection() as conn:
             catalog=[_record(row) for row in conn.execute("SELECT * FROM studio_records WHERE archived=0 AND kind IN ('specialist','topic','integration','project','customer')"+(" AND visibility='team'" if not self.admin else ''))]
+            integration_count = conn.execute('SELECT COUNT(*) FROM integration_registry').fetchone()[0] if self.admin else 0
             for record in catalog:
                 if record['kind']=='integration':
                     record['credential_configured']=bool(record['data'].get('secret_env') and os.environ.get(record['data']['secret_env']))
                     record['runtime_connected']=False
                     record['month_usage']=format(self._usage(conn,record['id'],date.today().strftime('%Y-%m')),'.2f')
         return {'identity':self.identity,'schemas':schema,'catalog':catalog,'preferences':self.preferences(),'summary':self.summary(),
-                'templates':TEMPLATES,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True,'agent_workbench':True,'agent_contract':'blueprint-agent/1'},
-                'schema_version':SCHEMA_VERSION}
+                'templates':TEMPLATES,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True,'agent_workbench':True,'agent_contract':'blueprint-agent/1','integration_v1':self.admin},
+                'schema_version':SCHEMA_VERSION, 'integration_count':integration_count}

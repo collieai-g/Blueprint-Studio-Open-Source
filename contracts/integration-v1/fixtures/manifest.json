@@ -1,0 +1,35 @@
+{
+  "name": "虛構接駁驗收服務",
+  "version": "0.1.0",
+  "record_types": [
+    "thread",
+    "message",
+    "work_item",
+    "artifact",
+    "note",
+    "status",
+    "knowledge"
+  ],
+  "commands": [
+    {
+      "name": "takeover",
+      "label": "我接手",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "原因",
+            "maxLength": 400
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "resource_refs": [],
+  "allowed_origins": [
+    "https://service.example.test"
+  ]
+}

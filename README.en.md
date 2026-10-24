@@ -36,13 +36,13 @@ Two real interfaces work together:
 
 Your client or window arrangement places the interfaces side by side. Blueprint works with the existing Codex interface; it does not rebuild or embed Codex as its own chat panel.
 
-## GitHub V2.7.4: setup on the left, a minimal workspace on the right
+## V2.8.0: connect independent services to company records
 
-V2.7.3 grouped sidebar management under Settings. **V2.7.4 moves all AI setup back to the active Codex client.** Give it [AI_CONNECT.md](AI_CONNECT.md) to verify the workspace, capabilities, authentication and real saves. The right-hand workspace has no connection wizard or default orientation panel.
+The native backend adds [Blueprint Integration Contract 1.0](docs/INTEGRATION_GUIDE.md). Independent services use dedicated scoped credentials to submit records, read authorized material and receive durable commands, then report actual execution results. Commands remain pending until the service responds. The server checks retries, source versions and resumable synchronization. Each private data directory still represents one company.
 
-Overview starts with its heading and **Adjust layout** only, including after an upgrade. Existing card positions and company data are retained; opt in to show the cards again. Add file, summary, recent-work, todo or update cards through the layout editor when needed. The sidebar keeps four primary entries and Settings; the regular AI page no longer lists model or external-integration registration.
+Registered services appear under **Work → External work** with their records and results. The four primary entries, client-side AI setup and minimal overview remain. No service means no external-work entry or connection wizard. WhatsApp, models, DOT and outbound sending stay in the independent service.
 
-This publishes GitHub source and packages for 2.7.4; **it does not update existing private or test workspaces automatically**. Schema 6, existing tool names, authentication and company data remain compatible.
+**The 2.8.0 source adds schema 7 and requires a full native backend update with backup and migration rehearsal; replacing UI assets is insufficient.** Sites-hosted backends require their own adaptation. Product versions, integration contract 1.0 and the existing `blueprint-agent/1` remain independent. These source changes do not mean a release has been published or any private/test workspace has been updated. See [release notes](docs/RELEASE.md) and the [upgrade guide](docs/UPGRADE.md).
 
 ## Built for founders and small teams
 

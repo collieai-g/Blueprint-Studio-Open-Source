@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "content": {
+      "type": "string",
+      "maxLength": 40000
+    },
+    "state": {
+      "enum": [
+        "approved",
+        "revoked"
+      ]
+    },
+    "effective_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "title",
+    "content",
+    "state",
+    "effective_at"
+  ],
+  "description": "Administrator-owned policy revision. Approved content must be nonempty. Content is readable by an authorized bearer only during its effective, approved interval; every fetch rechecks the current revision. Revoked, scheduled and expired policy bodies are redacted."
+}

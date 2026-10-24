@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "record_type": "knowledge",
+  "external_id": "fictional-policy-001",
+  "event_id": "fictional-policy-event-001",
+  "source_revision": 1,
+  "source": "fictional-service",
+  "occurred_at": "2026-10-24T08:00:00Z",
+  "payload": {
+    "title": "虛構公司營業時間",
+    "content": "僅作驗收：星期一至五上午九時至下午六時。",
+    "state": "approved",
+    "effective_at": "2020-01-01T00:00:00Z",
+    "expires_at": "2099-01-01T00:00:00Z"
+  },
+  "idempotency_key": "fictional-policy-001",
+  "correlation_id": "fictional-case-001"
+}

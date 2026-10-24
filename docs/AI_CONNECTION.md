@@ -120,7 +120,7 @@ import catalog from './mcp/tools.json' with { type: 'json' };
 
 const mcp = createMcpHandler({
   tools: catalog.tools,
-  version: '2.7.4',
+  version: '2.8.0',
   authorize: (request, env) => requireVerifiedPlatformUser(request, env),
   dispatch: (request, env) => existingAuthenticatedApi.fetch(request, env)
 });

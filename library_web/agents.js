@@ -98,17 +98,19 @@
     if(!context.isCurrent())return;
     const controls=[button('重新讀取',()=>workspace(agentOffset,jobOffset))];
     if(admin())controls.unshift(button('新增 Agent',register,'button primary small'));
-    const panel=context.panel;panel.replaceChildren(heading('Agent 工作台','在同一個工作台設定 Agent、準備工作，並查看 Codex 保存的結果。',controls));
+    const panel=context.panel;context.beforeRender?.();panel.replaceChildren(heading('Agent 工作台','在同一個工作台設定 Agent、準備工作，並查看 Codex 保存的結果。',controls));
     panel.append(note('需要 AI 處理的工作會先保存。請在目前已接通工具的 Codex 對話提出要求；這裏的按鈕不會自動啟動 Codex。'));
     const agents=node('div','studio-grid');registered.agents.forEach(agent=>agents.append(agentCard(agent)));
     panel.append(node('h2','agent-section-title','已加入的 Agent'),registered.agents.length?agents:empty('尚未加入 Agent。管理員可以加入已核對版本的 Agent 設定檔。'),pagination(registered,agentOffset,next=>workspace(next,jobOffset)));
     const work=node('div','studio-grid');jobs.jobs.forEach(job=>work.append(jobCard(job)));
     panel.append(node('h2','agent-section-title','工作記錄'),jobs.jobs.length?work:empty('尚未建立 Agent 工作。'),pagination(jobs,jobOffset,next=>workspace(agentOffset,next)));
+    if(context.isCurrent())context.onRendered?.();
   }
   async function register(){
+    const context=current;if(!context.isCurrent())return;
     if(!admin())throw new Error('請由管理員新增 Agent。');
     registrationOpen=true;dirty=false;
-    const panel=current.panel;panel.replaceChildren(heading('新增 Agent','加入已核對版本的 Agent 設定檔。',[button('返回工作台',()=>go('agents'))]));
+    const panel=context.panel;context.beforeRender?.();panel.replaceChildren(heading('新增 Agent','加入已核對版本的 Agent 設定檔。',[button('返回工作台',()=>go('agents'))]));
     const form=markForm(node('form','studio-detail agent-form'));form.classList.add('agent-register-form');
     const repository=textField('GitHub 倉庫網址','repository','',{type:'url',required:true,maxLength:500});repository.input.placeholder='https://github.com/owner/repository';
     const revision=textField('固定版本 commit（40 位）','revision','',{required:true,maxLength:40});revision.input.pattern='[a-fA-F0-9]{40}';revision.input.spellcheck=false;
@@ -161,13 +163,14 @@
       const result=await api('/agents',{method:'POST',body:{manifest:parsedManifest,source:{repository:repository.input.value.trim(),revision:revision.input.value.trim()},settings:readFields(initialFields)}});
       dirty=false;registrationOpen=false;await go('agent/'+result.agent.id);
     });});panel.append(form);
+    if(context.isCurrent())context.onRendered?.();
   }
   async function agentDetail(id){
     const context=current;
     const [data,jobs]=await Promise.all([api(agentPath(id)),api('/agent-jobs?agent_id='+encodeURIComponent(id)+'&limit=30')]);
     if(!context.isCurrent())return;
     const agent=data.agent,manifest=agent.manifest,panel=context.panel;
-    panel.replaceChildren(heading(manifest.name,manifest.description||'設定功能與管理工作。',[button('返回工作台',()=>go('agents')),button('重新讀取',()=>go('agent/'+id))]));
+    context.beforeRender?.();panel.replaceChildren(heading(manifest.name,manifest.description||'設定功能與管理工作。',[button('返回工作台',()=>go('agents')),button('重新讀取',()=>go('agent/'+id))]));
     const meta=node('div','studio-badges');meta.append(node('span','badge',agentStatus(agent)),node('span','badge','v'+manifest.version));panel.append(meta);
     panel.append(note(agent.connection_state==='connected'?'已啟用共用操作接口。請另行確認目前 Codex 對話已載入藍圖工具；開啟這個畫面不代表 AI 正在運行。':'Agent 已加入工作台。管理員確認設定後，可連接其功能，再建立工作。'));
     const origin=node('details','agent-origin');origin.append(node('summary','','版本來源'));
@@ -200,6 +203,7 @@
     const work=node('div','studio-grid');jobs.jobs.forEach(job=>work.append(jobCard(job)));
     panel.append(node('h2','agent-section-title','最近工作'),jobs.jobs.length?work:empty('這個 Agent 尚未有工作。'));
     if((jobs.total||0)>jobs.jobs.length)panel.append(button('查看全部工作',()=>go('agents')));
+    if(context.isCurrent())context.onRendered?.();
   }
   async function sourceChoices(){
     const [records,items,days,todos]=await Promise.all([api('/records?limit=100'),current.app.api('/api/items?limit=200'),current.app.api('/api/workdays?limit=50'),current.app.api('/api/todos?limit=50&done=all')]);
@@ -208,7 +212,7 @@
   async function createJob(agent,operation){
     const context=current,choices=await sourceChoices();if(!context.isCurrent())return;
     registrationOpen=true;dirty=false;
-    const panel=context.panel;panel.replaceChildren(heading(operation.name,'選定資料並保存工作，再到 Codex 對話交代處理。',[button('返回 Agent',()=>go('agent/'+agent.id))]));
+    const panel=context.panel;context.beforeRender?.();panel.replaceChildren(heading(operation.name,'選定資料並保存工作，再到 Codex 對話交代處理。',[button('返回 Agent',()=>go('agent/'+agent.id))]));
     const form=markForm(node('form','studio-detail agent-form agent-job-form'));
     const title=textField('工作名稱','title',operation.name,{required:true,maxLength:240});form.append(title.label);
     const inputs=fields(operation.input_fields,{},'input_');form.append(inputs);
@@ -226,6 +230,7 @@
       const result=await api('/agent-jobs',{method:'POST',body:{...body,source_key:sourceKey}});
       dirty=false;registrationOpen=false;await go('agent-job/'+result.job.id);
     });});panel.append(form);
+    if(context.isCurrent())context.onRendered?.();
   }
   function handoffText(job){
     const resume='接續處理前，核對實際 AI 客戶端名稱與 job.started_by_client 相同，並確認目前 context_digest 與工作保存的 job.context_digest 一致。兩者一致才繼續；若不一致，記錄真實原因，以 fail 或 cancel 結束後另建工作，不可冒用原本的結果來源。';
@@ -246,7 +251,7 @@
   async function jobDetail(id){
     const context=current,{job}=await api(jobPath(id));if(!context.isCurrent())return;
     const panel=context.panel,manifest=job.agent_snapshot.manifest;
-    panel.replaceChildren(heading(job.title,manifest.name+' · v'+manifest.version,[button('返回 Agent',()=>go('agent/'+job.agent_id)),button('重新讀取',()=>go('agent-job/'+id))]));
+    context.beforeRender?.();panel.replaceChildren(heading(job.title,manifest.name+' · v'+manifest.version,[button('返回 Agent',()=>go('agent/'+job.agent_id)),button('重新讀取',()=>go('agent-job/'+id))]));
     panel.append(status(job.state),node('p','agent-job-meta muted','工作編號：'+job.id));
     if(job.state==='awaiting_codex'||job.state==='in_progress'){
       const handoff=node('section','studio-detail agent-handoff');handoff.append(node('h2','agent-section-title','到 Codex 對話處理'));
@@ -279,11 +284,15 @@
     for(const spec of manifest.settings){const value=job.agent_snapshot.settings[spec.key];display.append(node('dt','',spec.label),node('dd','',typeof value==='boolean'?(value?'是':'否'):value||'未填寫'));}
     input.append(display,node('p','muted','這項工作使用建立時的設定，之後修改 Agent 不會悄悄改寫它。'));
     if(job.refs?.length){input.append(node('h3','agent-section-title','選定來源'));job.refs.forEach(ref=>input.append(referenceButton(ref)));}panel.append(input);
+    if(context.isCurrent())context.onRendered?.();
   }
   async function mount(context){
     current=context;dirty=false;registrationOpen=false;
+    if(!context.isCurrent())return;
     if(!context.state.capabilities?.agent_workbench){
+      context.beforeRender?.();
       context.panel.replaceChildren(heading('Agent 工作台尚未接通','目前後台未提供 Agent 操作功能。請更新同一後台及介面，完成工具接駁後再使用。',[button('返回今日總覽',()=>go('overview'))]));
+      if(context.isCurrent())context.onRendered?.();
       return;
     }
     try{
@@ -291,7 +300,10 @@
       else if(context.route.startsWith('agent/'))await agentDetail(context.route.split('/')[1]);
       else if(context.route.startsWith('agent-job/'))await jobDetail(context.route.split('/')[1]);
     }catch(error){
-      if(context.isCurrent())context.panel.replaceChildren(heading('Agent 功能未能載入',error.message,[button('重新讀取',()=>go(context.route)),button('返回工作台',()=>go('agents'))]));
+      if(context.isCurrent()){
+        context.beforeRender?.();context.panel.replaceChildren(heading('Agent 功能未能載入',error.message,[button('重新讀取',()=>go(context.route)),button('返回工作台',()=>go('agents'))]));
+        if(context.isCurrent())context.onRendered?.();
+      }
     }
   }
   root.BlueprintAgents={mount,isBusy:()=>dirty||submitting||registrationOpen||!!document.activeElement?.closest('[data-agent-form]')};

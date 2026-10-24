@@ -1,0 +1,98 @@
+[
+  {
+    "status": 400,
+    "body": {
+      "error": "Fictional invalid request example",
+      "code": "invalid_request",
+      "retryable": false
+    }
+  },
+  {
+    "status": 401,
+    "body": {
+      "error": "Fictional unauthorized example",
+      "code": "unauthorized",
+      "retryable": false
+    }
+  },
+  {
+    "status": 403,
+    "body": {
+      "error": "Fictional forbidden example",
+      "code": "forbidden",
+      "retryable": false
+    }
+  },
+  {
+    "status": 404,
+    "body": {
+      "error": "Fictional not found example",
+      "code": "not_found",
+      "retryable": false
+    }
+  },
+  {
+    "status": 409,
+    "body": {
+      "error": "Fictional conflict example",
+      "code": "conflict",
+      "retryable": false
+    }
+  },
+  {
+    "status": 410,
+    "body": {
+      "error": "Fictional cursor gap example",
+      "code": "cursor_gap",
+      "retryable": false
+    }
+  },
+  {
+    "status": 413,
+    "body": {
+      "error": "Fictional payload too large example",
+      "code": "payload_too_large",
+      "retryable": false
+    }
+  },
+  {
+    "status": 415,
+    "body": {
+      "error": "Fictional unsupported media type example",
+      "code": "unsupported_media_type",
+      "retryable": false
+    }
+  },
+  {
+    "status": 422,
+    "body": {
+      "error": "Fictional invalid data example",
+      "code": "invalid_data",
+      "retryable": false
+    }
+  },
+  {
+    "status": 429,
+    "body": {
+      "error": "Fictional rate limited example",
+      "code": "rate_limited",
+      "retryable": true
+    }
+  },
+  {
+    "status": 500,
+    "body": {
+      "error": "Fictional internal error example",
+      "code": "internal_error",
+      "retryable": true
+    }
+  },
+  {
+    "status": 503,
+    "body": {
+      "error": "Fictional temporarily unavailable example",
+      "code": "temporarily_unavailable",
+      "retryable": true
+    }
+  }
+]

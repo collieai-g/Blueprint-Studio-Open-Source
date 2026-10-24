@@ -148,6 +148,7 @@ def main():
                 page.locator('#studio-navigation [data-group=inspiration]').click()
                 mcp_call('blueprint_save_text_file', {'name': 'AI 保存驗證.txt', 'text': '由真實 MCP 保存的工作內容。'})
                 assert page.get_by_text('AI 保存驗證.txt', exact=True).count() == 0
+                page.locator('#add-item').click()
                 page.locator('#refresh-workspace').click()
                 page.get_by_text('AI 保存驗證.txt', exact=True).wait_for()
                 assert store.stats()['files'] == 2

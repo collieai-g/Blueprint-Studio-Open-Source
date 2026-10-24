@@ -1,0 +1,26 @@
+/* Generic external work retains the existing notebook grid and controls. */
+.integration-select { display: grid; gap: 7px; max-width: 400px; margin: 20px 0; }
+.integration-select select, .integration-form input:not([type=checkbox]), .integration-form select, .integration-form textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; }
+.integration-form, .integration-fields { display: grid; gap: 16px; }
+.integration-form .field { display: grid; gap: 7px; min-width: 0; }
+.integration-form input[type=checkbox] { justify-self: start; }
+.integration-form textarea { resize: vertical; }
+.integration-form button[type=submit] { justify-self: start; }
+.integration-compose { margin: 24px 0; max-width: 720px; }
+.integration-compose h2, .integration-evidence-columns h2 { font-size: 16px; margin: 0 0 20px; }
+.integration-evidence-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; margin: 24px 0; }
+.integration-record, .integration-command { margin: 14px 0; min-width: 0; }
+.integration-record h3, .integration-command h3 { font-size: 14px; margin: 0; }
+.integration-copy { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.8; }
+.integration-status { align-self: flex-start; }
+.integration-status[data-command-state=completed] { background: #edf4ef; color: #3c6550; }
+.integration-status[data-command-state=failed], .integration-status[data-command-state=rejected] { background: #f7eeea; color: #8a493c; }
+.integration-status[data-command-state=unknown] { background: #f5f2e9; color: #665a3a; }
+.integration-evidence { font-size: 12px; margin: 8px 0; overflow-wrap: anywhere; }
+.integration-evidence summary { cursor: pointer; }
+.integration-json { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; max-height: 360px; overflow: auto; line-height: 1.7; }
+.integration-results { margin: 0; padding-left: 18px; }
+.integration-results li { margin: 12px 0; }
+.integration-results time { display: block; font-size: 11px; margin-top: 6px; }
+.integration-read-time, .integration-conditions { font-size: 12px; }
+@media(max-width:800px) { .integration-evidence-columns { grid-template-columns: 1fr; } }

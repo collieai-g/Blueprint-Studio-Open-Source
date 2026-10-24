@@ -133,6 +133,7 @@
     settings: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8', 'm9 3-1 3-3 1-2 3 2 2-1 3 2 3h3l2 3 3-1 1-3 3-1 2-3-2-2 1-3-2-3h-3l-2-3Z'],
     help: ['M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 3 M12 17h.01', 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0'],
     menu: ['M4 6h16 M4 12h16 M4 18h16'], chevron: ['m8 10 4 4 4-4'],
+    refresh: ['M20 7V3l-4 4 M20 7a8 8 0 1 0 1 8'],
     arrow: ['M5 12h14 m-5-5 5 5-5 5'], 'arrow-up-right': ['M6 18 18 6 M6 6h12v12'],
     upload: ['M12 16V3 m-5 5 5-5 5 5 M4 15v6h16v-6'], download: ['M12 3v13 m-5-5 5 5 5-5 M4 17v4h16v-4'],
     link: ['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'],
@@ -328,6 +329,7 @@
       const data = await api(`/api/items?${viewParams()}`);
       if (request !== state.request) return;
       if (background && workspaceBusy()) return false;
+      document.dispatchEvent(new CustomEvent('blueprint:before-content-render', {detail: {view: state.view}}));
       state.items = Array.isArray(data.items) ? data.items : []; state.total = Number(data.total) || 0;
       const visible = new Set(state.items.map((item) => item.id)); state.selected.forEach((id) => { if (!visible.has(id)) state.selected.delete(id); });
       $('item-grid').replaceChildren(...state.items.map(makeCard)); updateSelection();
@@ -341,8 +343,19 @@
       $('previous-page').hidden = state.view === 'dashboard' || state.offset === 0;
       $('next-page').hidden = state.view === 'dashboard' || state.offset + PAGE_SIZE >= state.total;
       $('page-label').textContent = state.view !== 'dashboard' && state.total > PAGE_SIZE ? `${state.offset + 1}–${Math.min(state.offset + PAGE_SIZE, state.total)} / ${state.total}` : '';
+      document.dispatchEvent(new CustomEvent('blueprint:content-rendered', {detail: {view: state.view}}));
       return true;
-    } catch (error) { if (request === state.request) { $('result-count').textContent = '讀取失敗'; notice(error.message, true); } if (background) throw error; }
+    } catch (error) {
+      if (request === state.request) {
+        document.dispatchEvent(new CustomEvent('blueprint:before-content-render', {detail: {view: state.view}}));
+        if([401,403,404].includes(error.status)){
+          state.items=[];state.total=0;state.selected.clear();$('item-grid').replaceChildren();updateSelection();
+        }
+        $('result-count').textContent = '讀取失敗'; notice(error.message, true);
+        document.dispatchEvent(new CustomEvent('blueprint:content-rendered', {detail: {view: state.view}}));
+      }
+      if (background) throw error;
+    }
     finally { if (request === state.request) $('item-grid').setAttribute('aria-busy', 'false'); }
   }
 
@@ -372,8 +385,18 @@
     window.BlueprintStudio?.legacyView(view, collectionId);
   }
 
+  function closeActionMenu(restoreFocus = false) {
+    const menu = $('add-menu'), wasOpen = !menu.hidden;
+    menu.hidden = true; $('add-item').setAttribute('aria-expanded', 'false');
+    if (restoreFocus && wasOpen) $('add-item').focus();
+  }
+  function openActionMenu(last = false) {
+    $('add-menu').hidden = false; $('add-item').setAttribute('aria-expanded', 'true');
+    const items = [...$('add-menu').querySelectorAll('button:not([disabled])')];
+    items[last ? items.length - 1 : 0]?.focus();
+  }
   function openDialog(id) {
-    $('add-menu').hidden = true; $('add-item').setAttribute('aria-expanded', 'false'); closeSidebar();
+    closeActionMenu(); closeSidebar();
     const dialog = $(id); if (!dialog.open) dialog.showModal();
     const first = dialog.querySelector('input:not([type=hidden]), textarea, select'); first?.focus();
   }
@@ -654,8 +677,22 @@
   document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
   document.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => { if ($('command-dialog').open) $('command-dialog').close(); openAdd(button.dataset.action); }));
   document.querySelectorAll('[data-workday-action]').forEach((button) => button.addEventListener('click', () => { if ($('command-dialog').open) $('command-dialog').close(); workdaysUI?.openImport(); }));
-  $('add-item').addEventListener('click', () => { $('add-menu').hidden = !$('add-menu').hidden; $('add-item').setAttribute('aria-expanded', String(!$('add-menu').hidden)); });
-  document.addEventListener('click', (event) => { if (!event.target.closest('.add-wrapper')) { $('add-menu').hidden = true; $('add-item').setAttribute('aria-expanded', 'false'); } });
+  $('add-item').addEventListener('click', () => { if ($('add-menu').hidden) openActionMenu(); else closeActionMenu(); });
+  $('add-item').addEventListener('keydown', event => {
+    if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); openActionMenu(event.key === 'ArrowUp'); }
+  });
+  $('add-menu').addEventListener('click', event => { if (event.target.closest('button')) closeActionMenu(true); });
+  $('add-menu').addEventListener('keydown', event => {
+    const items = [...$('add-menu').querySelectorAll('button:not([disabled])')];
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      const current = items.indexOf(document.activeElement);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[next]?.focus();
+    }
+    if (event.key === 'Tab') closeActionMenu();
+  });
+  document.addEventListener('click', event => { if (!event.target.closest('.add-wrapper')) closeActionMenu(); });
   $('empty-add').addEventListener('click', () => openAdd(state.view === 'files' ? 'upload' : state.view === 'youtube' ? 'youtube' : 'link'));
   $('new-collection').addEventListener('click', () => openAdd('collection'));
   $('command-button').addEventListener('click', openCommand);
@@ -665,7 +702,7 @@
   $('mobile-menu').addEventListener('click', openSidebar); $('sidebar-backdrop').addEventListener('click', closeSidebar);
   document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { if (!document.querySelector('dialog[open]') || $('command-dialog').open) { event.preventDefault(); openCommand(); } }
-    if (event.key === 'Escape') { closeSidebar(); $('add-menu').hidden = true; $('add-item').setAttribute('aria-expanded', 'false'); }
+    if (event.key === 'Escape') { closeSidebar(); closeActionMenu(true); }
     if (event.key === 'Tab' && $('sidebar').classList.contains('open')) { const focusable = [...$('sidebar').querySelectorAll('a, button')], first = focusable[0], last = focusable[focusable.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } }
   });
   window.addEventListener('resize', () => { if (window.innerWidth > 900) closeSidebar(); });
@@ -698,7 +735,7 @@
     await Promise.all([loadItems(), workdaysUI?.refreshDashboard()]);
   }
   function workspaceBusy() {
-    return state.busy || state.profileBusy || !!workdaysUI?.isBusy?.() || state.selected.size > 0 ||
+    return state.busy || state.profileBusy || !!workdaysUI?.isBusy?.() || !!window.BlueprintStudio?.isLayoutBusy?.() || state.selected.size > 0 ||
       !!document.querySelector('dialog[open], .workspace-board.editing') ||
       !!document.activeElement?.matches('textarea, select, input:not([type=checkbox]):not([type=button])');
   }
@@ -714,7 +751,7 @@
   }); }
   $('retry-workspace').addEventListener('click', () => location.reload());
   init().then(async () => {
-    if (!window.BlueprintStudio || !window.BlueprintWorkspace || !window.BlueprintNavigation || !window.BlueprintSkills || !window.BlueprintAgents) throw new Error('工作台介面未能完整載入，請重新連接。');
+    if (!window.BlueprintStudio || !window.BlueprintWorkspace || !window.BlueprintNavigation || !window.BlueprintSkills || !window.BlueprintAgents || !window.BlueprintIntegrations || !window.BlueprintPageLayout || !window.BlueprintOverviewCards) throw new Error('工作台介面未能完整載入，請重新連接。');
     await window.BlueprintStudio.init({api, notice, icon, openDialog, closeSidebar, setView, openDetail, openAdd, openCommand,
       isBusy: workspaceBusy, hideLegacy: () => { state.view = 'studio'; clearSelection(); workdaysUI?.setView('studio'); }
     });

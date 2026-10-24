@@ -10,12 +10,17 @@
   <link rel="stylesheet" href="/studio.css">
   <link rel="stylesheet" href="/agents.css">
   <link rel="stylesheet" href="/skills.css">
+  <link rel="stylesheet" href="/integrations.css">
+  <link rel="stylesheet" href="/page-layout.css">
   <script src="/workdays.js" defer></script>
   <script src="/workspace.js" defer></script>
+  <script src="/overview-cards.js" defer></script>
   <script src="/update.js" defer></script>
   <script src="/navigation.js" defer></script>
   <script src="/agents.js" defer></script>
   <script src="/skills.js" defer></script>
+  <script src="/integrations.js" defer></script>
+  <script src="/page-layout.js" defer></script>
   <script src="/studio.js" defer></script>
   <script src="/app.js" defer></script>
   <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
@@ -50,19 +55,18 @@
 
   <div class="app-main">
     <header class="topbar">
-      <div class="topbar-start"><button id="mobile-menu" class="icon-button mobile-menu" type="button" aria-label="開啟導覽" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button><p class="breadcrumb">工作空間 <span aria-hidden="true">/</span> <strong id="breadcrumb-current">工作台</strong></p></div>
-      <div class="top-actions"><button id="refresh-workspace" class="button quiet small" type="button">更新資料</button><button id="command-button" class="command-button" type="button" aria-label="搜尋全部資料，快捷鍵 Control 或 Command 加 K"><span data-icon="search"></span><span>搜尋工作空間</span><kbd>⌘ K</kbd></button><div class="add-wrapper"><button id="add-item" class="button secondary" type="button" aria-expanded="false" aria-controls="add-menu"><span data-icon="plus"></span>備用操作<span data-icon="chevron"></span></button><div id="add-menu" class="add-menu" hidden><button type="button" data-workday-action="import"><span data-icon="calendar"></span>手動匯入工作</button><button type="button" data-action="upload"><span data-icon="upload"></span>加入檔案</button><button type="button" data-action="link"><span data-icon="link"></span>收藏連結</button><button type="button" data-action="collection"><span data-icon="folder-plus"></span>新增收藏集</button></div></div></div>
+      <div class="topbar-start"><button id="mobile-menu" class="icon-button mobile-menu" type="button" aria-label="開啟導覽" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button><nav id="studio-section-navigation" class="studio-section-nav" aria-label="目前區域" hidden></nav><span id="breadcrumb-current" hidden></span></div>
+      <div class="top-actions"><div id="page-layout-tools"></div><div class="add-wrapper"><button id="add-item" class="button secondary" type="button" aria-expanded="false" aria-controls="add-menu" aria-haspopup="menu"><span data-icon="plus"></span>操作<span data-icon="chevron"></span></button><div id="add-menu" class="add-menu" role="menu" aria-label="工作台操作" hidden><button id="command-button" type="button" role="menuitem"><span data-icon="search"></span><span>搜尋工作空間</span><kbd>⌘ K</kbd></button><button id="refresh-workspace" type="button" role="menuitem"><span data-icon="refresh"></span>更新資料</button><hr><button type="button" role="menuitem" data-workday-action="import"><span data-icon="calendar"></span>手動匯入工作</button><button type="button" role="menuitem" data-action="upload"><span data-icon="upload"></span>加入檔案</button><button type="button" role="menuitem" data-action="link"><span data-icon="link"></span>收藏連結</button><button type="button" role="menuitem" data-action="collection"><span data-icon="folder-plus"></span>新增收藏集</button></div></div></div>
     </header>
     <main id="main" tabindex="-1" aria-busy="true">
       <section id="workspace-startup" class="studio-empty" role="status" aria-live="polite"><p id="workspace-startup-message">正在載入工作台…</p><button id="retry-workspace" class="button secondary" type="button" hidden>重新連接</button></section>
       <p class="workspace-status"><span id="workspace-sync" role="status" aria-live="polite">正在載入資料…</span></p>
-      <nav id="studio-section-navigation" class="studio-section-nav" aria-label="目前區域" hidden></nav>
       <div class="page-heading" id="view-heading" hidden><div><p class="eyebrow" id="page-eyebrow">YOUR WORKSPACE</p><h1 id="page-title">工作台<span class="title-dot" aria-hidden="true">.</span></h1><p id="page-description">管理公司的日常工作，隨時接續下一步。</p></div><div class="page-date" id="page-date"></div></div>
       <div id="studio-view-tabs" class="studio-tabs" hidden></div>
       <section id="studio-panel" class="studio-panel" hidden aria-label="公司工作內容"></section>
       <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <section id="dashboard-panel" class="dashboard-panel" aria-label="工作台概覽">
-        <div class="board-toolbar"><div class="board-actions"><button id="edit-board" class="button secondary small" type="button" aria-pressed="false">調整排版</button><button id="reset-board" class="button quiet small" type="button" hidden>還原排列</button></div></div>
+        <div class="board-toolbar"><div class="board-actions"><button id="edit-board" class="button secondary small" type="button" aria-pressed="false">調整版面</button><button id="reset-board" class="button quiet small" type="button" hidden>還原排列</button></div></div>
         <div id="board-editor" class="board-editor" hidden>
           <fieldset class="board-visible-modules"><legend>顯示的內容</legend><div id="board-visible-fields"></div></fieldset>
           <div class="layout-presets"><label>選擇排版<select id="board-preset"><option value="balanced">整齊排列</option><option value="focus">工作優先</option><option value="compact">簡潔排列</option></select></label><button id="apply-board-preset" class="button secondary small" type="button">套用排版</button></div>
@@ -177,9 +181,9 @@
   <dialog id="help-dialog" aria-labelledby="help-heading">
     <div class="dialog-heading"><h2 id="help-heading">使用說明</h2><button class="icon-button" type="button" data-close aria-label="關閉使用說明">×</button></div>
     <div class="help-section"><h3>工作與資料</h3><p>「工作」保存項目、待辦與每日紀錄；「資料」整理文件、收藏、主題及封存內容。你可在左側向 Codex 說明要求，在右側核對保存結果。</p></div>
-    <div class="help-section"><h3>調整總覽</h3><p>按「調整排版」選擇要顯示的內容，再移動、調整大小或收合。排版只保存在目前瀏覽器，不會刪除公司資料。</p></div>
-    <div class="help-section"><h3>查看最新資料</h3><p>在工作台內保存後會更新相關內容；外部保存後，按「更新資料」查看。閒置或切回視窗不會自動重建畫面。</p></div>
-    <div class="help-section"><h3>常用操作</h3><p>用 Ctrl／⌘ K 搜尋資料，按 Esc 關閉視窗。需要手動上載、收藏或匯入工作時，使用上方「備用操作」。</p><p><a class="button secondary small" href="https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noopener noreferrer">閱讀完整使用手冊<span aria-hidden="true"> ↗</span></a></p></div>
+    <div class="help-section"><h3>調整每頁版面</h3><p>按右上方「調整版面」，選擇顯示內容、修改標題或說明，再移動、調整大小或收合卡片。可將工作和 AI 卡片放到總覽；版面設定保存在目前瀏覽器，不會修改原有公司資料。</p></div>
+    <div class="help-section"><h3>查看最新資料</h3><p>在工作台內保存後會更新相關內容；外部保存後，從上方「操作」選擇「更新資料」。閒置或切回視窗不會自動重建畫面。</p></div>
+    <div class="help-section"><h3>常用操作</h3><p>用 Ctrl／⌘ K 搜尋資料，按 Esc 關閉視窗。搜尋、更新資料、手動上載、收藏及匯入工作都在上方「操作」內。</p><p><a class="button secondary small" href="https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noopener noreferrer">閱讀完整使用手冊<span aria-hidden="true"> ↗</span></a></p></div>
   </dialog>
 
   <dialog id="work-import-dialog" class="work-import-dialog" aria-labelledby="work-import-heading"><div class="dialog-heading"><div><p class="eyebrow">DAILY WORK</p><h2 id="work-import-heading">今日收工</h2></div><button class="icon-button" type="button" data-close aria-label="關閉今日收工">×</button></div><div id="work-import-start"><div class="import-guide"><h3>一句「今日收工」，留下值得接續的工作。</h3><p>已連接工具的 AI 可整理並保存目前可見或你提供的工作。一般聊天工具可用下方指令輸出 JSON，再貼回這裏預覽及修改。</p><div class="actions"><button id="copy-work-instruction" class="button primary" type="button">複製整理指令</button><button id="download-work-template" class="button secondary" type="button">下載 JSON 範本</button></div><details class="instruction-details"><summary>查看整理指令</summary><textarea id="work-instruction-text" rows="7" readonly aria-label="給 AI 的整理指令"></textarea></details></div><p class="muted import-limit">每份紀錄最多 80 項、200,000 字元；保存的 JSON 上限為 512 KiB。可選取最多 1 MB 的 JSON 檔案預覽。</p><label class="field">貼上 AI 整理的 JSON<textarea id="work-json-input" rows="8" spellcheck="false" placeholder='{"date":"…","source":"Codex","source_key":"…","entries":[…]}'></textarea></label><label class="field">或選擇 JSON 檔案<input id="work-json-file" type="file" accept=".json,application/json"></label><div class="dialog-actions spread"><button id="work-manual" class="button secondary" type="button">自行新增紀錄</button><button id="work-preview" class="button primary" type="button">預覽內容<span data-icon="arrow"></span></button></div></div><div id="work-preview-panel" hidden><form id="work-preview-form"><p class="muted">可刪除不需要的項目，或修改內容。確認後才會保存。</p><div class="field-row"><label class="field">日期<input id="draft-date" type="date" required></label><label class="field">來源<input id="draft-source" maxlength="80" required placeholder="Codex、Gemini、Claude…"></label></div><label class="field">紀錄標題<input id="draft-title" maxlength="240" placeholder="今天主要處理甚麼？"></label><label class="field">工作摘要<textarea id="draft-summary" rows="3" maxlength="8000"></textarea></label><details class="source-key-details"><summary>紀錄識別碼</summary><p class="muted">用來避免同一份紀錄重複匯入；保留 AI 提供的識別碼。</p><label class="field">識別碼<input id="draft-source-key" maxlength="200" required></label></details><div class="section-title draft-section-heading"><h3>保存項目</h3><button id="draft-add" class="button secondary small" type="button"><span data-icon="plus"></span>加入項目</button></div><div id="draft-entries"></div><div class="dialog-actions spread"><button id="draft-back" class="button secondary" type="button">返回 JSON</button><button id="draft-save" class="button primary" type="submit">確認保存</button></div></form></div><button id="draft-reload" class="button secondary small" type="button" hidden>重新讀取最新紀錄</button><p id="work-import-error" class="form-error" role="alert" hidden></p><p id="work-import-status" class="muted" role="status" aria-live="polite"></p></dialog>
