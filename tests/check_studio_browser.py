@@ -214,10 +214,14 @@ def main():
                 open_settings()
                 page.locator('#settings-dialog [data-close]').click()
                 page.locator('.studio-narrow-toggle').click()
-                page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(100)
+                page.set_viewport_size({'width':390,'height':844})
+                page.locator('#mobile-menu').wait_for(state='visible')
                 assert page.locator('#studio-mobile-command').is_visible()
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-                page.locator('#mobile-menu').click();assert page.locator('#sidebar.open').is_visible()
+                page.locator('#mobile-menu').click()
+                page.locator('#sidebar.open').wait_for(state='visible')
+                assert page.locator('#sidebar.open').is_visible()
+                assert page.locator('#mobile-menu').get_attribute('aria-expanded')=='true'
                 page.screenshot(path=str(output/'studio-mobile.png'),full_page=True)
                 page.locator('#sidebar-backdrop').click(position={'x':350,'y':200})
                 assert page.locator('#sidebar.open').count()==0
