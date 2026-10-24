@@ -46,6 +46,53 @@ def main():
                 assert page.locator('#legacy-navigation').is_hidden()
                 assert page.locator('#studio-navigation [data-studio-route^="specialist/"]').count()==0
 
+                def go(route):
+                    page.evaluate('(route) => BlueprintStudio.navigate(route)',route)
+                def open_settings(target=page):
+                    target.get_by_role('button',name='設定',exact=True).click()
+                    target.wait_for_selector('#settings-dialog[open]')
+                    assert target.locator('dialog[open]').count()==1
+                def assert_connection_open(target=page):
+                    target.wait_for_selector('#connection-dialog[open]')
+                    assert target.locator('#settings-dialog').is_hidden()
+                    assert target.locator('dialog[open]').count()==1
+                    target.wait_for_function("() => document.getElementById('connection-backend').textContent.includes('Blueprint Studio')")
+                    assert target.locator('#connection-error').is_hidden()
+
+                # The footer has one settings entry. Secondary actions keep their
+                # own destinations without leaving overlapping modal dialogs.
+                footer=page.locator('.sidebar-bottom')
+                assert footer.locator('button, a, [role=button]').evaluate_all('(nodes) => nodes.map(node => node.id)')==['settings-button']
+                assert footer.locator('#settings-button').inner_text().strip()=='設定'
+                assert footer.locator('#version').is_visible()
+                assert footer.locator('#version').inner_text().strip()
+                assert footer.locator('#help-button, #studio-account, [data-connection-open], [data-studio-route=archived]').count()==0
+                open_settings()
+                page.locator('#settings-dialog #help-button').click()
+                page.wait_for_selector('#help-dialog[open]')
+                assert page.locator('#settings-dialog').is_hidden()
+                assert page.locator('dialog[open]').count()==1
+                page.locator('#help-dialog [data-close]').click()
+                open_settings()
+                page.locator('#settings-dialog #studio-account').click()
+                page.wait_for_selector('#studio-panel h1:text-is("帳戶")')
+                assert page.evaluate('location.hash')=='#/account'
+                assert page.locator('#settings-dialog').is_hidden()
+                assert page.locator('dialog[open]').count()==0
+                open_settings()
+                advanced=page.locator('#settings-dialog details.settings-advanced')
+                assert advanced.get_attribute('open') is None
+                assert page.locator('#connection-settings-open').is_hidden()
+                advanced.locator('summary').click()
+                page.locator('#connection-settings-open').click()
+                assert_connection_open()
+                page.locator('#connection-dialog [data-close]').click()
+                go('connections')
+                page.get_by_role('button',name='設定工具連接',exact=True).click()
+                assert_connection_open()
+                page.locator('#connection-dialog [data-close]').click()
+                go('overview')
+
                 # Orientation is outside the editable board: its real links
                 # explain the two work areas without migrating saved card data.
                 orientation=page.locator('#collaboration-orientation')
@@ -100,12 +147,13 @@ def main():
                 page.wait_for_selector('#skill-workspace[data-skills-ready=true]')
                 page.locator('#studio-navigation [data-group=inspiration]').click()
                 page.wait_for_function("() => !document.getElementById('library-panel').hidden && document.getElementById('studio-panel').hidden")
-                assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['文件','收藏','主題','釘選']
+                assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['文件','收藏','主題','釘選','已封存']
+                page.locator('#studio-section-navigation [data-studio-route=archived]').click()
+                page.wait_for_selector('#studio-panel h1:text-is("已封存")')
+                assert page.evaluate('location.hash')=='#/archived'
                 page.locator('#studio-navigation [data-group=overview]').click()
                 page.wait_for_function("() => !document.getElementById('dashboard-panel').hidden")
                 page.screenshot(path=str(output/'studio-overview.png'),full_page=True)
-                def go(route):
-                    page.evaluate('(route) => BlueprintStudio.navigate(route)',route)
                 def submit():
                     page.locator('#studio-form button[type=submit]').click()
                     page.wait_for_function("() => !document.getElementById('studio-editor').open")
@@ -173,6 +221,9 @@ def main():
                 go('projects');page.screenshot(path=str(output/'studio-projects.png'),full_page=True)
                 page.locator('.studio-narrow-toggle').click();page.wait_for_function("() => document.body.classList.contains('studio-narrow')")
                 page.reload();page.wait_for_function('() => BlueprintStudio.isReady()');assert page.locator('body').evaluate("n => n.classList.contains('studio-narrow')")
+                assert page.locator('#settings-button [data-icon=settings] .ui-icon').is_visible()
+                open_settings()
+                page.locator('#settings-dialog [data-close]').click()
                 page.locator('.studio-narrow-toggle').click()
                 page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(100)
                 assert page.locator('#studio-mobile-command').is_visible()
@@ -181,6 +232,13 @@ def main():
                 page.screenshot(path=str(output/'studio-mobile.png'),full_page=True)
                 page.locator('#sidebar-backdrop').click(position={'x':350,'y':200})
                 assert page.locator('#sidebar.open').count()==0
+                page.locator('#mobile-menu').click()
+                open_settings()
+                assert page.locator('#sidebar.open').count()==0
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                settings_box=page.locator('#settings-dialog').bounding_box()
+                assert settings_box['x']>=0 and settings_box['x']+settings_box['width']<=390, settings_box
+                page.locator('#settings-dialog [data-close]').click()
                 # Old URLs route to the retained daily-work view.
                 page.goto(base+'/?view=workdays');page.wait_for_function("() => location.hash === '#/overview/workdays'")
                 assert page.locator('#workdays-panel').is_visible()
@@ -194,11 +252,28 @@ def main():
                 member_context=browser.new_context(viewport={'width':1440,'height':900},http_credentials={'username':'staff','password':'test-member-password'})
                 member=member_context.new_page();member.goto(base);member.wait_for_function('() => BlueprintStudio.isReady()')
                 assert member.locator('#studio-navigation .studio-primary .studio-nav-label').all_text_contents()==['總覽','工作','AI','資料']
+                open_settings(member)
+                assert member.locator('#settings-dialog [data-admin-only]:visible').count()==0
+                assert member.locator('#edit-company-profile').is_hidden()
+                member.locator('#studio-account').click()
+                member.wait_for_selector('#studio-panel h1:text-is("帳戶")')
+                assert member.evaluate('location.hash')=='#/account'
+                assert '登入名稱：staff' in member.locator('#studio-panel').inner_text()
+                assert '角色：員工' in member.locator('#studio-panel').inner_text()
+                assert member.locator('#settings-dialog').is_hidden()
+                assert member.get_by_role('button',name='管理團隊登入',exact=True).count()==0
+                open_settings(member)
+                member.locator('#settings-dialog details.settings-advanced summary').click()
+                member.locator('#connection-settings-open').click()
+                assert_connection_open(member)
+                member.locator('#connection-dialog [data-close]').click()
                 member.locator('#studio-navigation [data-group=work]').click()
                 assert member.locator('[data-studio-route=revenue]').count()==0
                 assert member.locator('[data-studio-route=team]').count()==0
                 invoice=studio.list('invoice')['records'][0]
                 response=member.request.get(base+'/api/studio/records/'+invoice['id']);assert response.status==403
+                assert member.request.get(base+'/api/studio/records?kind=invoice').status==403
+                assert member.request.get(base+'/api/studio/users').status==403
                 member.goto(base+'/?startup=restricted#/revenue');member.wait_for_function('() => BlueprintStudio.isReady()')
                 assert member.evaluate('() => document.body.dataset.workspaceState')=='ready'
                 assert member.evaluate('() => location.hash')=='#/overview'
@@ -206,7 +281,7 @@ def main():
                 browser.close()
         finally:
             server.shutdown();server.server_close()
-    print('Workbench browser checks passed: orientation CTAs/responsive layout, preserved board/preferences, CRUD, search, commands, quote-to-invoice, topics, all pages, roles, drafts, narrow/sidebar/mobile, old URLs.')
+    print('Workbench browser checks passed: settings-only footer and secondary dialogs, own account/member permissions, optional AI connection, archived data tab, orientation CTAs/responsive layout, preserved board/preferences, CRUD, search, commands, quote-to-invoice, topics, all pages, drafts, narrow/sidebar/mobile, old URLs.')
 
 
 if __name__=='__main__':main()

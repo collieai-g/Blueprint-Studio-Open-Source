@@ -6,6 +6,9 @@ server permissions and preference keys. Idle timers, focus, visibility changes a
 browser history restoration must not refresh company data or replace active views.
 Refresh on explicit user actions and successful in-workbench writes. Boot through
 one loading/error shell with retry; never fall back silently to the legacy UI.
+The sidebar footer has one Settings entry. Keep help, account details and optional
+advanced AI connection inside Settings; archive/restore belongs under Data.
+Preserve those dialogs, routes and authorization checks when simplifying navigation.
 
 Follow docs/LEFT_RIGHT_WORKFLOW.md for client-controlled UI and Skill handoff.
 docs/USER_GUIDE.md is the user-facing starting point. Product documentation must

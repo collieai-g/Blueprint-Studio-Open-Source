@@ -684,7 +684,10 @@
     if (event.key === 'Tab' && $('sidebar').classList.contains('open')) { const focusable = [...$('sidebar').querySelectorAll('a, button')], first = focusable[0], last = focusable[focusable.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } }
   });
   window.addEventListener('resize', () => { if (window.innerWidth > 900) closeSidebar(); });
-  $('help-button').addEventListener('click', () => openDialog('help-dialog')); $('footer-help').addEventListener('click', () => openDialog('help-dialog')); $('settings-button').addEventListener('click', () => openDialog('settings-dialog'));
+  $('help-button').addEventListener('click', () => { $('settings-dialog').close(); openDialog('help-dialog'); });
+  $('footer-help').addEventListener('click', () => openDialog('help-dialog'));
+  $('settings-button').addEventListener('click', () => openDialog('settings-dialog'));
+  $('connection-settings-open').addEventListener('click', () => $('settings-dialog').close());
   $('company-profile-form').addEventListener('submit', saveCompanyProfile);
   $('edit-company-profile').addEventListener('click', openCompanyProfile); $('reload-company-profile').addEventListener('click', reloadCompanyProfile);
   $('company-profile-dialog').addEventListener('close', () => { ++state.profileRequest; });

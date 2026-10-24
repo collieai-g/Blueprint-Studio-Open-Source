@@ -26,6 +26,7 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
             'library_web/agents.js', 'library_web/agents.css', 'docs/AGENT_CONTRACT.md',
             'library_web/skills.js', 'library_web/skills.css', 'docs/LEFT_RIGHT_WORKFLOW.md',
             'docs/USER_GUIDE.md', 'artifacts/codex-blueprint-workflow.svg',
+            'artifacts/codex-blueprint-workspace-redraw.png',
             'templates/skills/personal-video/SKILL.md', 'templates/skills/personal-video/README.md',
             'templates/agent/agent.json', 'docs/OPERATING_MODEL.md'}
 

@@ -254,7 +254,7 @@
   }
   function templatePage(){const panel=$('studio-panel');panel.replaceChildren(header('從範本新增','範本只帶入角色和規則，其他設定由你決定。'));const grid=node('div','studio-grid');state.templates.forEach(template=>{const card=node('article','studio-card');card.append(node('h2','',template.title),node('p','muted',template.role),node('p','',template.rules),button('使用範本',async()=>{const result=await api('/templates',{method:'POST',body:{template_id:template.id}});await refresh();await navigate('specialist/'+result.record.id);}));grid.append(card);});panel.append(grid);}
   async function connectionPage(seq){
-    const panel=$('studio-panel');panel.replaceChildren(header('雲端與外部接入','統一管理專員可以使用的能力。',[button('連接左側 AI',()=>document.querySelector('[data-connection-open]').click()),button('新增接入',()=>editRecord('integration'))]));
+    const panel=$('studio-panel');panel.replaceChildren(header('雲端與外部接入','統一管理專員可以使用的能力。',[button('設定工具連接',()=>$('connection-settings-open').click()),button('新增接入',()=>editRecord('integration'))]));
     const body=node('div'),views=[['model','模型 API'],['connector','外掛與連接器'],['skill','技能庫'],['channel','渠道帳戶'],['usage','用量與上限']];let bar;
     const select=key=>{activeTab=key;bar.replaceWith(makeBar());body.replaceChildren(node('p','studio-callout','這裏保存接入設定。API 金鑰只在伺服器環境或平台秘密設定中填寫；此頁只記錄設定名稱。本版未提供專員執行器，登記後不會自行呼叫模型或對外發送。'));
       const records=catalog('integration').filter(r=>key==='usage'||r.data.category===key);const grid=node('div','studio-grid');
@@ -390,12 +390,13 @@
     if(user)$('studio-action-fields').querySelector('[data-field=username]').readOnly=true;
   }
   function accountPage(){
-    const panel=$('studio-panel');panel.replaceChildren(header('帳戶','目前使用的工作空間與登入資料。'),node('p','',`使用者：${state.identity.name||state.identity.username}`),node('p','',`登入名稱：${state.identity.username}`),node('p','',`角色：${{owner:'老闆',admin:'管理員',member:'員工'}[state.identity.role]}`),node('p','muted',`工作台版本：${document.getElementById('version').textContent} · ${document.getElementById('version').title}`),node('p','muted','原生後台使用瀏覽器的 HTTP 登入。需要切換登入帳戶時，請開啟新的私人瀏覽視窗，再輸入另一個帳戶。'));
+    const panel=$('studio-panel');panel.replaceChildren(header('帳戶','目前使用的工作空間與登入資料。'),node('p','',`使用者：${state.identity.name||state.identity.username}`),node('p','',`登入名稱：${state.identity.username}`),node('p','',`角色：${{owner:'老闆',admin:'管理員',member:'員工'}[state.identity.role]}`),node('p','muted',`工作台版本：${document.getElementById('version').textContent} · ${document.getElementById('version').title}`),node('p','muted','登入由這個工作台使用的平台或後台管理。需要切換帳戶時，請使用該登入服務支援的帳戶切換方式。'));
     if(admin())panel.append(button('管理團隊登入',()=>navigate('team')));
   }
   function preferencesPanel(){
     let holder=$('studio-preferences');if(!holder){holder=node('section','studio-preferences');holder.id='studio-preferences';$('settings-dialog').append(holder);}
-    holder.replaceChildren(node('h3','','工作台顯示'),node('p','muted','這些設定會按登入帳戶保存。介面使用繁體中文，沿用目前的白色風格。'));
+    document.querySelectorAll('[data-admin-only]').forEach(section=>{section.hidden=!admin();});
+    holder.replaceChildren(node('h3','','登入帳戶的偏好'),node('p','muted','以下選擇保存在這個工作台，按登入帳戶分開。'));
     [['narrow','使用窄側欄'],['notifications','顯示工作台提醒'],['monthly_review','每月建立一次靈感回顧指令']].forEach(([key,title])=>{
       const label=node('label','studio-check'),input=node('input');input.type='checkbox';input.checked=!!state.preferences.data[key];input.addEventListener('change',()=>savePrefs({[key]:input.checked}).catch(e=>app.notice(e.message,true)));label.append(input,node('span','',title));holder.append(label);
     });
@@ -448,8 +449,7 @@
     ready=true;$('legacy-navigation').hidden=true;$('studio-sidebar-tools').hidden=false;$('studio-nav-scroll').hidden=false;$('studio-account').hidden=false;$('studio-mobile-command').hidden=false;
     const top=$('studio-sidebar-tools');top.append(button('收窄側欄',()=>savePrefs({narrow:!state.preferences.data.narrow}),'studio-narrow-toggle'));
     const company=document.querySelector('.workspace-label');company.tabIndex=0;company.setAttribute('role','button');company.setAttribute('aria-label','切換公司與工作空間');company.addEventListener('click',companySwitcher);company.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();companySwitcher();}});
-    const bottom=document.querySelector('.sidebar-bottom');bottom.prepend(routeButton('archived','已封存','archive'));
-    $('studio-account').addEventListener('click',()=>navigate('account'));
+    $('studio-account').addEventListener('click',()=>{$('settings-dialog').close();navigate('account').catch(error=>app.notice(error.message,true));});
     $('studio-mobile-command').addEventListener('click',()=>openCommand());
     document.querySelectorAll('[data-collaboration-route]').forEach(control=>control.addEventListener('click',()=>navigate(control.dataset.collaborationRoute).catch(error=>app.notice(error.message,true))));
     document.querySelectorAll('[data-studio-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));

@@ -17,6 +17,7 @@ FILES = ['UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', '
          'library_web/agents.js', 'library_web/agents.css', 'docs/AGENT_CONTRACT.md',
          'library_web/skills.js', 'library_web/skills.css', 'docs/LEFT_RIGHT_WORKFLOW.md',
          'docs/USER_GUIDE.md', 'artifacts/codex-blueprint-workflow.svg',
+         'artifacts/codex-blueprint-workspace-redraw.png',
          'templates/skills/personal-video/SKILL.md', 'templates/skills/personal-video/README.md',
          'library_web/manifest.webmanifest', 'library_web/service-worker.js',
          'docs/V2.4.md', 'docs/STUDIO_API.md', 'library_web/connection.js', 'library_web/connection-guide.json',

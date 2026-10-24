@@ -18,7 +18,8 @@
       ['documents','文件','folder','找回文件、報告和項目交付物。'],
       ['inspirations','收藏','bookmark','保存網站、影片及其他參考資料。','inspiration'],
       ['topics','主題','folder-plus','用連結整理資料，不需要複製。','topic'],
-      ['pinned','釘選','star','找回常用的頁面、文件及收藏。']]}
+      ['pinned','釘選','star','找回常用的頁面、文件及收藏。'],
+      ['archived','已封存','archive','已封存的內容仍可查看及還原。']]}
   ];
   const pages={};
   const add=(group,entries)=>entries.forEach(([route,label,icon,description,kind,access])=>{
@@ -53,8 +54,7 @@
       ['inspirations/ai','AI 介面','chat','對話、語音和 AI 工作介面。','inspiration'],
       ['inspirations/brand','品牌與宣傳','star','標誌、配色、字體和宣傳參考。','inspiration'],
       ['inspirations/business','營運與商業模式','automation','定價、流程和商業做法。','inspiration'],
-      ['inspirations/learning','學習與參考','play','文章、教學、影片與資料收藏。','inspiration'],
-      ['archived','已封存','archive','已封存的內容仍可查看及還原。']
+      ['inspirations/learning','學習與參考','play','文章、教學、影片與資料收藏。','inspiration']
   ]);
   const aliases={dashboard:'overview',workdays:'overview/workdays',todos:'overview/todos',files:'documents',links:'inspirations/learning',youtube:'inspirations/learning',unfiled:'inbox',pinned:'pinned',archived:'archived'};
   const api={groups,pages,aliases};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BlueprintNavigation=api;
