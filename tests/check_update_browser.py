@@ -84,10 +84,14 @@ def main():
                 page.locator('#update-backup-status').filter(has_text='已有相同排版雜湊').wait_for()
                 page.screenshot(path=str(output / 'update-desktop.png'), full_page=True)
                 page.locator('#update-dialog [data-close]').click()
-                page.locator('[data-update-open]').click()
-                page.wait_for_function("() => !document.getElementById('update-copy').disabled")
+                # Instructions become ready before the separate current-data
+                # verification. Wait for its response before checking reuse.
+                with page.expect_response(origin + '/api/maintenance') as current_protection:
+                    page.locator('[data-update-open]').click()
+                    page.wait_for_function("() => !document.getElementById('update-copy').disabled")
+                assert current_protection.value.json()['protection']['reusable'] is True
                 assert '已有相同排版雜湊' in page.locator('#update-backup-status').inner_text()
-                assert '可重用' in page.locator('#native-backup-status').inner_text()
+                page.locator('#native-backup-status').filter(has_text='可重用').wait_for()
                 assert page.locator('#native-backup-download').get_attribute('href') == initial_backup
                 page.locator('summary').filter(has_text='還原之前的排版').click()
                 bad = {**backup, 'origin': 'https://another.example'}
