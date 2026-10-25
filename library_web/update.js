@@ -31,7 +31,7 @@
   }
   function selectedWorkspace(value,scope,allowed){
     if(!object(value))return value;
-    const selected=scope&&object(value.scopes)&&object(value.scopes[scope])?value.scopes[scope]:value;
+    const selected=object(value.scopes)?scope&&object(value.scopes[scope])?value.scopes[scope]:{}:value;
     const result={};
     for(const field of ['version','layoutVersion','mode','pages','columns'])if(selected[field]!==undefined)result[field]=selected[field];
     if(object(selected.cards))result.cards=Object.fromEntries(Object.entries(selected.cards).filter(([id])=>allowed.has(id)));
@@ -79,6 +79,12 @@
         const privateFields=object(parsed)&&(object(parsed.scopes)||object(parsed.texts)||Object.keys(parsed.cards||{}).some(id=>!allowedCards.has(id))||(Array.isArray(parsed.visible)&&parsed.visible.some(id=>!allowedCards.has(id))));
         if(privateFields)value=JSON.stringify(selectedWorkspace(parsed,scope,allowedCards));
       }
+      if(value!==null&&key==='blueprint-backend-display-v1'){
+        const display=JSON.parse(value),selected={};
+        if(['grid','list'].includes(display?.layout))selected.layout=display.layout;
+        if(['updated','created','title'].includes(display?.sort))selected.sort=display.sort;
+        value=JSON.stringify(selected);
+      }
       preferences[key] = value;
     }
     const deployment = info.deployment_mode === 'sites_native' ? {
@@ -91,7 +97,7 @@
       ...deployment,
       ...(scope?{account_scope:scope}:{}),
       created_at: new Date().toISOString(), preferences,
-      scope: '只有目前瀏覽器的排版與顯示偏好；不包含伺服器資料、附件或登入。' };
+      scope: '瀏覽器排版接續檔：只有目前登入帳戶的排版與顯示偏好；不包含公司資料、附件或登入。' };
     return validate(result, site);
   }
   function validate(data, site) {
@@ -118,7 +124,8 @@
     const before = {};
     for (const key of Object.keys(data.preferences)) before[key] = storage.getItem(key);
     // Keep the current arrangement before replacing it, including on repeated restores.
-    storage.setItem(BACKUP + ':before-restore:' + Date.now(), JSON.stringify({ ...data, preferences: before }));
+    const privateBefore=scope?handoff(site,{account:identity,version:data.version},storage,data.route):{...data,preferences:before};
+    storage.setItem(backupKey(data)+':before-restore:'+Date.now(),JSON.stringify(privateBefore));
     const set = (key, value) => value === null ? storage.removeItem(key) : storage.setItem(key, value);
     try {
       for (const [key, value] of Object.entries(data.preferences)){
@@ -224,7 +231,7 @@
     if(['unauthorized','diverged','stopped'].includes(status.state))throw new Error(status.message||'請先恢復帳戶版面連接，再還原排版。');
     const previous=sync.getDocuments(),documents=presentationDocuments(data,site,identity,previous),keys=Object.keys(documents);
     const scope=identityScope(site,identity),pendingKey=BACKUP+':pending-restore:'+encodeURIComponent(scope);
-    storage.setItem(BACKUP+':before-cloud-restore:'+Date.now(),JSON.stringify({account_scope:scope,complete:ready,documents:previous}));
+    storage.setItem(backupKey(data)+':before-cloud-restore:'+Date.now(),JSON.stringify({account_scope:scope,complete:ready,documents:previous}));
     restore(data,site,storage,identity);
     storage.setItem(pendingKey,JSON.stringify(data));
     // This is an explicit replacement. Base each change on the current effective
@@ -237,6 +244,25 @@
     if(keys.some(key=>latest.pending.includes(key)||latest.conflicts.some(item=>item.key===key)||!equal(sync.getDocument(key)?.data,documents[key])))throw new Error('排版還原尚未全部同步；修改與備份已保留，請先處理操作列的同步提示，再次按還原。');
     storage.removeItem(pendingKey);return {synced:true,localOnly:false};
   }
+  // A fingerprint describes active preferences, not archive bytes or export time.
+  const canonical=value=>Array.isArray(value)?value.map(canonical):object(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+  const cryptography=()=>root?.crypto||(typeof require==='function'?require('node:crypto').webcrypto:null);
+  async function digest(value){
+    const crypto=cryptography();if(!crypto?.subtle)throw new Error('目前瀏覽器未提供安全雜湊，請使用 HTTPS 工作台。');
+    return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',value)),byte=>byte.toString(16).padStart(2,'0')).join('');
+  }
+  function backupKey(data){return BACKUP+':'+encodeURIComponent(data.account_scope||data.origin+'|anonymous');}
+  async function fingerprint(data){
+    validate(data,data.origin);
+    if(!data.account_scope)throw new Error('請先登入，再核對瀏覽器排版。');
+    const preferences={};
+    for(const [key,value]of Object.entries(data.preferences))if(['blueprint-workspace-v2','blueprint-page-layouts-v1','blueprint-backend-display-v1'].includes(key)||pinScope(key,data.origin)){
+      const parsed=value===null?null:JSON.parse(value);
+      preferences[key]=object(parsed)&&object(parsed.scopes)?parsed.scopes[data.account_scope]||{}:parsed;
+    }
+    return digest(new TextEncoder().encode(JSON.stringify(canonical({origin:data.origin,account_scope:data.account_scope,format_version:data.format_version,preferences}))));
+  }
+  async function layoutSummary(data){return {origin:data.origin,account_scope:data.account_scope,format_version:data.format_version,preference_sha256:await fingerprint(data)};}
   function prompt(data) {
     validate(data, data.origin);
     return [
@@ -250,102 +276,134 @@
       '先讀 ' + REPOSITORY + '/blob/main/UPDATE_AI.txt 及 docs/UPDATE_ASSISTANT.md；選定確切正式版本。',
       '沿用已有私人接續包與安裝紀錄；不要重新開始或另建網站。由你執行工具、保存來源與備份、核對環境並完成原站升級。',
       '開源倉庫只保存通用程式，不能放入我的私人來源、資料、設定、聊天或接續包。跨環境前按 docs/SOURCE_CHECKPOINT.md，把已檢查的候選來源保存至獨立私人倉庫，下載核對後才標示可接續；目前環境內的 ZIP 不等於已交接。',
-      '瀏覽器排版另行保存；伺服器資料庫、附件與登入仍須在私人儲存完整備份，不包含在來源檢查點內。由你使用可用工具接續；需要我本人操作時只交代當前一步。',
+      '先讀共用安裝更新工作紀錄，沿用 operation_id、plan_digest 及已完成證據；結果不明先讀回。相同 coverage 且完整性、還原、私人副本及保留政策仍有效時，沿用原備份 ID；中段比較使用唯讀指紋，不重造完整包。',
+      '瀏覽器排版接續檔只在排版遷移、首次保護自訂內容或跨環境時匯出。同登入範圍與偏好雜湊的已核對私人檔案可以沿用；純後台或日常資料保存不下載排版。公司資料、附件及登入另按既定政策保護。',
       '先檢查現在對話實際載入的工具。平台外掛與執行環境 HTTP 分別診斷；網域設定已發佈但未套用時，不要叫我重複加入或反覆安裝外掛。',
       '只有需要我本人登入、授權或按平台按鈕時才交代一個明確動作及入口。完成後繼續，直到正式版本、資料保留及左側寫入／右側讀回都已驗證。'
     ].join('\n\n');
   }
   function init({ api, openDialog, notice }) {
     const $ = id => document.getElementById(id);
-    let current = null, info = null, generation = 0,restoring=false;
-    const error = message => { $('update-error').textContent = message || ''; $('update-error').hidden = !message; };
-    function backupStatus(status) {
-      $('native-backup').hidden = !status?.supported;
-      if (!status?.supported) return;
-      const last = status.last_backup;
-      $('native-backup-create').disabled = !!status.busy;
-      $('native-backup-status').textContent = status.busy ? '正在備份及測試還原，請稍候。' : (status.error ||
-        (last?.restore_verified ? '最近完整備份已通過還原測試：' + new Date(last.created_at * 1000).toLocaleString() + '。請下載另一份私人保存。' : '尚未完成完整備份驗證。'));
-      const valid = last?.restore_verified && /^\d{8}T\d{6}Z-[0-9a-f]{12}$/.test(last.id);
-      $('native-backup-download').hidden = !valid;
-      if (valid) $('native-backup-download').href = '/api/maintenance/backups/' + last.id;
+    let current=null,info=null,maintenance=null,summary=null,generation=0,refreshGeneration=0,restoring=false;
+    const error=message=>{$('update-error').textContent=message||'';$('update-error').hidden=!message;};
+    const maintenanceApi=(path,options={})=>api(path,{...options,headers:{...(options.headers||{}),'X-Blueprint-Account':encodeURIComponent(info?.account?.username||'')}});
+    const savedJSON=key=>{try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}};
+    function backupStatus(status){
+      maintenance=status;$('native-backup').hidden=!status?.supported;if(!status?.supported)return;
+      const last=status.last_backup,protection=status.protection||{},valid=last?.restore_verified&&/^\d{8}T\d{6}Z-[0-9a-f]{12}$/.test(last.id);
+      const protectedData=protection.current_coverage_matches&&protection.platform_verified&&protection.restore_verified&&protection.retention_valid;
+      $('native-backup-create').disabled=!!status.busy||status.verification_current===false;
+      $('native-backup-create').hidden=!!protectedData;
+      $('native-backup-download').hidden=!valid;
+      $('native-backup-verify-details').hidden=!valid||!Number.isInteger(last.size)||!/^[0-9a-f]{64}$/.test(last.sha256);
+      if(valid)$('native-backup-download').href='/api/maintenance/backups/'+last.id;
+      const next=protection.reusable?'可重用。完整性、還原及目前帳戶的私人副本核對均有紀錄；變更前再核對資料指紋。':protectedData?'私人副本待核對。平台完整備份已通過還原測試；下載同一份檔案並讀回核對即可。':valid?'平台已驗證最近備份。'+(status.coverage?'目前資料或保留條件已改變，請保護目前資料。':'請由 AI 核對此版本的保護條件。'):'待建立。請先建立並驗證完整資料備份。';
+      $('native-backup-status').textContent=status.busy?'正在備份及測試還原，請稍候。':status.verification_current===false?'正在核對目前資料與已有保護…':status.error||next;
+      $('native-backup-verify').disabled=!!status.busy;
     }
-    async function pollBackup(request) {
-      if (request !== generation || !$('update-dialog').open) return;
-      try {
-        const status = await api('/api/maintenance');
-        if (request !== generation) return;
-        backupStatus(status);
-        if (status.busy) setTimeout(() => pollBackup(request), 1500);
-      } catch (e) { if (request === generation) error('未能核對備份：' + e.message); }
+    async function readBackup(request){
+      const status=await maintenanceApi('/api/maintenance');if(request!==generation)return null;backupStatus(status);return status;
     }
-    function refresh() {
-      current = handoff(location.origin, info, localStorage, $('update-route').value);
-      $('update-prompt').value = prompt(current);
-      $('update-copy').disabled = $('update-download').disabled = false;
+    async function pollBackup(request){
+      if(request!==generation||!$('update-dialog').open)return;
+      try{const status=await readBackup(request);if(status?.busy)setTimeout(()=>pollBackup(request),1500);}
+      catch(e){if(request===generation)error('未能核對備份：'+e.message+'。請先重新核對同一個工作，毋須重建。');}
     }
-    async function open() {
-      const request = ++generation;
-      current = info = null;
-      $('update-copy').disabled = $('update-download').disabled = true;
-      $('update-prompt').value = '';
-      $('update-backend').textContent = '正在讀取目前工作台…';
-      $('update-backup-status').textContent = '';
-      $('native-backup').hidden = true;
-      error('');
-      openDialog('update-dialog');
-      try {
-        const result = await api('/api/info');
-        if (request !== generation) return;
-        info = result;
-        backupStatus(info.maintenance);
-        $('update-backend').textContent = location.origin + ' · 目前版本 ' + (info.version || '待核對');
-        let saved = {};
-        try { saved = JSON.parse(localStorage.getItem('blueprint-ai-connection-v1') || '{}'); } catch { /* Optional choice only. */ }
-        const route = info.connection_mode || saved?.route;
-        $('update-route').value = ['native', 'sites'].includes(route) ? route : 'unknown';
-        refresh();
-        const existing = localStorage.getItem(BACKUP);
-        if (!existing) localStorage.setItem(BACKUP, JSON.stringify(current));
-        else validate(JSON.parse(existing), location.origin);
-        $('update-backup-status').textContent = '已在此瀏覽器保留一份更新前排版。下載接續資料可另存目前排版，方便換環境接續。';
-      } catch (e) {
-        if (request !== generation) return;
-        error('未能完整準備更新資料：' + e.message);
-      }
+    function baseline(){
+      if(!current)return null;
+      const scoped=savedJSON(backupKey(current));if(scoped)return scoped;
+      const legacy=savedJSON(BACKUP);
+      // Retain old backups, but never offer another account's global baseline.
+      try{return legacy?.account_scope===current.account_scope?validate(legacy,location.origin):null;}catch{return null;}
     }
-    document.querySelectorAll('[data-update-open]').forEach(button => button.addEventListener('click', open));
-    $('native-backup-create').addEventListener('click', async () => {
-      const request = generation;
-      $('native-backup-create').disabled = true;
-      try {
-        await api('/api/maintenance/backup', { method: 'POST', body: {} });
-        if (request === generation) { backupStatus({ supported: true, busy: true }); pollBackup(request); }
-      } catch (e) { if (request === generation) { $('native-backup-create').disabled = false; error(e.message); } }
+    function layoutStatus(){
+      const receipt=summary&&savedJSON(backupKey(current)+':layout-receipt');
+      const verified=receipt?.account_scope===summary?.account_scope&&receipt?.preference_sha256===summary?.preference_sha256;
+      $('update-backup-status').textContent=verified?'已有相同排版雜湊的私人檔案核對紀錄。接續時確認該檔案仍可讀，無需再次匯出。':'只在排版遷移、首次保護自訂內容或換環境時，才需要瀏覽器排版接續檔。';
+      $('update-layout-fingerprint').textContent=summary?'目前排版 SHA256：'+summary.preference_sha256:'';
+      $('update-restore-local').disabled=!baseline();
+    }
+    async function refresh(){
+      const refresh=++refreshGeneration,request=generation;
+      current=handoff(location.origin,info,localStorage,$('update-route').value);const value=current;
+      const next=await layoutSummary(value);if(request!==generation||refresh!==refreshGeneration)return;
+      summary=next;$('update-prompt').value=prompt(value)+'\n\n瀏覽器排版摘要（不含正文）：'+JSON.stringify(summary);
+      $('update-copy').disabled=$('update-download').disabled=false;layoutStatus();
+    }
+    async function open(){
+      const request=++generation;current=info=summary=null;
+      $('update-copy').disabled=$('update-download').disabled=true;$('update-prompt').value='';
+      $('update-backend').textContent='正在讀取目前工作台…';$('update-backup-status').textContent='';$('native-backup').hidden=true;error('');openDialog('update-dialog');
+      try{
+        const result=await api('/api/info');if(request!==generation)return;info=result;backupStatus(info.maintenance);
+        $('update-backend').textContent=location.origin+' · 目前版本 '+(info.version||'待核對');
+        const saved=savedJSON('blueprint-ai-connection-v1')||{},route=info.connection_mode||saved.route;
+        $('update-route').value=['native','sites'].includes(route)?route:'unknown';await refresh();
+        if(request===generation&&info.maintenance?.supported)await readBackup(request);
+      }catch(e){if(request===generation)error('未能完整準備更新資料：'+e.message);}
+    }
+    document.querySelectorAll('[data-update-open]').forEach(button=>button.addEventListener('click',open));
+    $('native-backup-refresh').addEventListener('click',async()=>{try{error('');await readBackup(generation);}catch(e){error(e.message);}});
+    $('native-backup-create').addEventListener('click',async()=>{
+      if(!current)return;const request=generation;$('native-backup-create').disabled=true;
+      try{
+        // Read unknown results before retrying the same persisted operation.
+        const status=await readBackup(request);if(!status||request!==generation)return;
+        let body={};
+        if(status.maintenance_contract==='blueprint-maintenance/2'){
+          const plan_digest=await digest(new TextEncoder().encode(JSON.stringify({origin:current.origin,coverage:status.coverage,purpose:'manual-backup-v2'})));
+          const key=backupKey(current)+':pending-backup',prior=savedJSON(key);
+          body=prior?.plan_digest===plan_digest?prior:{contract_version:2,operation_id:'browser-'+Array.from(cryptography().getRandomValues(new Uint8Array(16)),byte=>byte.toString(16).padStart(2,'0')).join(''),plan_digest};
+          if(request!==generation)return;
+          localStorage.setItem(key,JSON.stringify(body));
+        }
+        await maintenanceApi('/api/maintenance/backup',{method:'POST',body});if(request===generation)await pollBackup(request);
+      }catch(e){if(request===generation){$('native-backup-create').disabled=false;error(e.message+'。請先重新核對；重試會沿用原工作編號。');}}
     });
-    $('update-route').addEventListener('change', () => { if (info) { try { refresh(); error(''); } catch (e) { error(e.message); } } });
-    $('update-copy').addEventListener('click', async () => {
-      if (!current) return;
-      try { await navigator.clipboard.writeText($('update-prompt').value); notice('已複製更新指令，貼給你使用的 AI。'); }
-      catch {
-        $('update-prompt').closest('details').open = true;
-        $('update-prompt').focus(); $('update-prompt').select();
-        error('請按 Ctrl / ⌘ C 複製已選取的更新指令。');
-      }
+    $('native-backup-verify').addEventListener('click',async()=>{
+      const request=generation,last=maintenance?.last_backup;
+      try{
+        const file=$('native-backup-file').files[0],reference=$('native-backup-reference').value.trim();
+        if(!file||!last)throw new Error('請選擇已另存的完整備份。');if(!reference)throw new Error('請填寫私人檔案的保存位置或引用。');
+        if(file.size!==last.size||await digest(await file.arrayBuffer())!==last.sha256)throw new Error('檔案大小或 SHA256 不符；請核對同一個備份編號。');
+        if(request!==generation)return;
+        await maintenanceApi('/api/maintenance/backups/'+last.id+'/private-copy',{method:'POST',body:{file_reference:reference,size:file.size,sha256:last.sha256,readback_verified:true}});
+        if(request===generation){await readBackup(request);if(request!==generation)return;$('native-backup-verify-details').open=false;error('');notice('已讀回私人檔案並保存核對收據。');}
+      }catch(e){if(request===generation)error('未能核對私人副本：'+e.message);}
     });
-    $('update-download').addEventListener('click', () => {
-      if (!current) return;
-      const url = URL.createObjectURL(new Blob([JSON.stringify(current, null, 2)], { type: 'application/json' }));
-      const link = document.createElement('a'); link.href = url; link.download = 'blueprint-update-handoff.json'; link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $('update-route').addEventListener('change',()=>{if(info)refresh().catch(e=>error(e.message));});
+    $('update-copy').addEventListener('click',async()=>{
+      if(!current)return;
+      try{await navigator.clipboard.writeText($('update-prompt').value);notice('已複製更新指令，貼給你使用的 AI。');}
+      catch{$('update-prompt').closest('details').open=true;$('update-prompt').focus();$('update-prompt').select();error('請按 Ctrl / ⌘ C 複製已選取的更新指令。');}
+    });
+    $('update-download').addEventListener('click',async()=>{
+      if(!current)return;const request=generation;
+      try{
+        await refresh();if(request!==generation)return;const key=backupKey(current);if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(current));
+        const url=URL.createObjectURL(new Blob([JSON.stringify(current,null,2)],{type:'application/json'}));
+        const link=document.createElement('a');link.href=url;link.download='blueprint-browser-layout-handoff.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        notice('已開始下載瀏覽器排版接續檔。選擇已保存的檔案讀回後，才會記錄私人副本核對。');layoutStatus();
+      }catch(e){error(e.message);}
+    });
+    $('update-layout-verify').addEventListener('click',async()=>{
+      const request=generation;
+      try{
+        const file=$('update-layout-file').files[0];if(!file||file.size>2*1024*1024)throw new Error('請選擇有效的瀏覽器排版接續檔。');
+        const data=validate(JSON.parse(await file.text()),location.origin);if(request!==generation)return;await refresh();if(request!==generation)return;
+        const check=await layoutSummary(data);if(check.account_scope!==current.account_scope||check.preference_sha256!==summary.preference_sha256)throw new Error('檔案與目前登入帳戶或排版不同。');
+        const receipt={...check,file_reference:file.name,size:file.size,sha256:await digest(await file.arrayBuffer()),readback_verified:true};
+        if(request!==generation)return;
+        localStorage.setItem(backupKey(current)+':layout-receipt',JSON.stringify(receipt));$('update-layout-file').closest('details').open=false;layoutStatus();error('');
+      }catch(e){if(request===generation)error('未能核對排版接續檔：'+e.message);}
     });
     $('update-restore').addEventListener('click', async () => {
       if(restoring)return;
       restoring=true;$('update-restore').disabled=$('update-restore-local').disabled=true;
       try {
         const file = $('update-backup-file').files[0];
-        if (!file) throw new Error('請先選擇之前下載的排版接續資料。');
-        if (file.size > 2 * 1024 * 1024) throw new Error('排版接續資料過大。');
+        if (!file) throw new Error('請先選擇之前下載的瀏覽器排版接續檔。');
+        if (file.size > 2 * 1024 * 1024) throw new Error('瀏覽器排版接續檔過大。');
         const currentInfo=await api('/api/info');
         await restorePresentation(JSON.parse(await file.text()), location.origin, localStorage,currentInfo.account,root.BlueprintStudio?.presentation());
         location.reload();
@@ -356,17 +414,17 @@
       if(restoring)return;
       restoring=true;$('update-restore').disabled=$('update-restore-local').disabled=true;
       try {
-        const saved = localStorage.getItem(BACKUP);
+        const saved = baseline();
         if (!saved) throw new Error('這個瀏覽器尚未保存更新前排版。');
         const currentInfo=await api('/api/info');
-        await restorePresentation(JSON.parse(saved), location.origin, localStorage,currentInfo.account,root.BlueprintStudio?.presentation());
+        await restorePresentation(saved, location.origin, localStorage,currentInfo.account,root.BlueprintStudio?.presentation());
         location.reload();
       } catch (e) { error('未能還原排版：' + e.message); }
       finally{restoring=false;$('update-restore').disabled=$('update-restore-local').disabled=false;}
     });
     $('update-dialog').addEventListener('close', () => { ++generation; });
   }
-  const exported = { handoff, validate, restore, presentationDocuments, restorePresentation, prompt, init };
+  const exported = { handoff, validate, restore, presentationDocuments, restorePresentation, fingerprint, layoutSummary, backupKey, prompt, init };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   if (root) root.BlueprintUpdate = exported;
 })(typeof window !== 'undefined' ? window : null);

@@ -1,22 +1,239 @@
 {
-  "format": 1,
+  "format": 2,
   "platform": "native",
   "tools": [
     {
       "name": "blueprint_backup_status",
       "title": "核對工作台備份",
-      "description": "Owner-only native V2.5+ maintenance status and the latest verified backup receipt. Reports local restore verification only, not off-host durability, deployment, or loaded chat tools. Do not expose backup contents or credentials. Sites requires its own supported backup adapter.",
-      "inputSchema": {"type": "object", "properties": {}, "required": [], "additionalProperties": false},
-      "annotations": {"readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
-      "route": {"method": "GET", "path": "/api/maintenance"}
+      "description": "Owner-only native maintenance status with current consistent coverage, platform integrity/restore evidence and this authenticated account’s client-attested private-copy receipt. A reusable flag is not deployment or current chat acceptance. Recheck immediately before a protected change. Legacy backups without coverage cannot qualify. Supply operation_id to read that persisted backup_request (including unknown results) instead of relying on the latest backup; reading never queues another copy.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$",
+            "maxLength": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "route": {
+        "method": "GET",
+        "path": "/api/maintenance"
+      }
     },
     {
       "name": "blueprint_backup_create",
       "title": "建立完整私人備份",
-      "description": "Queue an owner-only native V2.5+ backup of the database, login settings and original attachments. Briefly pauses requests while creating and testing a consistent copy. Poll blueprint_backup_status for a new receipt; a queued request is not completion. Backups remain private on the host; download and verify a durable second copy before updates. Does not deploy or restore live data.",
-      "inputSchema": {"type": "object", "properties": {}, "required": [], "additionalProperties": false},
-      "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
-      "route": {"method": "POST", "path": "/api/maintenance/backup"}
+      "description": "Queue a complete private backup on the native backend. For retry-safe v2 calls supply contract_version=2 with the same operation_id and plan_digest; read status before retrying an unknown result. The same operation returns its existing backup ID without repackaging. Empty legacy calls remain supported. A queued result is not completion or a downloaded private copy.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contract_version": {
+            "type": "integer",
+            "enum": [
+              2
+            ]
+          },
+          "operation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$",
+            "maxLength": 100
+          },
+          "plan_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "maxLength": 64
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "route": {
+        "method": "POST",
+        "path": "/api/maintenance/backup"
+      }
+    },
+    {
+      "name": "blueprint_backup_artifact",
+      "title": "取得私人備份下載資料",
+      "description": "Read metadata for this existing backup ID and its protected same-origin download_path. No token, public URL or ZIP contents are returned. Download through an authenticated supported client, verify size/SHA256, then record a client receipt. An unknown download result must reuse this ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d{8}T\\d{6}Z-[0-9a-f]{12}$",
+            "maxLength": 29
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "route": {
+        "method": "GET",
+        "path": "/api/maintenance/backups/{id}/metadata"
+      }
+    },
+    {
+      "name": "blueprint_backup_private_copy",
+      "title": "記錄私人副本核對",
+      "description": "Record the authenticated owner’s client attestation after reading a real private downloaded file. Supply its private file reference, exact size and SHA256 with readback_verified=true. The backend compares archive integrity but cannot verify the remote filesystem or claim off-host durability. Never include credentials or a public link.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d{8}T\\d{6}Z-[0-9a-f]{12}$",
+            "maxLength": 29
+          },
+          "file_reference": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "maxLength": 64
+          },
+          "readback_verified": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "file_reference",
+          "size",
+          "sha256",
+          "readback_verified"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "route": {
+        "method": "POST",
+        "path": "/api/maintenance/backups/{id}/private-copy"
+      }
+    },
+    {
+      "name": "blueprint_operation_read",
+      "title": "讀取安裝更新進度",
+      "description": "Read this authenticated owner’s private operation by ID, or list their operations when ID is omitted. Read before retrying an unknown write, creating another backup or publishing. Saved progress is evidence supplied by the client, not proof that deployment or acceptance occurred.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$",
+            "maxLength": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "route": {
+        "method": "GET",
+        "path": "/api/maintenance/operations"
+      }
+    },
+    {
+      "name": "blueprint_operation_write",
+      "title": "接續安裝更新進度",
+      "description": "Create or CAS-update an owner-only private operation. Reuse operation_id, plan_digest and request_id with identical arguments on retry; a changed plan or stale version conflicts. changes_json is a JSON object with stage, target_services, protected_services, layout_change, change_type, sources, evidence and next_step. Stages advance discover → plan → backup_gate → apply → publish_if_needed → verify → complete; waiting_user preserves the stage to resume. This records progress only and never performs deployment.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contract_version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "operation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$",
+            "maxLength": 100
+          },
+          "plan_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "maxLength": 64
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$",
+            "maxLength": 100
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "changes_json": {
+            "type": "string",
+            "maxLength": 32768
+          }
+        },
+        "required": [
+          "contract_version",
+          "operation_id",
+          "plan_digest",
+          "request_id",
+          "expected_version",
+          "changes_json"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "route": {
+        "method": "POST",
+        "path": "/api/maintenance/operations",
+        "transform": "maintenance_json"
+      }
     }
-  ]
+  ],
+  "maintenance_contract": "blueprint-maintenance/2"
 }

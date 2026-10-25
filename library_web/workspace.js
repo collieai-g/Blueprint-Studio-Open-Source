@@ -161,7 +161,7 @@
     let raw=null,saved;
     try { raw=localStorage.getItem(KEY);saved=JSON.parse(raw||'null'); } catch { /* Safe defaults. */ }
     const remote=presentationSync?.get('overview');
-    let preferences=remote===undefined?scopedPreferences(saved):normalize(remote),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame;
+    let preferences=remote===undefined?scopedPreferences(saved):normalize(remote),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame,previous=null;
     let shown=structuredClone(remote===undefined?preferences:remote),rendered=structuredClone(preferences),pendingPresentation=false;
     const widgets=new Map([...board.querySelectorAll('[data-widget]')].filter(node=>IDS.includes(node.dataset.widget)).map(node=>[node.dataset.widget,node]));
     const status=$('workspace-sync'), columns=()=>integer(Math.floor(board.clientWidth/UNIT),6,6,96);
@@ -189,7 +189,7 @@
       if(value===undefined||meta.source==='local')return;
       if(meta.conflict||presentationBusy()){pendingPresentation=true;announce('另一邊的版面有更新，完成編輯後會核對。');return;}
       const previouslyVisible=new Set(preferences.visible);
-      pendingPresentation=false;shown=structuredClone(value);preferences=normalize(value);rendered=structuredClone(preferences);persist(false);applyMode();render();
+      previous=null;pendingPresentation=false;shown=structuredClone(value);preferences=normalize(value);rendered=structuredClone(preferences);persist(false);applyMode();render();
       for(const id of preferences.visible)if(!previouslyVisible.has(id))root.dispatchEvent(new CustomEvent('blueprint:overview-visibility',{detail:{id,visible:true}}));
     }
     function applyPendingPresentation(){
@@ -206,7 +206,22 @@
     const textInput=document.createElement('textarea');textInput.id='board-text-content';textInput.maxLength=2000;textInput.rows=3;textInput.style.width='100%';textInput.setAttribute('aria-label','顯示文字內容');
     const applyText=document.createElement('button');applyText.type='button';applyText.id='apply-board-text';applyText.className='button secondary small';applyText.textContent='保存文字';
     const resetText=document.createElement('button');resetText.type='button';resetText.id='reset-board-text';resetText.className='button quiet small';resetText.textContent='還原預設文字';
-    textFields.append(legend,textInput,applyText,resetText);$('board-editor').append(textFields);
+    textFields.append(legend,textInput,applyText,resetText);
+    const editor=$('board-editor'),selection=editor.querySelector('.layout-selection'),quick=document.createElement('div'),advanced=document.createElement('details'),summary=document.createElement('summary');
+    quick.className='layout-selection board-quick';advanced.className='board-advanced';advanced.id='board-advanced';summary.textContent='更多調整';
+    const undo=document.createElement('button');undo.type='button';undo.id='undo-board';undo.className='button secondary small';undo.textContent='復原上一步';undo.disabled=true;
+    quick.append(selection.querySelector('label'),undo);
+    advanced.append(summary,editor.querySelector('.layout-presets'),selection,textFields,$('reset-board'));
+    for(const help of [...editor.querySelectorAll('.board-help')])if(help.id!=='board-help')advanced.append(help);
+    $('board-help').textContent='勾選內容，再拖動卡片或拉動右下角。';
+    editor.replaceChildren($('board-help'),$('board-visible-fields').closest('fieldset'),quick,advanced);
+    function remember(before){if(JSON.stringify(before)!==JSON.stringify(preferences)){previous=before;undo.disabled=false;}}
+    undo.addEventListener('click',()=>{
+      if(!previous)return;
+      const visible=new Set(preferences.visible);preferences=normalize(previous);previous=null;render();persist();
+      for(const id of new Set([...visible,...preferences.visible]))if(visible.has(id)!==preferences.visible.includes(id))root.dispatchEvent(new CustomEvent('blueprint:overview-visibility',{detail:{id,visible:preferences.visible.includes(id)}}));
+      announce('已復原上一步版面調整。');
+    });
     function setupWidget(node,id){
       for(const action of ['move','resize']) if(!node.querySelector(`[data-board-action="${action}"]`)) {
         const button=document.createElement('button');button.type='button';button.className=`widget-${action==='move'?'grip':'resize'}`;
@@ -231,6 +246,7 @@
       date.parentElement.title=now.toLocaleDateString('zh-HK',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
     }
     function inspector() {
+      undo.disabled=!previous;
       if(!rectangles[selected])selected=preferences.visible.find(id=>rectangles[id])||'heading';
       const r=rectangles[selected];if(!r)return;
       $('board-selected').replaceChildren(...preferences.visible.filter(id=>widgets.has(id)).map(id=>{const option=document.createElement('option');option.value=id;option.textContent=LABELS[id];return option;}));
@@ -275,7 +291,7 @@
       const before=structuredClone(preferences);adopt();Object.assign(preferences.cards[id],changes);
       preferences=normalize(preferences);const layout=arrange(preferences,columns(),id);
       if(!layout){preferences=before;announce('這裏的空間不足。請縮小項目，或在底部增加一頁。');render();return false;}
-      render(layout);adopt();persist();render(layout);announce('排版已保存。');return true;
+      render(layout);adopt();remember(before);persist();render(layout);announce('排版已保存。');return true;
     }
     function setVisible(id,visible){
       if(id==='heading'||!widgets.has(id))return false;
@@ -283,7 +299,7 @@
       preferences.visible=IDS.filter(key=>key==='heading'||(key===id?visible:preferences.visible.includes(key)));
       const layout=arrange(preferences,board.clientWidth?columns():preferences.columns,visible?id:undefined);
       if(!layout){preferences=before;render();announce('這裏的空間不足。請縮小項目，或增加一頁。');return false;}
-      if(visible)selected=id;render(layout);if(board.clientWidth)adopt();persist();render(layout);announce(visible?'已加入總覽。':'已從總覽收起，資料仍然保留。');
+      if(visible)selected=id;render(layout);if(board.clientWidth)adopt();remember(before);persist();render(layout);announce(visible?'已加入總覽。':'已從總覽收起，資料仍然保留。');
       root.dispatchEvent(new CustomEvent('blueprint:overview-visibility',{detail:{id,visible}}));return true;
     }
     function select(id){if(!preferences.visible.includes(id))return;selected=id;widgets.forEach((node,key)=>node.classList.toggle('selected',editing&&key===id));inspector();}
@@ -293,14 +309,14 @@
       event.currentTarget.setAttribute('aria-pressed',String(editing));event.currentTarget.textContent=editing?'完成調整':'調整版面';render();
       if(!editing)applyPendingPresentation();
     });
-    $('reset-board').addEventListener('click',()=>{preferences=preset('balanced',columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);persist();render();announce('已還原排版。頁數和公司資料保持不變。');});
-    $('apply-board-preset').addEventListener('click',()=>{preferences=preset($('board-preset').value,columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);persist();render();announce('已套用排版。公司資料保持不變。');});
+    $('reset-board').addEventListener('click',()=>{const before=structuredClone(preferences);preferences=preset('balanced',columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);remember(before);persist();render();announce('已還原排版。頁數和公司資料保持不變。');});
+    $('apply-board-preset').addEventListener('click',()=>{const before=structuredClone(preferences);preferences=preset($('board-preset').value,columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);remember(before);persist();render();announce('已套用排版。公司資料保持不變。');});
     applyText.addEventListener('click',()=>{
       if(!isText(selected)||!textInput.reportValidity())return;
       if(selected==='heading'&&!textInput.value.trim()){announce('標題不可空白。');return;}
-      preferences.texts[selected]=textInput.value;persist();render();announce('顯示文字已保存。');
+      const before=structuredClone(preferences);preferences.texts[selected]=textInput.value;remember(before);persist();render();announce('顯示文字已保存。');
     });
-    resetText.addEventListener('click',()=>{if(!isText(selected))return;delete preferences.texts[selected];textInput.value='';persist();render();announce('已還原預設文字。');});
+    resetText.addEventListener('click',()=>{if(!isText(selected))return;const before=structuredClone(preferences);delete preferences.texts[selected];remember(before);textInput.value='';persist();render();announce('已還原預設文字。');});
     $('board-selected').addEventListener('change',event=>select(event.target.value));
     $('apply-board-size').addEventListener('click',()=>{
       if(!$('board-width').reportValidity()||!$('board-height').reportValidity())return;
@@ -309,9 +325,9 @@
     document.querySelectorAll('[data-text-size]').forEach(button=>button.addEventListener('click',()=>{if(isText(selected))change(selected,{w:2,h:button.dataset.textSize==='2'?1:2});}));
     $('board-page').addEventListener('change',event=>change(selected,{y:Number(event.target.value)*PAGE_ROWS+rectangles[selected].y%PAGE_ROWS}));
     $('add-board-page').addEventListener('click',()=>{
-      if(preferences.pages>=MAX_PAGES)return;preferences.pages++;persist();render();announce(`已增加第 ${preferences.pages} 頁。`);
+      if(preferences.pages>=MAX_PAGES)return;const before=structuredClone(preferences);preferences.pages++;remember(before);persist();render();announce(`已增加第 ${preferences.pages} 頁。`);
     });
-    $('settings-entry-mode')?.addEventListener('change',event=>{preferences.mode=event.target.value==='manual'?'manual':'ai';applyMode();persist();});
+    $('settings-entry-mode')?.addEventListener('change',event=>{previous=null;preferences.mode=event.target.value==='manual'?'manual':'ai';applyMode();persist();});
     board.addEventListener('click',event=>{
       const node=event.target.closest('[data-widget]');if(!node)return;const id=node.dataset.widget;if(editing)select(id);
       const action=event.target.closest('[data-board-action]')?.dataset.boardAction;
@@ -348,7 +364,7 @@
       if(!pointer)return;cancelAnimationFrame(scrollFrame);
       const done=pointer;pointer=null;board.classList.remove('adjusting');
       preferences=cancel?done.before:done.last;
-      if(cancel)render();else{render(done.layout);adopt();persist();render(done.layout);announce('排版已保存。');}
+      if(cancel)render();else{render(done.layout);adopt();remember(done.before);persist();render(done.layout);announce('排版已保存。');}
     }
     board.addEventListener('pointerup',()=>endPointer(false));board.addEventListener('pointercancel',()=>endPointer(true));board.addEventListener('lostpointercapture',()=>endPointer(true));
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&pointer){event.preventDefault();endPointer(true);}});
@@ -372,13 +388,14 @@
     controller={visible:id=>preferences.visible.includes(id),setVisible,
       setScope(){
         try{saved=JSON.parse(localStorage.getItem(KEY)||'null');}catch{saved=null;}
-        preferences=scopedPreferences(saved);shown=structuredClone(preferences);rendered=structuredClone(preferences);selected='heading';render();
+        previous=null;preferences=scopedPreferences(saved);shown=structuredClone(preferences);rendered=structuredClone(preferences);selected='heading';render();
       },
       attach(id,node,visible){
         board.append(node);widgets.set(id,node);preferences=normalize({...preferences,cards:{...shown.cards,...preferences.cards},visible:[...new Set([...preferences.visible,...(shown.visible||[])])]});setupWidget(node,id);
         if(visible)setVisible(id,true);else render();
       },
       detach(id,{persist:publish=true}={}){
+        previous=null;
         widgets.get(id)?.remove();widgets.delete(id);delete preferences.cards[id];preferences.visible=preferences.visible.filter(value=>value!==id);
         if(saved?.cards)delete saved.cards[id];
         [...$('board-visible-fields').querySelectorAll('input')].find(input=>input.dataset.boardVisible===id)?.closest('label')?.remove();

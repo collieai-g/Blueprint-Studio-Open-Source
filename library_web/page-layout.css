@@ -3,6 +3,11 @@
 .page-layout-editor { display:grid; gap:16px; margin:0 0 24px; padding:18px; border:1px solid var(--line,#ddd); border-radius:10px; background:rgba(255,255,255,.96); }
 .page-layout-editor[hidden], .page-layout-item[hidden], .page-layout-content[hidden] { display:none !important; }
 .page-layout-editor p { margin:0; font-size:12px; }
+.page-layout-advanced { border-top:1px solid var(--line,#ddd); padding-top:12px; min-width:0; }
+.page-layout-advanced > summary { width:fit-content; cursor:pointer; font-size:12px; color:var(--muted,#737b84); }
+.page-layout-advanced[open] > summary { margin-bottom:16px; }
+.page-layout-advanced > :not(summary) { margin-top:12px; }
+.page-layout-advanced > .button { margin-right:8px; }
 .page-layout-editor fieldset { border:0; margin:0; padding:0; }
 .page-layout-editor legend { margin-bottom:10px; font-size:12px; font-weight:600; }
 .page-layout-visible { display:flex; flex-wrap:wrap; gap:10px 18px; font-size:12px; }

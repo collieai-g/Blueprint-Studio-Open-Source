@@ -52,24 +52,43 @@ def main():
                 assert __version__ in page.locator('#update-backend').inner_text()
                 assert page.locator('#update-route').input_value() == 'native'
                 assert 'UPDATE_AI.txt' in page.locator('#update-prompt').input_value()
-                assert '已在此瀏覽器保留' in page.locator('#update-backup-status').inner_text()
-                page.locator('#native-backup-status').filter(has_text='通過還原測試').wait_for()
+                assert '只在排版遷移' in page.locator('#update-backup-status').inner_text()
+                assert page.evaluate("localStorage.getItem('blueprint-update-browser-backup-v1')") is None
+                assert not page.evaluate("Object.keys(localStorage).some(key => key.startsWith('blueprint-update-browser-backup-v1:'))")
+                page.locator('#native-backup-status').filter(has_text='還原測試').wait_for()
                 initial_backup = page.locator('#native-backup-download').get_attribute('href')
-                page.locator('#native-backup-create').click()
-                page.wait_for_function("old => { const a=document.getElementById('native-backup-download'); return !a.hidden && a.getAttribute('href')!==old && !document.getElementById('native-backup-create').disabled; }", arg=initial_backup)
+                # A current platform snapshot needs a private-copy check, not another ZIP.
+                assert page.locator('#native-backup-create').is_hidden()
                 with page.expect_download() as complete_backup:
                     page.locator('#native-backup-download').click()
-                with zipfile.ZipFile(complete_backup.value.path()) as archive:
+                archive_path = Path(complete_backup.value.path())
+                with zipfile.ZipFile(archive_path) as archive:
                     assert 'data/access.json' in archive.namelist()
                     assert 'data/library.sqlite3' in archive.namelist()
                     assert any(archive.read(name) == b'Preserve original attachment' for name in archive.namelist() if name.startswith('data/blobs/'))
+                page.locator('#native-backup-verify-details summary').click()
+                page.locator('#native-backup-file').set_input_files(str(archive_path))
+                page.locator('#native-backup-reference').fill('test-private-download/original.zip')
+                page.locator('#native-backup-verify').click()
+                page.locator('#native-backup-status').filter(has_text='可重用').wait_for()
+                assert page.locator('#native-backup-download').get_attribute('href') == initial_backup
+                page.get_by_text('瀏覽器排版接續檔', exact=True).click()
                 with page.expect_download() as download_event:
                     page.locator('#update-download').click()
                 backup = json.loads(Path(download_event.value.path()).read_text())
                 assert backup['origin'] == origin
                 assert json.loads(backup['preferences']['blueprint-backend-display-v1'])['sort'] == 'title'
                 assert 'must-not-export' not in json.dumps(backup)
+                page.locator('#update-layout-file').set_input_files(str(download_event.value.path()))
+                page.locator('#update-layout-verify').click()
+                page.locator('#update-backup-status').filter(has_text='已有相同排版雜湊').wait_for()
                 page.screenshot(path=str(output / 'update-desktop.png'), full_page=True)
+                page.locator('#update-dialog [data-close]').click()
+                page.locator('[data-update-open]').click()
+                page.wait_for_function("() => !document.getElementById('update-copy').disabled")
+                assert '已有相同排版雜湊' in page.locator('#update-backup-status').inner_text()
+                assert '可重用' in page.locator('#native-backup-status').inner_text()
+                assert page.locator('#native-backup-download').get_attribute('href') == initial_backup
                 page.locator('summary').filter(has_text='還原之前的排版').click()
                 bad = {**backup, 'origin': 'https://another.example'}
                 page.locator('#update-backup-file').set_input_files({'name': 'wrong.json', 'mimeType': 'application/json', 'buffer': json.dumps(bad).encode()})
@@ -96,6 +115,7 @@ def main():
                 assert restored['pins']['data'] == {'version': 1, 'refs': []}, restored
                 page.locator('#settings-button').click(); page.locator('[data-update-open]').click()
                 page.wait_for_function("() => !document.getElementById('update-copy').disabled")
+                assert page.locator('#native-backup-download').get_attribute('href') == initial_backup
                 page.set_viewport_size({'width': 390, 'height': 844})
                 page.evaluate('() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
                 page.screenshot(path=str(output / 'update-mobile.png'), full_page=True)

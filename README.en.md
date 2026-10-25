@@ -36,6 +36,10 @@ Two real interfaces work together:
 
 Your client or window arrangement places the interfaces side by side. Blueprint works with the existing Codex interface; it does not rebuild or embed Codex as its own chat panel.
 
+## V2.9.0: fewer layout controls and repeat update steps
+
+Selection, visibility and undo stay close at hand; size, text and reset live under “More adjustments.” Installation and updates resume the same plan, reuse valid backup protection, and export browser layout files only when needed. See the [shared workflow](docs/INSTALL_UPDATE_FLOW.md) and [release notes](docs/RELEASE.md). Publishing source does not deploy a private workspace.
+
 ## V2.8.1: share presentation settings across Codex, tabs and devices
 
 Card geometry, display text, page layouts and overview references can now be saved to the authenticated account through a compatible backend. Visible pages check presentation changes about every two seconds. Codex can read and update the same versioned preferences. Active edits and drafts are preserved, and conflicting changes require explicit resolution.
@@ -167,7 +171,7 @@ The sidebar footer has a single Settings entry for preferences, account details,
 
 Codex and other compatible AI apps can only use the tools the active client actually provides. Browser control must reach the correct signed-in tab. Chat or preview alone can prepare instructions and files but cannot prove workbench operation. Start AI setup on the left with [AI_CONNECT.md](AI_CONNECT.md). For MCP, follow the [technical guide](docs/AI_CONNECTION.md) and [acceptance steps](docs/CONNECT.md) to verify real writes and readback without a right-hand wizard.
 
-The project provides 42 shared MCP tools. Native and Sites-to-native deployments add two owner-only backup tools, for 44 in total. These tools are an optional integration route, not a prerequisite for browser-based operation.
+The project provides 42 shared MCP tools. Native and Sites-to-native deployments add six owner-only maintenance tools, for 48 in total. These tools are an optional integration route, not a prerequisite for browser-based operation.
 
 A runnable Python backend is provided for local and cloud use, with Docker, Render and Railway guidance. A [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) is another route. A backend that stores data within Sites still needs its platform adaptation and proven backup/restore; there is no universal installation requiring no setup.
 

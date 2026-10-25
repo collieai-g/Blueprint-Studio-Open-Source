@@ -77,8 +77,8 @@ export function createMcpHandler({ tools, dispatch, authorize, version, readOnly
       const data = { ...args }, route = tool.route;
       let path = route.path;
       if (path.includes('{id}')) { path = path.replace('{id}', data.id); delete data.id; }
-      if (['studio_json', 'agent_json'].includes(route.transform)) {
-        const fields = [['data_json','data',false],['refs_json','refs',true],['arguments_json','arguments',false]];
+      if (['studio_json', 'agent_json', 'maintenance_json'].includes(route.transform)) {
+        const fields = route.transform === 'maintenance_json' ? [['changes_json','changes',false]] : [['data_json','data',false],['refs_json','refs',true],['arguments_json','arguments',false]];
         if (route.transform === 'agent_json') fields.push(['manifest_json','manifest',false],['source_json','source',false],['settings_json','settings',false],['inputs_json','inputs',false]);
         for (const [source, target, array] of fields) {
           if (Object.hasOwn(data,source)) {

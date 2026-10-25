@@ -90,6 +90,8 @@ def main():
 
                 def overview_edit(page, title, size=None):
                     page.locator('#edit-board').click()
+                    if not page.locator('#board-advanced').evaluate('node => node.open'):
+                        page.locator('#board-advanced > summary').click()
                     page.locator('#board-selected').select_option('heading')
                     page.locator('#board-text-content').fill(title)
                     page.locator('#apply-board-text').click()
@@ -101,7 +103,10 @@ def main():
 
                 def page_editor(page, route):
                     page.locator(f'[data-page-layout-edit="{route}"]').click()
-                    return page.locator('.page-layout-editor:visible')
+                    editor = page.locator('.page-layout-editor:visible')
+                    if not editor.locator('.page-layout-advanced').evaluate('node => node.open'):
+                        editor.locator('.page-layout-advanced > summary').click()
+                    return editor
 
                 def page_heading(page, value):
                     page.wait_for_function('(value) => document.querySelector("#studio-panel h1")?.textContent===value', arg=value)

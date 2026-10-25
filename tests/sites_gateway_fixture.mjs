@@ -40,7 +40,7 @@ assert.equal(info.deployment_mode, 'sites_native');
 assert.equal(info.maintenance.supported, true);
 const page = await request('/');
 const pageSha = createHash('sha256').update(Buffer.from(await page.arrayBuffer())).digest('hex');
-assert.equal((await mcp('tools/list', {})).tools.length, 44);
+assert.equal((await mcp('tools/list', {})).tools.length, 48);
 const saved = await tool('save_bookmark', { title: '跨入口資料', url: 'https://example.com/saved' });
 assert.equal((await api('/api/items/' + saved.item.id)).item.title, '跨入口資料');
 const uploaded = await api('/api/files', 'POST', { name: 'retain.txt', content_base64: Buffer.from('original attachment').toString('base64') });

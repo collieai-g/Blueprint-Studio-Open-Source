@@ -48,7 +48,7 @@ def main():
                 async with ClientSession(read, write) as client:
                     initialized = await client.initialize()
                     assert 'blueprint_connection_guide' in initialized.instructions
-                    assert len((await client.list_tools()).tools) == 44
+                    assert len((await client.list_tools()).tools) == 48
                     result = await client.call_tool(name, arguments)
                     assert bool(result.isError) == expect_error, result.content
                     return result.structuredContent or json.loads(result.content[0].text)

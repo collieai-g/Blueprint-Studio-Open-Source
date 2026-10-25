@@ -63,8 +63,10 @@ class Bridge:
         path = route['path']
         if '{id}' in path:
             path = path.replace('{id}', data.pop('id'))
-        if route.get('transform') in {'studio_json', 'agent_json'}:
+        if route.get('transform') in {'studio_json', 'agent_json', 'maintenance_json'}:
             fields = [('data_json', 'data', dict), ('refs_json', 'refs', list), ('arguments_json', 'arguments', dict)]
+            if route['transform'] == 'maintenance_json':
+                fields = [('changes_json', 'changes', dict)]
             if route['transform'] == 'agent_json':
                 fields += [('manifest_json', 'manifest', dict), ('source_json', 'source', dict),
                            ('settings_json', 'settings', dict), ('inputs_json', 'inputs', dict)]

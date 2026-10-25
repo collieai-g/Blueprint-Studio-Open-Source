@@ -81,6 +81,10 @@ def main():
                 assert page.locator('#board-selected option').evaluate_all('(nodes) => nodes.map(n=>n.value)') == ['heading']
                 assert page.locator('[data-board-visible=heading]').is_disabled()
                 assert saved() is None  # Opening the editor is not a migration write.
+                assert not page.locator('#board-advanced').evaluate('node => node.open')
+                assert page.locator('#board-selected').is_visible()
+                assert page.locator('#board-width').is_hidden()
+                assert page.locator('#undo-board').is_disabled()
                 for module in ['files', 'todos', 'date', 'recent']:
                     toggle(module, True)
                 check()
@@ -94,6 +98,7 @@ def main():
                 assert page.locator('#board-selected').input_value() == 'heading'
                 assert json.loads(saved())['cards']['files'] == file_geometry
                 toggle('files', True)
+                page.locator('#board-advanced > summary').click()
                 for name in ['focus', 'compact', 'balanced']:
                     page.locator('#board-preset').select_option(name); page.locator('#apply-board-preset').click(); check()
                     assert set(json.loads(saved())['visible']) == {'heading', 'files', 'todos', 'date', 'recent'}
@@ -110,6 +115,10 @@ def main():
                 before = next(r for r in geometry() if r['id'] == 'heading')
                 grip.focus(); grip.press('ArrowRight')
                 assert next(r for r in geometry() if r['id'] == 'heading')['x'] == before['x'] + 24
+                page.locator('#undo-board').click()
+                assert next(r for r in geometry() if r['id'] == 'heading')['x'] == before['x']
+                assert page.locator('#undo-board').is_disabled()
+                grip.focus(); grip.press('ArrowRight')
                 before_saved = saved(); before = next(r for r in geometry() if r['id'] == 'heading')
                 box = grip.bounding_box(); page.mouse.move(box['x'] + 8, box['y'] + 8); page.mouse.down()
                 page.mouse.move(box['x'] + 59, box['y'] + 8, steps=4)
@@ -118,10 +127,11 @@ def main():
                 page.mouse.move(box['x'] + 59, box['y'] + 8, steps=4); page.mouse.up()
                 assert next(r for r in geometry() if r['id'] == 'heading')['x'] == before['x'] + 48
                 handle = page.locator('[data-widget=files] [data-board-action=resize]')
-                handle.scroll_into_view_if_needed(); box = handle.bounding_box(); before = next(r for r in geometry() if r['id'] == 'files')
+                # Keep the resize gesture away from the intentional edge-scroll zone.
+                handle.evaluate('node => node.scrollIntoView({block:"center"})'); box = handle.bounding_box(); before = next(r for r in geometry() if r['id'] == 'files')
                 page.mouse.move(box['x'] + 8, box['y'] + 8); page.mouse.down(); page.mouse.move(box['x'] + 32, box['y'] + 32, steps=4); page.mouse.up()
                 after = next(r for r in geometry() if r['id'] == 'files')
-                assert (after['w'], after['h']) == (before['w'] + 24, before['h'] + 24)
+                assert (after['w'], after['h']) == (before['w'] + 24, before['h'] + 24), (before, after, box)
                 check()
                 # Extra pages only come from an explicit edit-mode action.
                 page.locator('#add-board-page').click(); page.locator('#add-board-page').click()
