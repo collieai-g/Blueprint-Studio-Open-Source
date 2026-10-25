@@ -1,5 +1,16 @@
 # Blueprint Studio Open Source
 
+V2.9 uses docs/INSTALL_UPDATE_FLOW.md as the shared lifecycle definition. Owner-only
+operation records, backup coverage and client-copy attestations live in the private
+maintenance directory, outside company business coverage and Git. Retain legacy
+empty backup requests and authenticated same-origin downloads. Retry an operation
+with the same plan; unknown outcomes require readback before another side effect.
+A returned old backup ID does not establish current coverage or off-host durability.
+Keep platform integrity, isolated restore and client attestation separate. Browser
+layout files are account scoped and exported only when needed. Layout editors keep
+quick selection/visibility/undo visible and advanced controls under 更多調整, without
+remounting form nodes or losing the V2.8.1 account synchronization protections.
+
 V2.8.1 synchronizes presentation preferences through /api/studio/presentation.
 Read docs/PRESENTATION_SYNC.md before modifying it. Layout, display text and
 reference-only overview pins belong to the authenticated account, never a caller
@@ -99,7 +110,7 @@ backend owns company data, attachments and backups. Never replace an existing D1
 Site with this gateway as an implicit migration. Keep per-user private account
 mapping, backend role checks, the authenticated API contract probe and no-redirect
 credential boundary. Native and gateway versions are independent. This path has
-44 tools and no D1/R2 company-data backup dependency; it still requires real host,
+48 tools and no D1/R2 company-data backup dependency; it still requires real host,
 platform publication, backup/restore and live client acceptance. Consult
 docs/AGENT_ROADMAP.md and docs/AGENT_CONTRACT.md for the shared Agent workbench.
 V2.6 adds pinned declarative Agent packages and persistent jobs handled by the
@@ -131,7 +142,7 @@ OS data lease, startup journal, rehearsal, previous rows/attachments/credentials
 and failed-data copies. Never initialize a nonempty directory or roll back code
 by silently lowering a data version. Runtime backup pauses/drains HTTP requests,
 not arbitrary SQLite writers; use one service and HTTP/MCP for active access.
-Offline restore only targets a new directory. Native has 44 MCP tools; Sites keeps
+Offline restore only targets a new directory. Native has 48 MCP tools; Sites keeps
 the 42-tool shared contract and needs its own proven backup/restore adapter. Do not
 promise automatic off-host copying, platform deployment or loaded chat tools from
 native maintenance status. Keep all private runtime files out of Git.

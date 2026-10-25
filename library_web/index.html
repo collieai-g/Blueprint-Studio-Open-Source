@@ -194,19 +194,19 @@
   <dialog id="company-profile-dialog" class="company-profile-dialog" aria-labelledby="company-profile-heading"><form id="company-profile-form"><div class="dialog-heading"><div><p class="eyebrow">YOUR COMPANY</p><h2 id="company-profile-heading">設定你公司的專屬後台</h2></div><button class="icon-button" type="button" data-close aria-label="關閉公司設定">×</button></div><p class="muted">先留下公司名稱，其他資料可以慢慢補充。</p><label class="field">公司名稱<input id="profile-name" required maxlength="120" autocomplete="organization" placeholder="你的公司或工作室名稱"></label><label class="field">行業 <span class="optional">選填</span><input id="profile-industry" maxlength="120" placeholder="例如：AI 服務、設計、教育"></label><label class="field">公司簡介 <span class="optional">選填</span><textarea id="profile-description" rows="3" maxlength="4000" placeholder="公司主要提供甚麼服務？"></textarea></label><label class="field">目前目標 <span class="optional">選填</span><textarea id="profile-goals" rows="3" maxlength="4000" placeholder="目前想完成或持續推進的事"></textarea></label><p id="company-profile-error" class="form-error" role="alert" hidden></p><button id="reload-company-profile" class="button secondary small" type="button" hidden>重新讀取最新資料</button><div class="dialog-actions spread"><button class="button secondary" type="button" data-close>稍後再填</button><button id="save-company-profile" class="button primary" type="submit">保存公司資料</button></div></form></dialog>
   <dialog id="update-dialog" class="update-dialog" aria-labelledby="update-heading">
     <div class="dialog-heading"><div><p class="eyebrow">KEEP YOUR WORK</p><h2 id="update-heading">更新工作台</h2></div><button class="icon-button" type="button" data-close aria-label="關閉更新助手">×</button></div>
-    <p class="muted">把更新交給 AI。沿用你的網站、工作資料及排版。</p>
+    <p class="muted">把更新交給 AI，接續已有進度。</p>
     <p id="update-backend" class="update-backend" role="status"></p>
-    <label class="field">現有安裝方式<select id="update-route"><option value="unknown">讓 AI 核對</option><option value="native">本機／一般雲端後台</option><option value="sites">Sites 工作台</option></select></label>
-    <p id="update-backup-status" class="muted" role="status"></p>
+    <button id="update-copy" class="button primary" type="button" disabled>複製更新指令</button>
     <section id="native-backup" hidden>
-      <p id="native-backup-status" class="muted" role="status"></p>
-      <div class="actions"><button id="native-backup-create" class="button secondary" type="button">備份公司資料</button><a id="native-backup-download" class="button secondary" hidden>下載完整私人備份</a></div>
-      <p class="muted">完整備份包含登入設定、原始附件及已同步的帳戶版面，請私人保存。此瀏覽器的設定亦可使用下方「下載接續資料」另存。</p>
+      <h3>公司資料保護</h3><p id="native-backup-status" class="muted" role="status"></p>
+      <div class="actions"><button id="native-backup-create" class="button secondary" type="button">保護目前資料</button><a id="native-backup-download" class="button secondary" hidden>下載同一份完整備份</a><button id="native-backup-refresh" class="button secondary small" type="button">重新核對</button></div>
+      <details id="native-backup-verify-details" hidden><summary>核對已保存的私人副本</summary><p class="muted">選擇已另存到私人位置的同一份備份。瀏覽器會讀回並比較大小和 SHA256；收據不代表平台能存取你的私人磁碟。</p><label class="field">私人備份檔案<input id="native-backup-file" type="file" accept="application/zip,.zip"></label><label class="field">私人保存位置或檔案引用<input id="native-backup-reference" maxlength="1000" placeholder="例如：私人備份磁碟／本次更新.zip"></label><button id="native-backup-verify" class="button secondary" type="button">讀回並核對副本</button></details>
     </section>
-    <div class="actions"><button id="update-copy" class="button primary" type="button" disabled>複製更新指令</button><button id="update-download" class="button secondary" type="button" disabled>下載接續資料</button></div>
-    <details class="instruction-details"><summary>查看交給 AI 的內容</summary><textarea id="update-prompt" rows="8" readonly aria-label="更新工作台指令"></textarea></details>
-    <p class="muted">AI 會核對版本、準備完整備份、更新原網站並實測。這裏保存的是瀏覽器排版；下載或複製指令並不表示網站已更新。</p>
-    <details><summary>還原之前的排版</summary><p class="muted">還原同一網站、同一帳戶的排版與顯示偏好。相容後台會將還原排版同步到其他裝置；還原前會保留目前排版，工作紀錄不受影響。</p><button id="update-restore-local" class="button secondary" type="button">還原此瀏覽器保留的排版</button><label class="field">或選擇接續資料<input id="update-backup-file" type="file" accept="application/json,.json"></label><button id="update-restore" class="button secondary" type="button">還原排版並重新開啟</button></details>
+    <p id="update-backup-status" class="muted" role="status"></p>
+    <details><summary>瀏覽器排版接續檔</summary><p class="muted">只有目前登入帳戶的排版與顯示偏好。公司資料、附件及登入由完整備份保護；相容後台已同步的帳戶版面亦包含在完整備份內。</p><p id="update-layout-fingerprint" class="muted" style="overflow-wrap:anywhere"></p><button id="update-download" class="button secondary" type="button" disabled>匯出瀏覽器排版接續檔</button><label class="field">核對已保存的接續檔<input id="update-layout-file" type="file" accept="application/json,.json"></label><button id="update-layout-verify" class="button secondary small" type="button">讀回並核對排版</button></details>
+    <details class="instruction-details"><summary>更新方式與 AI 指令</summary><label class="field">現有安裝方式<select id="update-route"><option value="unknown">讓 AI 核對</option><option value="native">本機／一般雲端後台</option><option value="sites">Sites 工作台</option></select></label><textarea id="update-prompt" rows="8" readonly aria-label="更新工作台指令"></textarea></details>
+    <details><summary>還原之前的排版</summary><p class="muted">還原同一網站、同一帳戶的排版與顯示偏好。相容後台會將還原排版同步到其他裝置；還原前會保留目前排版，工作紀錄不受影響。</p><button id="update-restore-local" class="button secondary" type="button">還原此瀏覽器保留的排版</button><label class="field">或選擇瀏覽器排版接續檔<input id="update-backup-file" type="file" accept="application/json,.json"></label><button id="update-restore" class="button secondary" type="button">還原排版並重新開啟</button></details>
+    <p class="muted">複製指令或匯出檔案後，AI 會繼續核對版本及執行更新。網站、資料讀寫與本人操作分開驗收。</p>
     <p id="update-error" class="form-error" role="alert" hidden></p>
   </dialog>
 </body>

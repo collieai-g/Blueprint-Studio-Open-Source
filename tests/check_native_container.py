@@ -64,7 +64,7 @@ try:
         assert response.read() == (Path(__file__).resolve().parents[1] / 'AI_CONNECT.md').read_bytes()
     assert docker('exec', name, 'id', '-u') == '10001'
     bridge = Bridge(remote.url)
-    assert len(bridge.tools()) == 44
+    assert len(bridge.tools()) == 48
     created = bridge.call('blueprint_save_text_file', {'name':'retained.txt', 'text':'Original attachment after restart'})
     assert 'item' in created, tuple(created)
     item = created['item']
@@ -84,7 +84,7 @@ try:
     print(json.dumps({'container_build':True, 'non_root':True, 'fresh_initialization':True,
                       'complete_download_authenticated_restore':True, 'same_url_volume_restart':True,
                       'original_id_attachment_login_preserved':True, 'canonical_install_instructions':True,
-                      'native_tools':44}))
+                      'native_tools':48}))
 except Exception:
     print(docker('logs', name))
     raise

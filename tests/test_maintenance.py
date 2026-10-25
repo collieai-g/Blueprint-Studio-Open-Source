@@ -203,7 +203,7 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertEqual(denied.exception.code, 403)
             with patch.dict('os.environ', {'BLUEPRINT_BACKEND_USERNAME':'owner', 'BLUEPRINT_BACKEND_PASSWORD':self.password}):
                 bridge = Bridge(url)
-                self.assertEqual(len(bridge.tools()), 44)
+                self.assertEqual(len(bridge.tools()), 48)
                 self.assertTrue(bridge.call('blueprint_backup_status', {})['supported'])
                 self.assertNotIn('blueprint_backup_create', {t['name'] for t in Bridge(url, read_only=True).tools()})
                 result = verify_installation(url, self.root / 'private-acceptance')

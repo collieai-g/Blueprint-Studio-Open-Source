@@ -16,6 +16,7 @@ def runtime_contract(*, managed):
         'storage': 'native',
         'database_schema': SCHEMA_VERSION,
         'maintenance_available': bool(managed),
+        'maintenance_contract': 'blueprint-maintenance/2' if managed else None,
         'backup_scope': ['database', 'attachments', 'login'] if managed else [],
         'off_host_backup': 'not_managed',
         'agent_executor': 'not_configured',

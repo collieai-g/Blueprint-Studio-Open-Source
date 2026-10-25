@@ -33,6 +33,15 @@ function fixture() {
     if (!nodes.has(id)) nodes.set(id, node());
     return nodes.get(id);
   };
+  // The real editor keeps the item picker visible while moving the remaining
+  // existing controls into an advanced disclosure. Model those native nodes so
+  // passive-refresh tests still execute the actual workspace start handler.
+  get('board-editor').querySelector = selector => ({
+    '.layout-selection': get('layout-selection'),
+    '.layout-presets': get('layout-presets')
+  })[selector] || null;
+  get('layout-selection').querySelector = selector => selector === 'label' ? get('selected-label') : null;
+  get('board-visible-fields').closest = selector => selector === 'fieldset' ? get('visibility-fieldset') : null;
   const document = Object.assign(target(), {
     hidden: false, body: node(), getElementById: get, createElement: node,
     querySelectorAll: () => [], querySelector: selector => selector === '.app-main' ? get('app-main') : null

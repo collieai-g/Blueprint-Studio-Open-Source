@@ -138,3 +138,30 @@ test('bounded bodies and route checks reject oversized or unsupported requests',
   assert.equal((await f.handle(large)).status, 413);
   assert.equal(f.calls.filter(c => c.method === 'POST').length, 0);
 });
+
+test('maintenance preserves retry arguments, private identity and protected HEAD downloads', async () => {
+  const f = fixture((url, options) => options.method === 'HEAD'
+    ? new Response(null, { headers: { 'Content-Type': 'application/zip', 'Content-Length': '1234' } })
+    : Response.json({ operation: { operation_id: 'synthetic-release', version: 1 } }));
+  assert.equal((await f.handle(req('/api/maintenance', { headers: { 'X-Blueprint-Account': 'stale-owner' } }))).status, 409);
+  assert.equal(f.calls.length, 0);
+  const args = { contract_version: 1, operation_id: 'synthetic-release', plan_digest: 'a'.repeat(64),
+    request_id: 'discover-1', expected_version: 0,
+    changes_json: JSON.stringify({ stage: 'discover', change_type: 'source_release', target_services: [] }) };
+  const answer = await (await f.handle(req('/mcp', { method: 'POST', body: rpc('operation_write', args) }))).json();
+  assert.equal(answer.result.isError, false);
+  const call = f.calls.at(-1), body = JSON.parse(new TextDecoder().decode(call.body));
+  assert.equal(new URL(call.url).pathname, '/api/maintenance/operations');
+  assert.equal(body.operation_id, args.operation_id);
+  assert.equal(body.request_id, args.request_id);
+  assert.equal(body.plan_digest, args.plan_digest);
+  assert.deepEqual(body.changes, { stage: 'discover', change_type: 'source_release', target_services: [] });
+  assert.equal(body.changes_json, undefined);
+  const download = '/api/maintenance/backups/20261025T080000Z-aaaaaaaaaaaa';
+  const head = await f.handle(req(download, { user: 'reader', method: 'HEAD' }));
+  assert.equal(head.status, 200);
+  assert.equal(head.headers.get('Content-Length'), '1234');
+  assert.equal(f.calls.at(-1).method, 'HEAD');
+  assert.equal(f.calls.at(-1).body, undefined);
+  assert.equal((await f.handle(req('/api/items', { method: 'HEAD' }))).status, 405);
+});

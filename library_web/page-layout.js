@@ -156,7 +156,7 @@
     for(const item of catalog)if(catalog.some(other=>other!==item&&other.node.contains(item.node)))throw new Error('調整項目不能同時包含另一個調整項目。');
     const element=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;};
     const button=(label,run,cls='button secondary small')=>{const control=element('button',cls,label);control.type='button';control.addEventListener('click',()=>Promise.resolve().then(run).catch(error=>say(error.message)));return control;};
-    let alive=true,editing=false,pointer=null,wrapped=false,rectangles={},selected=catalog[0].id,raw=null,saved,width=0,resizeObserver,unsubscribe,pendingRemote=false;
+    let alive=true,editing=false,pointer=null,wrapped=false,rectangles={},selected=catalog[0].id,raw=null,saved,width=0,resizeObserver,unsubscribe,pendingRemote=false,previous=null;
     try{raw=localStorage.getItem(KEY);}catch{}
     saved=decode(raw);const scoped=scope&&object(saved.scopes)&&own(saved.scopes,scope)&&object(saved.scopes[scope])?saved.scopes[scope]:scope?{pages:{}}:saved;
     const syncKey='page:'+route,localPage=object(scoped.pages)&&own(scoped.pages,route)&&object(scoped.pages[route])?scoped.pages[route]:undefined;
@@ -179,19 +179,25 @@
     const field=(label,control)=>{const result=element('label','page-layout-field');result.append(element('span','',label),control);return result;};
     const textField=field('顯示文字（只改本頁）',textInput),visibleFields=element('div','page-layout-visible');
     const visibility=element('fieldset');visibility.append(element('legend','','顯示的內容'),visibleFields);
-    const restoreText=button('還原原文字',()=>{const item=catalog.find(item=>item.id===selected);delete preferences.cards[selected].text;applyText(item);persist();inspect();});
+    const restoreText=button('還原原文字',()=>{const before=clone(preferences),item=catalog.find(item=>item.id===selected);delete preferences.cards[selected].text;remember(before);applyText(item);persist();inspect();});
     textField.append(restoreText);
     const pin=button('加入總覽',()=>pinItem(catalog.find(item=>item.id===selected)));
+    const undo=button('復原上一步',()=>{if(!previous)return;preferences=previous;previous=null;render();persist();say('已復原上一步版面調整。');});undo.disabled=true;undo.dataset.pageLayoutUndo=route;
+    const quick=element('div','page-layout-size-fields page-layout-quick');
+    quick.append(field('調整項目',select),undo,pin);
     const sizeFields=element('div','page-layout-size-fields');
-    sizeFields.append(field('調整項目',select),field('寬度（格）',widthInput),field('高度（格）',heightInput),field('所在頁',pageSelect),button('套用大小',()=>{
+    sizeFields.append(field('寬度（格）',widthInput),field('高度（格）',heightInput),field('所在頁',pageSelect),button('套用大小',()=>{
       if(widthInput.reportValidity()&&heightInput.reportValidity())change(selected,{w:Number(widthInput.value),h:Number(heightInput.value),collapsed:false});
-    }),pin);
-    const addPage=button('增加一頁',()=>{if(preferences.pages>=MAX_PAGES)return;preferences.pages++;preferences.active=true;persist();render();say('已增加一頁。');});
+    }));
+    const addPage=button('增加一頁',()=>{if(preferences.pages>=MAX_PAGES)return;const before=clone(preferences);preferences.pages++;preferences.active=true;remember(before);persist();render();say('已增加一頁。');});
     const reset=button('還原本頁排列',()=>{const before=preferences,next=normalize(null,catalog,columns());next.pages=before.pages;next.active=true;
       for(const item of catalog){next.cards[item.id].visible=before.cards[item.id].visible;if(own(before.cards[item.id],'text'))next.cards[item.id].text=before.cards[item.id].text;}
       const layout=arrange(next,catalog,columns());if(!layout){say('這裏的空間不足，請先減少內容或增加一頁。');return;}
-      preferences=next;render(layout);persist();say('已還原本頁排列，顯示文字與公司資料仍然保留。');});
-    editor.append(element('p','muted',sync&&sync.status?.().state!=='unsupported'?'拖動或調整卡片；版面與顯示文字會同步到同一帳戶，進度可在操作列查看。':'拖動或調整卡片；此後台未提供排版同步，設定保存在目前瀏覽器。'),visibility,sizeFields,textField,addPage,reset);
+      preferences=next;remember(before);render(layout);persist();say('已還原本頁排列，顯示文字與公司資料仍然保留。');});
+    const advanced=element('details','page-layout-advanced');advanced.append(element('summary','','更多調整'),sizeFields,textField,addPage,reset);
+    const storageHelp=sync&&sync.status?.().state!=='unsupported'?'版面會同步到同一帳戶，進度見操作列。':'此後台未提供同步，版面保存在目前瀏覽器。';
+    editor.append(element('p','muted','勾選內容，再拖動卡片或拉動右下角。'+storageHelp),visibility,quick,advanced);
+    function remember(before){if(JSON.stringify(before)!==JSON.stringify(preferences)){previous=before;undo.disabled=false;}}
     function columns(){return clamp(Math.floor((board.clientWidth||container.clientWidth||1032)/UNIT),43,6,96);}
     function cache(value){
       try{
@@ -209,6 +215,7 @@
     function busyForSync(){return editing||!!pointer||focusedField()||[...drafts].some(input=>input.isConnected)||options.isBusy?.();}
     function applyRemote(value){
       if(!alive||!object(value))return;
+      previous=null;
       documentData=presentationData(value);preferences=normalize(documentData,catalog,columns());displayBaseline=clone(preferences);
       pendingRemote=false;pending.hidden=true;cache(documentData);
       if(preferences.active)wrap();else unwrap();render();
@@ -268,6 +275,7 @@
       textField.hidden=!target(item);if(document.activeElement!==textInput)textInput.value=own(card,'text')?card.text:originals.get(item.id)||target(item)?.textContent||'';
       pin.hidden=!item.pin||!onPin;pin.textContent=item.pin&&isPinned?.(item.pin)?'已加入總覽':'加入總覽';pin.disabled=!!(item.pin&&isPinned?.(item.pin));
       addPage.disabled=preferences.pages>=MAX_PAGES;
+      undo.disabled=!previous;
       for(const toggle of visibleFields.querySelectorAll('input'))toggle.checked=preferences.cards[toggle.dataset.pageLayoutVisible].visible;
     }
     function render(layout){
@@ -297,10 +305,10 @@
       if(item.required)preferences.cards[id].visible=true;
       const layout=arrange(preferences,catalog,columns(),id);
       if(!layout){
-        if(changes.visible===false){render();persist();say('已隱藏項目，資料仍然保留；可繼續減少內容或增加一頁。');return true;}
+        if(changes.visible===false){remember(before);render();persist();say('已隱藏項目，資料仍然保留；可繼續減少內容或增加一頁。');return true;}
         preferences=before;render();say('這裏的空間不足，請縮小項目或增加一頁。');return false;
       }
-      render(layout);adopt(layout);persist();say('本頁版面已保存。');return true;
+      render(layout);adopt(layout);remember(before);inspect();persist();say('本頁版面已保存。');return true;
     }
     function setEditing(value){
       if(!alive)return;
@@ -321,7 +329,7 @@
     }
     select.addEventListener('change',()=>{selected=select.value;render();});
     pageSelect.addEventListener('change',()=>{const card=rectangles[selected]||preferences.cards[selected];change(selected,{y:Number(pageSelect.value)*PAGE_ROWS+card.y%PAGE_ROWS});});
-    textInput.addEventListener('input',()=>{preferences.cards[selected].text=textInput.value;applyText(catalog.find(item=>item.id===selected));persist();});
+    textInput.addEventListener('input',()=>{const before=clone(preferences);preferences.cards[selected].text=textInput.value;remember(before);applyText(catalog.find(item=>item.id===selected));persist();});
     board.addEventListener('click',event=>{const wrapper=event.target.closest('[data-page-layout-id]');if(editing&&wrapper){selected=wrapper.dataset.pageLayoutId;inspect();for(const [id,value]of wrappers)value.classList.toggle('page-layout-selected',id===selected);}});
     function preview(event){
       if(!pointer)return;
@@ -333,7 +341,7 @@
       if(layout){pointer.last=clone(preferences);pointer.layout=layout;render(layout);}else preferences=clone(pointer.last);
     }
     function endPointer(cancel){if(!pointer)return;const done=pointer;pointer=null;preferences=cancel?done.before:done.last;board.classList.remove('page-layout-adjusting');
-      if(cancel)render();else{render(done.layout);adopt(done.layout);persist();say('本頁版面已保存。');}}
+      if(cancel)render();else{render(done.layout);adopt(done.layout);remember(done.before);inspect();persist();say('本頁版面已保存。');}}
     board.addEventListener('pointerdown',event=>{
       const control=event.target.closest('[data-page-layout-action]');if(!editing||pointer||event.button!==0||!control)return;
       const id=control.closest('[data-page-layout-id]').dataset.pageLayoutId,rect=rectangles[id];if(!rect)return;

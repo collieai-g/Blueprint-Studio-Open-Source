@@ -38,7 +38,7 @@ HTTP 對應入口是同一個已驗證後台的 `/api/info` 與 `/connection-gui
 
 只有獲明確測試授權後，AI 才用客戶端的密碼學隨機來源產生 16 bytes、編碼為 32 位小寫十六進位 `challenge`，配合真實 `client` 與使用者時區的 `date`，私人保存後呼叫真正的 `blueprint_verify_connection`。重試沿用相同參數。工具完成真實工作／待辦保存及更新後，還需用返回 ID 另行讀取工作與待辦核對。流程見 [CONNECT.md](CONNECT.md)；不得用右側或直接 API 偽造 MCP 驗收標記。
 
-共通工具為 42 個；原生及 Sites 原生接駁另有 2 個擁有人備份工具，共 44 個。畫面控制路徑不必先安裝 MCP；真正控制能力仍由目前客戶端提供。
+共通工具為 42 個；原生及 Sites 原生接駁另有 6 個擁有人維護工具，共 48 個。畫面控制路徑不必先安裝 MCP；真正控制能力仍由目前客戶端提供。
 
 ## 1. 原生後台：Codex、Claude Code、Gemini CLI 共用 MCP
 
@@ -99,7 +99,7 @@ Codex 的 `env_vars` 及 Claude／Gemini 的環境參照必須由啟動該客戶
 
 ## 2. Sites：安裝、授權、載入是三個步驟
 
-若使用 [Sites 入口配原生後台](SITES_NATIVE_GATEWAY.md)，由平台登入的 `/mcp` 轉送到同一個原生 API，提供 44 個工具；每個使用者在伺服器秘密中對應自己的後台帳戶。資料與備份屬於原生後台，瀏覽器及 AI 不會取得對應帳密。後台合約、入口版本、目前對話載入及讀寫驗收分開核對。
+若使用 [Sites 入口配原生後台](SITES_NATIVE_GATEWAY.md)，由平台登入的 `/mcp` 轉送到同一個原生 API，提供 48 個工具；每個使用者在伺服器秘密中對應自己的後台帳戶。資料與備份屬於原生後台，瀏覽器及 AI 不會取得對應帳密。後台合約、入口版本、目前對話載入及讀寫驗收分開核對。
 
 Sites 使用平台登入及原網站的 `/mcp`，不能把原生 Basic 帳密橋接硬套到 Sites。
 
@@ -171,7 +171,7 @@ MCP 附件上載上限為 300 KiB，工具請求總量最多 512 KiB；較大附
 
 ## V2.6 獨立 Agent 工作交接
 
-Agent 工作台沿用相同登入與後台，V2.6 新增 10 個共用工具；V2.8.1 另加入兩個版面工具，合共 42 個；原生／Sites 原生接駁再加 2 個備份工具，共 44 個。規格及完整操作見 [Agent 接駁規格](AGENT_CONTRACT.md)。
+Agent 工作台沿用相同登入與後台，V2.6 新增 10 個共用工具；V2.8.1 另加入兩個版面工具，合共 42 個；原生／Sites 原生接駁再加 6 個維護工具，共 48 個。規格及完整操作見 [Agent 接駁規格](AGENT_CONTRACT.md)。
 
 每個業務 Agent 保持獨立倉庫。已符合 `blueprint-agent/1` 且使用支援接駁方式的套件，經審核固定 commit 後直接使用 `blueprint_agent_register`、`blueprint_agent_action` 及 `blueprint_agent_update` 接入；這些是後台資料操作，不需要重新部署。只有套件要求藍圖尚未支援的接駁能力、介面或按鈕邏輯，才進入程式開發及部署流程。Agent 清單與工作清單只有摘要，執行前必須讀取完整設定及工作 context。
 

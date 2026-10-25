@@ -133,6 +133,8 @@ def _make_server(data_dir, host, port, maintenance):
     server = LibraryHTTPServer((host, port), store, credential)
     server.maintenance = maintenance
     if maintenance:
+        from .operations import Operations
+        server.operations = Operations(maintenance.directory)
         maintenance.start()
     return server
 
@@ -162,7 +164,8 @@ class LibraryHandler(BaseHTTPRequestHandler):
     def _json(self, value, status=200, extra=None):
         data = json.dumps(value, ensure_ascii=False).encode("utf-8")
         self._headers(status, length=len(data), extra=extra)
-        self.wfile.write(data)
+        if self.command != 'HEAD':
+            self.wfile.write(data)
 
     def _authorized(self, integration_route=False):
         from .integrations_http import error_body
@@ -276,22 +279,61 @@ class LibraryHandler(BaseHTTPRequestHandler):
         if path.startswith('/api/maintenance'):
             if self.identity.get('role') != 'owner':
                 raise LibraryError('只有工作台擁有人可以管理完整備份。', 403)
+            expected_account = self.headers.get('X-Blueprint-Account')
+            if expected_account is not None and expected_account != quote(self.identity['username'], safe="~()*!.'"):
+                raise LibraryError('登入帳戶已改變；請重新開啟更新助手。', 409)
             maintenance = self.server.maintenance
             if not maintenance:
                 return self._json({'supported': False, 'status': 'not_configured'}, 503)
             if path == '/api/maintenance' and method == 'GET':
-                return self._json(maintenance.status())
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                if set(query) - {'operation_id'} or any(len(values) != 1 for values in query.values()):
+                    raise LibraryError('維護查詢參數不正確。')
+                result = maintenance.status(actor=self.identity['username'])
+                if 'operation_id' in query:
+                    result['backup_request'] = maintenance.read_backup_request(query['operation_id'][0])
+                return self._json(result)
             if path == '/api/maintenance/backup' and method == 'POST':
-                if self._body():
-                    raise LibraryError('備份操作不接受額外設定。')
-                return self._json(maintenance.request_backup(), 202)
+                body = self._body()
+                if not body:
+                    return self._json(maintenance.request_backup(), 202)
+                from .operations import identifier, plan_digest
+                if set(body) != {'contract_version', 'operation_id', 'plan_digest'} or type(body.get('contract_version')) is not int or body['contract_version'] != 2:
+                    raise LibraryError('備份請求需要 maintenance 合約版本 2、operation_id 及 plan_digest。')
+                return self._json(maintenance.request_backup(identifier(body['operation_id']), plan_digest(body['plan_digest'])), 202)
+            if path == '/api/maintenance/operations':
+                if method == 'GET':
+                    query = parse_qs(parsed.query, keep_blank_values=True)
+                    if set(query) - {'id'} or any(len(values) != 1 for values in query.values()):
+                        raise LibraryError('工作查詢參數不正確。')
+                    operation = query.get('id')
+                    if operation:
+                        if len(operation) != 1:
+                            raise LibraryError('工作識別碼不正確。')
+                        return self._json(self.server.operations.get(operation[0], self.identity['username']))
+                    return self._json(self.server.operations.list(self.identity['username']))
+                if method == 'POST':
+                    return self._json(self.server.operations.write(self._body(), self.identity['username']))
+            operation = re.fullmatch(r'/api/maintenance/operations/([A-Za-z0-9][A-Za-z0-9_.-]{0,99})', path)
+            if operation:
+                if method == 'GET':
+                    return self._json(self.server.operations.get(operation[1], self.identity['username']))
+                if method == 'POST':
+                    return self._json(self.server.operations.write(self._body(), self.identity['username'], operation[1]))
+            receipt = re.fullmatch(r'/api/maintenance/backups/(\d{8}T\d{6}Z-[0-9a-f]{12})/(metadata|private-copy)', path)
+            if receipt:
+                if receipt[2] == 'metadata' and method == 'GET':
+                    return self._json(maintenance.backup_info(receipt[1], actor=self.identity['username']))
+                if receipt[2] == 'private-copy' and method == 'POST':
+                    return self._json(maintenance.record_client_receipt(receipt[1], self._body(), actor=self.identity['username']))
             download = re.fullmatch(r'/api/maintenance/backups/(\d{8}T\d{6}Z-[0-9a-f]{12})', path)
-            if download and method == 'GET':
+            if download and method in {'GET', 'HEAD'}:
                 archive = maintenance.download(download[1])
                 with archive.open('rb') as stream:
                     self._headers(200, 'application/zip', archive.stat().st_size,
                                   {'Content-Disposition': 'attachment; filename="blueprint-private-backup-' + download[1] + '.zip"'})
-                    shutil.copyfileobj(stream, self.wfile)
+                    if method != 'HEAD':
+                        shutil.copyfileobj(stream, self.wfile)
                 return
             raise LibraryError('找不到此維護操作。', 404)
         store = self.server.store
@@ -323,7 +365,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
                                "product_name": "Blueprint Studio Backend",
                                "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
                                "connection_mode": "native", "classification": "rules", "stats": store.stats(member_access=not studio.admin), "account": self.identity, "studio_schema": SCHEMA_VERSION,
-                               "maintenance": self.server.maintenance.status() if self.server.maintenance and self.identity.get('role') == 'owner' else {'supported': False}})
+                               "maintenance": self.server.maintenance.status(actor=self.identity['username'], verify_current=False) if self.server.maintenance and self.identity.get('role') == 'owner' else {'supported': False}})
         if path == "/api/company-profile":
             if method == "GET":
                 return self._json({"company_profile": store.get_company_profile()})
@@ -487,6 +529,9 @@ class LibraryHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self._dispatch("GET")
+
+    def do_HEAD(self):
+        self._dispatch("HEAD")
 
     def do_POST(self):
         self._dispatch("POST")

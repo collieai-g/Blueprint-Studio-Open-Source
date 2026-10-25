@@ -133,7 +133,7 @@
     if(route!=='overview'&&$('workspace-board').classList.contains('editing'))$('edit-board').click();
     const toolbar=$('dashboard-panel').querySelector('.board-toolbar');
     if(toolbar&&!toolbar.contains($('edit-board'))){
-      const actions=toolbar.querySelector('.board-actions');actions.append($('edit-board'),$('reset-board'));
+      const actions=toolbar.querySelector('.board-actions');actions.append($('edit-board'));
     }
     if(toolbar)toolbar.hidden=false;
     $('page-layout-tools').replaceChildren();
@@ -163,7 +163,7 @@
     if(!ready||!root.BlueprintPageLayout)return;
     if(pageLayout){if(pageLayout.isBusy())return;pageLayout.destroy();pageLayout=null;}
     if(route==='overview'){
-      $('page-layout-tools').append($('edit-board'),$('reset-board'));
+      $('page-layout-tools').append($('edit-board'));
       $('dashboard-panel').querySelector('.board-toolbar').hidden=true;
       return;
     }

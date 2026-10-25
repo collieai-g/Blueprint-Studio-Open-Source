@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { handoff, restore, validate, prompt, presentationDocuments, restorePresentation } = require('../library_web/update.js');
+const { handoff, restore, validate, prompt, presentationDocuments, restorePresentation, fingerprint, layoutSummary, backupKey } = require('../library_web/update.js');
 const presentation=require('../library_web/presentation-sync.js');
 function storage(initial = {}) {
   const data = { ...initial };
@@ -198,4 +198,39 @@ test('unsupported backends retain local restore and never submit cloud changes',
   const result=await restorePresentation(data,site,local,{username:'owner'},{status:()=>({state:'unsupported'}),pull:()=>{called=true;}});
   assert.deepEqual(result,{synced:false,localOnly:true});assert.equal(called,false);
   assert.deepEqual(JSON.parse(local.data['blueprint-workspace-v2']).scopes[site+'|owner'].texts,{});
+});
+
+test('layout fingerprint uses canonical active preferences within one authenticated origin',async()=>{
+  const owner={account:{username:'owner'}},scope=site+'|owner';
+  const first=handoff(site,owner,storage({'blueprint-workspace-v2':JSON.stringify({version:1,scopes:{[scope]:{cards:{heading:{x:1,w:16}},texts:{heading:'我的總覽'}}}}),
+    'blueprint-backend-display-v1':'{"layout":"list","sort":"title","private":"must-not-copy"}'}),'native');
+  const second={...first,created_at:'tomorrow',version:'999.0.0',route:'sites',preferences:{...first.preferences,
+    'blueprint-workspace-v2':JSON.stringify({scopes:{[scope]:{texts:{heading:'我的總覽'},cards:{heading:{w:16,x:1}}}},version:1}),
+    'blueprint-workspace-v2.8-backup':'{"old":"raw archive changed"}'}};
+  assert.equal(await fingerprint(first),await fingerprint(second));
+  assert.ok(!JSON.stringify(first).includes('must-not-copy'));
+  assert.match(await fingerprint(first),/^[a-f0-9]{64}$/);
+  const summary=await layoutSummary(first);assert.ok(!JSON.stringify(summary).includes('我的總覽'));
+  assert.notEqual(await fingerprint(first),await fingerprint({...first,account_scope:site+'|staff',preferences:{...first.preferences,'blueprint-workspace-v2':null}}));
+  const changed=JSON.parse(first.preferences['blueprint-workspace-v2']);changed.scopes[scope].texts.heading='另一個同長標題';
+  assert.notEqual(await fingerprint(first),await fingerprint({...first,preferences:{...first.preferences,'blueprint-workspace-v2':JSON.stringify(changed)}}));
+  await assert.rejects(fingerprint(handoff(site,{},storage(),'native')),/先登入/);
+});
+test('local baselines and restore evidence keep account data isolated',()=>{
+  const scope=site+'|owner',otherScope=site+'|staff',owner={username:'owner'};
+  const data=handoff(site,{account:owner},storage(),'native');
+  assert.notEqual(backupKey(data),backupKey(handoff(site,{account:{username:'staff'}},storage(),'native')));
+  const target=storage({'blueprint-page-layouts-v1':JSON.stringify({version:1,pages:{},scopes:{[scope]:{pages:{projects:{cards:{title:{text:'owner'}}}}},[otherScope]:{pages:{agents:{cards:{title:{text:'foreign-only'}}}}}}})});
+  restore(data,site,target,owner);
+  const saved=Object.entries(target.data).find(([key])=>key.includes(':before-restore:'));
+  assert.ok(saved[0].startsWith(backupKey(data)));assert.ok(!saved[1].includes('foreign-only'));
+  assert.ok(target.data['blueprint-page-layouts-v1'].includes('foreign-only'));
+});
+
+test('first handoff on a shared browser does not inherit another account geometry',()=>{
+  const alice=site+'|alice';
+  const store=storage({'blueprint-workspace-v2':JSON.stringify({version:1,layoutVersion:4,visible:['heading','todos'],cards:{heading:{x:37,w:4},todos:{x:25,w:18}},texts:{heading:'Alice title'},scopes:{[alice]:{version:1,layoutVersion:4,visible:['heading','todos'],cards:{heading:{x:37,w:4}}}}})});
+  const bob=handoff(site,{account:{username:'bob'}},store,'native'),value=JSON.parse(bob.preferences['blueprint-workspace-v2']);
+  assert.deepEqual(value.scopes[site+'|bob'],{texts:{}});
+  assert.ok(!JSON.stringify(bob).includes('37'));assert.ok(!JSON.stringify(bob).includes('Alice title'));
 });

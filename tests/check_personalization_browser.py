@@ -74,7 +74,13 @@ def main():
 
                 def edit(route, target=page):
                     target.locator(f'[data-page-layout-edit="{route}"]').click()
-                    return target.locator('.page-layout-editor:visible')
+                    editor = target.locator('.page-layout-editor:visible')
+                    advanced = editor.locator('.page-layout-advanced')
+                    if not advanced.evaluate('node => node.open'):
+                        assert editor.locator('.page-layout-quick select').is_visible()
+                        assert editor.get_by_label('寬度（格）', exact=True).is_hidden()
+                        advanced.locator('summary').click()
+                    return editor
 
                 def saved(target=page):
                     return target.evaluate('(key) => localStorage.getItem(key)', LAYOUT_KEY)
@@ -211,6 +217,12 @@ def main():
                 assert page.locator('[name=goal]').input_value() == 'PERSONALIZATION-UNSAVED-DRAFT'
                 editor.locator('.page-layout-size-fields label').filter(has_text='調整項目').locator('select').select_option('title')
                 editor.locator('[data-page-layout-text=skills]').fill('我的 AI 工作頁')
+                editor.get_by_role('button', name='復原上一步', exact=True).click()
+                assert page.locator('[name=goal]').input_value() == 'PERSONALIZATION-UNSAVED-DRAFT'
+                assert page.locator('#studio-panel h1').inner_text() != '我的 AI 工作頁'
+                assert editor.get_by_role('button', name='復原上一步', exact=True).is_disabled()
+                page.screenshot(path=str(output / 'personal-editor-undo-local-qa.png'), full_page=True)
+                editor.locator('[data-page-layout-text=skills]').fill('我的 AI 工作頁')
                 page.locator('[data-page-layout-edit=skills]').click()
                 assert page.locator('[name=goal]').input_value() == 'PERSONALIZATION-UNSAVED-DRAFT'
                 page.evaluate('() => { window.dispatchEvent(new Event("focus")); document.dispatchEvent(new Event("visibilitychange")); }')
@@ -236,6 +248,10 @@ def main():
                 project_pin.get_by_role('heading', name='PERSONALIZATION-PROJECT-UPDATED', exact=True).wait_for()
                 assert 'PROJECT-FRESH-CONTENT' in project_pin.inner_text()
                 page.locator('#edit-board').click()
+                assert page.locator('#board-advanced #reset-board').count() == 1
+                assert page.locator('#reset-board').is_hidden()
+                page.screenshot(path=str(output / 'overview-editor-simple-local-qa.png'), full_page=True)
+                page.locator('#board-advanced > summary').click()
                 page.locator('#board-selected').select_option('heading')
                 page.locator('#board-text-content').fill('我的個人總覽')
                 page.locator('#apply-board-text').click()

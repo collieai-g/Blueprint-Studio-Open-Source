@@ -6,6 +6,7 @@ upgrades code, recreates credentials or overwrites existing restore destinations
 """
 from __future__ import annotations
 
+from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
@@ -59,6 +60,50 @@ def scan(directory):
         if path.is_file() and path.relative_to(directory).as_posix() not in {'library.sqlite3', 'library.sqlite3-wal', 'library.sqlite3-shm'}:
             files[path.relative_to(directory).as_posix()] = digest(path)
     return files
+
+
+def coverage(data):
+    """Hash business state, rather than time-varying SQLite/ZIP bytes.
+
+    The reserved write lock gives all tables one snapshot while immutable files
+    and login settings are read twice. Maintenance journals and copy attestations
+    live in the separate backup directory and never enter this fingerprint.
+    No private rows, filenames or credential hashes are returned to callers.
+    """
+    data = safe_path(data); external(data)
+    path = safe_path(data / 'library.sqlite3')
+    if not path.is_file():
+        raise ValueError('找不到已有資料庫，未建立空白資料。')
+    result = hashlib.sha256()
+    def add(value):
+        encoded = json.dumps(value, ensure_ascii=False, separators=(',', ':'),
+                             sort_keys=True, allow_nan=False).encode('utf-8')
+        result.update(len(encoded).to_bytes(8, 'big')); result.update(encoded)
+    def cell(value):
+        # SQLite BLOB and TEXT with the same characters must remain distinct.
+        return {'blob': value.hex()} if isinstance(value, bytes) else value
+    with closing(sqlite3.connect(path.as_uri() + '?mode=rw', uri=True, timeout=15)) as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        schema = conn.execute('PRAGMA user_version').fetchone()[0]
+        files = scan(data)
+        add({'format': 'blueprint-coverage/1', 'schema': schema})
+        definitions = list(conn.execute("SELECT type,name,tbl_name,sql FROM sqlite_master "
+                                        "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"))
+        add(definitions)
+        tables = [row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                                                "AND (name NOT LIKE 'sqlite_%' OR name='sqlite_sequence') ORDER BY name")]
+        for table in tables:
+            quoted = '"' + table.replace('"', '""') + '"'
+            rows = []
+            for row in conn.execute('SELECT * FROM ' + quoted):
+                encoded = json.dumps([cell(value) for value in row], ensure_ascii=False,
+                                     separators=(',', ':'), allow_nan=False).encode('utf-8')
+                rows.append(hashlib.sha256(encoded).hexdigest())
+            add([table, sorted(rows)])
+        if scan(data) != files:
+            raise ValueError('資料指紋核對期間附件有變動，請重新讀取。')
+        add(files)
+    return {'version': 1, 'digest': result.hexdigest(), 'schema': schema}
 
 
 def snapshot(data, output):

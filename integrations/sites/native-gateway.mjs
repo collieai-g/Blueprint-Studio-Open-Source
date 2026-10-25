@@ -96,6 +96,11 @@ export function createNativeGateway({ tools, maintenanceTools, fetchImpl = fetch
         return jsonResponse({ site_user_id: user, scope: 'this_site_only' });
       }
       const account = accountFor(env, user), backend = httpsOrigin(env.BLUEPRINT_BACKEND_ORIGIN);
+      const expectedAccount = request.headers.get('X-Blueprint-Account');
+      if (url.pathname.startsWith('/api/maintenance') && expectedAccount !== null &&
+          expectedAccount !== encodeURIComponent(account.username)) {
+        failure(409, '登入帳戶已改變；請重新開啟更新助手。');
+      }
       if (backend === site) failure(503, '原生後台與 Sites 入口不能是同一網址。');
       if (request.url.length > 8192) failure(414, '網址過長。');
       const isMcp = url.pathname === '/mcp';
@@ -103,15 +108,16 @@ export function createNativeGateway({ tools, maintenanceTools, fetchImpl = fetch
       const isStatus = url.pathname === '/_blueprint/status';
       const isAsset = ASSETS.has(url.pathname) || /^\/icons\/[a-z]+\.svg$/.test(url.pathname);
       if (!(isMcp || isApi || isStatus || isAsset)) failure(404, '找不到此內容。');
-      if (!['GET', 'POST', 'PATCH'].includes(request.method) ||
+      if (!['GET', 'HEAD', 'POST', 'PATCH'].includes(request.method) ||
+          (request.method === 'HEAD' && !/^\/api\/maintenance\/backups\/\d{8}T\d{6}Z-[0-9a-f]{12}$/.test(url.pathname)) ||
           ((isAsset || isStatus) && request.method !== 'GET') || (isMcp && request.method !== 'POST')) {
         failure(405, '此入口不支援這個操作。');
       }
-      if (isApi && request.method !== 'GET') {
+      if (isApi && !['GET', 'HEAD'].includes(request.method)) {
         if (account.read_only) failure(403, '這個連接只可讀取。');
         if (request.headers.get('X-Blueprint-Request') !== '1') failure(403, '請使用工作台或已授權工具寫入。');
       }
-      if (request.method !== 'GET' && request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') {
+      if (!['GET', 'HEAD'].includes(request.method) && request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') {
         failure(415, '需要 application/json。');
       }
 
@@ -155,13 +161,13 @@ export function createNativeGateway({ tools, maintenanceTools, fetchImpl = fetch
 
       const proxy = async inner => {
         const target = new URL(inner.url);
-        const body = inner.method === 'GET' ? undefined : await limitedBody(inner,
+        const body = ['GET', 'HEAD'].includes(inner.method) ? undefined : await limitedBody(inner,
           target.pathname === '/api/files' ? FILE_LIMIT : JSON_LIMIT);
         const response = await upstream(target.pathname + target.search, inner.method, body);
         // Cookies, challenges, redirects and transport headers are never forwarded.
         const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
           'Referrer-Policy': 'no-referrer' });
-        for (const key of ['Content-Type', 'Content-Disposition', 'Content-Security-Policy', 'X-Frame-Options', 'Retry-After']) {
+        for (const key of ['Content-Type', 'Content-Length', 'Content-Disposition', 'Content-Security-Policy', 'X-Frame-Options', 'Retry-After']) {
           if (response.headers.has(key)) headers.set(key, response.headers.get(key));
         }
         if (target.pathname === '/api/info' && response.ok) {

@@ -1,3 +1,31 @@
+# v2.9.0 驗證紀錄
+
+驗證日期：2026-10-25（香港）。全部使用隔離的合成公司資料，沒有連接或更新私人正式工作台。
+
+- 最後凍結來源的 Python 回歸 **316／316**、Node **131／131** 通過，沒有跳過測試。新增情境涵蓋 owner 權限、CAS、同計劃重試、未知結果讀回、正文／附件同數量變更、維護收據不影響 coverage、私人副本帳戶隔離及安裝驗收中斷接續。
+- 真實登入瀏覽器驗證：總覽與每頁版面、進階控制收合、單步復原、原表單草稿、跨瀏覽器帳戶同步／衝突／離線、更新助手完整 ZIP 與排版檔讀回、同源還原、手機畫面，以及真正 MCP 保存及相同紀錄讀回均通過。截圖為自動測試擷取，不是使用者真實公司畫面。
+- 正式 Dockerfile 建置及非 root 容器驗收通過：完整備份下載、隔離還原登入、相同網址與持久 volume 重啟、原 ID／附件／登入保留；工具目錄為 42 共通加 6 維護，共 48 個。
+- JavaScript 語法、JSON、文件相對連結、生成的離線網頁及完整／介面安裝包雜湊核對通過。CI 改為 PR 驗證一次，保留 main／tag 的正式檢查及既有發行規則。
+
+產品來源版本 2.9.0，schema 保持 7。舊空物件備份客戶端及舊排版接續檔保持相容。純 Sites 的 D1／R2 維護後台仍需平台適配；客戶端檔案讀回收據不等於後台證實異地耐久儲存。GitHub PR 與正式 tag 發行、私人網站發佈、目前對話工具載入及本人操作分開回報。
+
+重做：
+
+```sh
+python -m unittest discover -s tests -v
+node --test tests/test_*.cjs tests/test_*.mjs
+python tests/check_layout_browser.py
+python tests/check_personalization_browser.py
+python tests/check_presentation_browser.py
+python tests/check_update_browser.py
+python tests/check_connection_browser.py
+docker build -f company/Dockerfile -t blueprint-native-test .
+python tests/check_native_container.py
+python tools/build_web.py
+```
+
+以下保留舊版本驗證紀錄。
+
 # V2.8.1 版面同步驗證
 
 驗證日期：2026-10-25（香港）。使用隔離原生後台、臨時帳戶及虛構資料，沒有部署或更改使用者的私人測試工作室。
