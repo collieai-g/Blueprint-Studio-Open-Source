@@ -6,7 +6,7 @@
   const button=(label,run,cls='button secondary small')=>{const e=node('button',cls,label);e.type='button';e.addEventListener('click',()=>Promise.resolve().then(run).catch(error=>app.notice(error.message,true)));return e;};
   let app,state,route='overview',activeTab='',request=0,editing=null,actionSubmit=null,activeRecord=null,navigating=false,ready=false,initialized=false,navigationRequest=0;
   let choices=[],searchText='',pageOffset=0,lastNav='',dragTopic=null;
-  let pageLayout=null,layoutRenderRequest=0;
+  let pageLayout=null,layoutRenderRequest=0,presentationSync=null;
   const pageNames={leads:'潛在客戶分析',quotes:'智能報價單與合約流水線',customers:'現有客戶檔案庫',feedback:'客戶反饋與客訴追蹤表',suppliers:'供應商與合作夥伴',revenue:'公司營收與發票',costs:'雲端伺服器與 AI 算力成本'};
   const icons={project:'checklist',inbox:'inbox',command:'automation',task:'checklist',lead:'search',quote:'document',customer:'folder',feedback:'chat',member:'settings',supplier:'link',invoice:'document',cost:'automation',specialist:'chat',conversation:'chat',scenario:'checklist',topic:'folder',inspiration:'bookmark',report:'document'};
   const admin=()=>['owner','admin'].includes(state?.identity.role);
@@ -204,7 +204,7 @@
     if(!items.length)add(panel.firstElementChild,'content','頁面內容');
     const layoutRoute=route.startsWith('specialist/')&&activeTab?route+'/'+activeTab:route;
     pageLayout=root.BlueprintPageLayout.mount({route:layoutRoute,scope:location.origin+'|'+state.identity.username,
-      container:panel,items,toolbarContainer:$('page-layout-tools'),
+      container:panel,items,toolbarContainer:$('page-layout-tools'),sync:presentationSync,
       onPin:descriptor=>root.BlueprintOverviewCards.pin(descriptor),
       isBusy:()=>!!document.querySelector('dialog[open]')});
   }
@@ -524,9 +524,29 @@
   async function init(context){
     app=context;
     state=await api('/state');
+    presentationSync?.stop();
+    const syncStatus=value=>{
+      const label=$('presentation-sync');if(!label)return;
+      label.textContent=value.message||'';label.dataset.state=value.state;
+      $('presentation-retry').hidden=!['offline','error','conflict','diverged','unauthorized'].includes(value.state);
+      $('presentation-retry').textContent=value.state==='diverged'?'重新核對版面版本':'重試版面同步';
+      $('presentation-conflicts').hidden=!value.conflicts?.length;
+    };
+    presentationSync=root.BlueprintPresentation?.create({api:app.api,scope:location.origin+'|'+state.identity.username,username:state.identity.username,onStatus:syncStatus});
+    await presentationSync?.start();
+    $('presentation-retry')?.addEventListener('click',async()=>{
+      try{if(presentationSync?.status().state==='diverged')await presentationSync.reconcile();else await presentationSync?.retry();}
+      catch(error){app.notice(error.message,true);}
+    });
+    for(const choice of ['remote','local'])$('presentation-use-'+choice)?.addEventListener('click',async()=>{
+      try{
+        for(const item of presentationSync?.status().conflicts||[])await presentationSync.resolve(item.key,choice);
+        root.dispatchEvent(new CustomEvent('blueprint:presentation-idle'));
+      }catch(error){app.notice(error.message,true);}
+    });
     ready=true;$('legacy-navigation').hidden=true;$('studio-sidebar-tools').hidden=false;$('studio-nav-scroll').hidden=false;$('studio-account').hidden=false;$('studio-mobile-command').hidden=false;
     $('studio-sidebar-tools').replaceChildren();
-    root.BlueprintOverviewCards.init({api:app.api,navigate,notice:app.notice,identity:state.identity,
+    root.BlueprintOverviewCards.init({api:app.api,navigate,notice:app.notice,identity:state.identity,sync:presentationSync,
       openWorkday:id=>root.BlueprintWorkdays.openReport(id),openItem:id=>app.openDetail(id)});
     document.addEventListener('blueprint:before-content-render',event=>{
       const expected={workdays:'overview/workdays',todos:'overview/todos',files:'documents'}[event.detail?.view];
@@ -571,6 +591,7 @@
   }
   const agentBusy=()=>!!pageLayout?.isBusy()||((route==='skills'&&root.BlueprintSkills?.isBusy())||((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy())||((route==='external-work'||route.startsWith('external-work/'))&&root.BlueprintIntegrations?.isBusy()));
   root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,
+    presentation:()=>presentationSync,
     isLayoutBusy:()=>!!pageLayout?.isBusy(),
     refreshVisible:async()=>{if(!ready||app.isBusy()||agentBusy())return false;const transition=navigationRequest;if(await refresh({background:true,transition})===false||app.isBusy()||agentBusy()||transition!==navigationRequest)return false;if(!route.startsWith('overview')&&route!=='documents')await renderPage();return true;}};
 })(globalThis);

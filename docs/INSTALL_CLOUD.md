@@ -1,6 +1,6 @@
 # 雲端安裝：由帳戶設定到自己的完整工作台
 
-V2.8.0 新安裝優先使用原生後台，先完成 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 的儲存、完整備份下載、還原、重啟保存及再次部署驗收。新容器資料放 `/data/library`，備份放 `/data/backups`，兩者都在持久磁碟；已有安裝保留原路徑。Sites 仍須另行實作及驗證備份還原，不能視為同等完成。
+V2.8.1 新安裝優先使用原生後台，先完成 [NATIVE_LIFECYCLE.md](NATIVE_LIFECYCLE.md) 的儲存、完整備份下載、還原、重啟保存及再次部署驗收。新容器資料放 `/data/library`，備份放 `/data/backups`，兩者都在持久磁碟；已有安裝保留原路徑。Sites 仍須另行實作及驗證備份還原，不能視為同等完成。
 
 [安裝總入口](INSTALL.md) · [本機路線](INSTALL_LOCAL.md) · [後台功能與 API](LIBRARY.md)
 

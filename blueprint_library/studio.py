@@ -25,6 +25,11 @@ PASSWORD_ROUNDS = 310_000
 MAX_RECORDS = 100
 
 
+def default_preferences():
+    return {'groups': ['work', 'specialists'], 'hidden_groups': [], 'narrow': False,
+            'notifications': True, 'pins': [], 'workspaces': [], 'focus': [], 'monthly_review': False}
+
+
 def initialize(conn):
     for statement in (
         '''CREATE TABLE IF NOT EXISTS studio_records (
@@ -461,7 +466,17 @@ class Studio:
     def preferences(self):
         with self.store._connection() as conn:
             row=conn.execute('SELECT * FROM studio_preferences WHERE username=?',(self.actor,)).fetchone()
-            return {'version':row['version'],'data':json.loads(row['data'])} if row else {'version':0,'data':{'groups':['work','specialists'],'hidden_groups':[],'narrow':False,'notifications':True,'pins':[],'workspaces':[],'focus':[],'monthly_review':False}}
+            data=json.loads(row['data']) if row else default_preferences()
+            data.pop('_presentation',None)
+            return {'version':row['version'] if row else 0,'data':data}
+
+    def presentation(self, *, key=None, since_version=None):
+        from .presentation import read
+        return read(self, key=key, since_version=since_version)
+
+    def save_presentation(self, payload):
+        from .presentation import save
+        return save(self, payload)
 
     def save_preferences(self,payload):
         if not isinstance(payload,dict) or set(payload)!={'expected_version','data'} or not isinstance(payload['data'],dict):raise LibraryError('偏好設定格式不正確。')
@@ -488,9 +503,15 @@ class Studio:
             for workspace in merged['workspaces']:
                 if not isinstance(workspace,dict) or set(workspace)!={'name','url'}:raise LibraryError('工作空間格式不正確。')
                 _text(workspace['name'],120,True);_url(workspace['url'])
-            actual=conn.execute('SELECT version FROM studio_preferences WHERE username=?',(self.actor,)).fetchone()
+            actual=conn.execute('SELECT version,data FROM studio_preferences WHERE username=?',(self.actor,)).fetchone()
             if (actual['version'] if actual else 0)!=current['version']:raise LibraryError('偏好設定已有更新。',409)
-            conn.execute('INSERT INTO studio_preferences VALUES(?,?,?) ON CONFLICT(username) DO UPDATE SET version=excluded.version,data=excluded.data',(self.actor,current['version']+1,_dump(merged)))
+            # Presentation has its own document revisions. A concurrent layout
+            # write must survive saving unrelated navigation/account preferences.
+            persisted=dict(merged)
+            if actual:
+                latest=json.loads(actual['data'])
+                if '_presentation' in latest:persisted['_presentation']=latest['_presentation']
+            conn.execute('INSERT INTO studio_preferences VALUES(?,?,?) ON CONFLICT(username) DO UPDATE SET version=excluded.version,data=excluded.data',(self.actor,current['version']+1,_dump(persisted)))
         return {'version':current['version']+1,'data':merged}
 
     def action(self, record_id, payload):
@@ -755,5 +776,5 @@ class Studio:
                     record['runtime_connected']=False
                     record['month_usage']=format(self._usage(conn,record['id'],date.today().strftime('%Y-%m')),'.2f')
         return {'identity':self.identity,'schemas':schema,'catalog':catalog,'preferences':self.preferences(),'summary':self.summary(),
-                'templates':TEMPLATES,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True,'agent_workbench':True,'agent_contract':'blueprint-agent/1','integration_v1':self.admin},
+                'templates':TEMPLATES,'capabilities':{'specialist_runtime':False,'external_sending':False,'server_capture':False,'model_inference':False,'connected_client_commands':True,'agent_workbench':True,'agent_contract':'blueprint-agent/1','integration_v1':self.admin,'presentation_sync':True},
                 'schema_version':SCHEMA_VERSION, 'integration_count':integration_count}

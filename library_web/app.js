@@ -741,6 +741,7 @@
   }
   function startWorkspace() { window.BlueprintWorkspace?.start({
     isBusy: workspaceBusy,
+    presentationSync:window.BlueprintStudio?.presentation(),
     refresh: async () => {
       await Promise.all([loadInfo(), loadCollections(true)]);
       if (workspaceBusy()) return false;

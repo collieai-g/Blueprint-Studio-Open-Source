@@ -8,6 +8,44 @@ const request = (message, authorized = true) => new Request('https://workspace.e
 const authorize = req => { if (!req.headers.has('Verified-Test-User')) throw new Error('Denied'); };
 const rpc = (name, args) => ({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'blueprint_' + name, arguments: args } });
 
+test('presentation tools preserve account identity, complete documents and conflict responses', async () => {
+  const seen = [];
+  let stored = null;
+  const handler = createMcpHandler({ tools, authorize, version: 'test', dispatch: async req => {
+    const url = new URL(req.url);
+    assert.equal(req.headers.get('Verified-Test-User'), 'owner');
+    assert.equal(url.pathname, '/api/studio/presentation');
+    seen.push(req.method);
+    if (req.method === 'GET') {
+      assert.equal(url.searchParams.get('key'), 'overview');
+      return Response.json({ version: stored?.version || 0, documents: stored ? { overview: stored } : {} });
+    }
+    assert.equal(req.headers.get('X-Blueprint-Request'), '1');
+    const data = await req.json();
+    assert.equal(data.key, 'overview');
+    if (data.expected_version !== (stored?.version || 0)) return Response.json({ error: 'conflict' }, { status: 409 });
+    stored = { version: data.expected_version + 1, data: data.data };
+    return Response.json({ version: stored.version, documents: { overview: stored } });
+  } });
+  const call = async (name, args) => (await (await handler(request(rpc(name, args)), {})).json()).result;
+  assert.deepEqual((await call('get_presentation', { key: 'overview' })).structuredContent.documents, {});
+  const data = { texts: { heading: '跨裝置標題' }, cards: { heading: { x: 2, y: 1, w: 18, h: 3 } } };
+  const payload = { key: 'overview', expected_version: 0, data_json: JSON.stringify(data) };
+  assert.equal((await call('update_presentation', payload)).isError, false);
+  assert.deepEqual((await call('get_presentation', { key: 'overview' })).structuredContent.documents.overview.data, data);
+  assert.equal(JSON.parse((await call('update_presentation', payload)).content[0].text).status, 409);
+  const before = seen.length;
+  for (const args of [{ ...payload, data_json: '[]' }, { ...payload, data_json: '{' }, { ...payload, username: 'other' }, { ...payload, expected_version: false }]) {
+    assert.equal((await call('update_presentation', args)).isError, true);
+  }
+  assert.equal(seen.length, before);
+  const readonly = createMcpHandler({ tools, authorize, version: 'test', readOnly: true, dispatch: () => { throw new Error('must not write'); } });
+  const list = (await (await readonly(request({ jsonrpc: '2.0', id: 1, method: 'tools/list' }), {})).json()).result.tools;
+  assert.ok(list.some(tool => tool.name === 'blueprint_get_presentation'));
+  assert.ok(!list.some(tool => tool.name === 'blueprint_update_presentation'));
+  assert.equal((await (await readonly(request(rpc('update_presentation', payload)), {})).json()).result.isError, true);
+});
+
 test('Agent tools share bounded JSON conversion and preserve the authenticated identity', async () => {
   const seen = [];
   const id = 'a'.repeat(32);

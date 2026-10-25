@@ -17,7 +17,7 @@ async def main():
             async with Client(f'http://127.0.0.1:{port}/mcp', mode=mode, read_timeout_seconds=10) as client:
                 assert client.protocol_version == expected
                 tools = await client.list_tools()
-                assert len(tools.tools) == 40
+                assert len(tools.tools) == 42
                 saved = await client.call_tool('blueprint_save_bookmark', {'title': mode, 'url': 'https://example.com/' + mode})
                 assert not saved.is_error
                 item = (saved.structured_content or json.loads(saved.content[0].text))['item']

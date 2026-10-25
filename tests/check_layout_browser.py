@@ -138,6 +138,11 @@ def main():
                 page.set_viewport_size({'width': 1440, 'height': 1100}); page.wait_for_timeout(100); assert saved() == before_saved
                 page.evaluate('() => BlueprintStudio.navigate("documents")');page.wait_for_selector('#library-view-slot #item-grid .item-card')
                 page.evaluate('() => BlueprintStudio.navigate("overview")');page.wait_for_selector('#dashboard-library-slot #item-grid .item-card')
+                # Older backends retain local-only migration semantics. An account
+                # snapshot on a newer backend is authoritative over browser cache.
+                page.evaluate('() => BlueprintStudio.presentation().flush()')
+                page.route('**/api/studio/presentation*', lambda route: route.fulfill(
+                    status=404, content_type='application/json', body='{"error":"older backend"}'))
                 # Exact legacy bytes survive reading, resizing and merely entering edit mode.
                 legacy = {'version': 1, 'layoutVersion': 3, 'mode': 'manual', 'pages': 3, 'columns': 43, 'cards': {'heading': {'x': 0, 'y': 0, 'w': 16, 'h': 3}, 'files': {'x': 2, 'y': 14, 'w': 12, 'h': 8, 'collapsed': True}, 'todos': {'x': 0, 'y': 96, 'w': 12, 'h': 20}, 'connection': {'x': 29, 'y': 6, 'w': 14, 'h': 5}}}
                 raw = json.dumps(legacy, ensure_ascii=False, indent=2)
