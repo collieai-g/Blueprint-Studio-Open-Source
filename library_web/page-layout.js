@@ -102,9 +102,52 @@
     const prior=own(pages,route)&&object(pages[route])?pages[route]:{};
     return {...original,version:1,pages:{...pages,[route]:{...prior,...preferences,cards:{...(object(prior.cards)?prior.cards:{}),...preferences.cards}}}};
   }
+  // Copy only presentation fields. A page can retain cards which are not mounted
+  // in the current filter, without copying records or old browser-only metadata.
+  function presentationData(value){
+    const source=object(value)?value:{},result={};
+    if(source.version===1)result.version=1;
+    if(typeof source.active==='boolean')result.active=source.active;
+    if(Number.isInteger(source.pages)&&source.pages>=1&&source.pages<=MAX_PAGES)result.pages=source.pages;
+    if(Number.isInteger(source.columns)&&source.columns>=6&&source.columns<=96)result.columns=source.columns;
+    if(object(source.cards)){
+      result.cards={};
+      for(const [id,card]of Object.entries(source.cards).slice(0,200)){
+        if(!safeId(id)||!object(card))continue;
+        const copy={};
+        for(const [field,min,max]of [['x',0,95],['y',0,PAGE_ROWS*MAX_PAGES-1],['w',1,96],['h',1,PAGE_ROWS]]){
+          if(Number.isInteger(card[field])&&card[field]>=min&&card[field]<=max)copy[field]=card[field];
+        }
+        for(const field of ['visible','collapsed'])if(typeof card[field]==='boolean')copy[field]=card[field];
+        if(typeof card.text==='string'&&card.text.length<=4000&&!card.text.includes('\x00'))copy.text=card.text;
+        result.cards[id]=copy;
+      }
+    }
+    return result;
+  }
+  function editPresentation(previous,before,next){
+    if(!object(previous))return presentationData(next);
+    const result=presentationData(previous),same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+    for(const field of ['version','active','pages','columns'])if(!same(before[field],next[field])){
+      if(own(next,field))result[field]=next[field];else delete result[field];
+    }
+    for(const id of new Set([...Object.keys(before.cards||{}),...Object.keys(next.cards||{})])){
+      if(!safeId(id))continue;
+      const old=before.cards?.[id]||{},current=next.cards?.[id]||{};
+      for(const field of ['x','y','w','h','visible','collapsed','text'])if(!same(old[field],current[field])){
+        result.cards??={};result.cards[id]??={};
+        if(own(current,field))result.cards[id][field]=current[field];else delete result.cards[id][field];
+      }
+    }
+    return result;
+  }
+  function replacePage(document,route,preferences,scope=''){
+    const result=storePage(document,route,preferences,scope),target=scope?result.scopes[scope]:result;
+    target.pages[route]=clone(preferences);return result;
+  }
   const active=new WeakMap();
   function mount(options){
-    const {route,container,toolbarContainer,onPin,isPinned,scope=''}=options;
+    const {route,container,toolbarContainer,onPin,isPinned,scope='',sync}=options;
     if(!container||typeof document==='undefined')return null;
     active.get(container)?.destroy();
     const catalog=specs(options.items||[]).filter(item=>item.node?.nodeType===1);
@@ -113,10 +156,13 @@
     for(const item of catalog)if(catalog.some(other=>other!==item&&other.node.contains(item.node)))throw new Error('調整項目不能同時包含另一個調整項目。');
     const element=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;};
     const button=(label,run,cls='button secondary small')=>{const control=element('button',cls,label);control.type='button';control.addEventListener('click',()=>Promise.resolve().then(run).catch(error=>say(error.message)));return control;};
-    let alive=true,editing=false,pointer=null,wrapped=false,rectangles={},selected=catalog[0].id,raw=null,saved,width=0,resizeObserver;
+    let alive=true,editing=false,pointer=null,wrapped=false,rectangles={},selected=catalog[0].id,raw=null,saved,width=0,resizeObserver,unsubscribe,pendingRemote=false;
     try{raw=localStorage.getItem(KEY);}catch{}
     saved=decode(raw);const scoped=scope&&object(saved.scopes)&&own(saved.scopes,scope)&&object(saved.scopes[scope])?saved.scopes[scope]:scope?{pages:{}}:saved;
-    let preferences=normalize(object(scoped.pages)&&own(scoped.pages,route)?scoped.pages[route]:null,catalog);
+    const syncKey='page:'+route,localPage=object(scoped.pages)&&own(scoped.pages,route)&&object(scoped.pages[route])?scoped.pages[route]:undefined;
+    const initial=sync?.get(syncKey);
+    let documentData=object(initial)?presentationData(initial):localPage?presentationData(localPage):undefined;
+    let preferences=normalize(documentData,catalog),displayBaseline=clone(preferences);
     const originals=new Map(),wrappers=new Map(),placeholders=new Map(),hiddenParents=new Map();
     const toolbar=element('div','page-layout-toolbar'),edit=button('調整版面',()=>setEditing(!editing));
     edit.dataset.pageLayoutEdit=route;edit.setAttribute('aria-pressed','false');toolbar.append(edit);
@@ -124,8 +170,10 @@
     const board=element('div','page-layout-board');board.dataset.pageLayoutRoute=route;
     const announcement=element('p','page-layout-announcement');announcement.setAttribute('role','status');announcement.setAttribute('aria-live','polite');
     const say=text=>{if(alive)announcement.textContent=text;options.announce?.(text);};
+    const pending=element('div','page-layout-announcement');pending.hidden=true;
+    pending.append(element('span','','其他位置已更新版面；完成編輯後會套用。 '),button('套用新版面',()=>applyPending(true)));
     if(toolbarContainer)toolbarContainer.append(toolbar);else container.prepend(toolbar);
-    container.prepend(editor);container.append(announcement);
+    container.prepend(editor);container.append(announcement,pending);
     const select=element('select'),widthInput=element('input'),heightInput=element('input'),pageSelect=element('select'),textInput=element('textarea');
     widthInput.type=heightInput.type='number';textInput.rows=3;textInput.maxLength=4000;textInput.dataset.pageLayoutText=route;
     const field=(label,control)=>{const result=element('label','page-layout-field');result.append(element('span','',label),control);return result;};
@@ -143,14 +191,42 @@
       for(const item of catalog){next.cards[item.id].visible=before.cards[item.id].visible;if(own(before.cards[item.id],'text'))next.cards[item.id].text=before.cards[item.id].text;}
       const layout=arrange(next,catalog,columns());if(!layout){say('這裏的空間不足，請先減少內容或增加一頁。');return;}
       preferences=next;render(layout);persist();say('已還原本頁排列，顯示文字與公司資料仍然保留。');});
-    editor.append(element('p','muted','拖動或調整卡片；文字、排列和隱藏只影響目前瀏覽器。'),visibility,sizeFields,textField,addPage,reset);
+    editor.append(element('p','muted',sync&&sync.status?.().state!=='unsupported'?'拖動或調整卡片；版面與顯示文字會同步到同一帳戶，進度可在操作列查看。':'拖動或調整卡片；此後台未提供排版同步，設定保存在目前瀏覽器。'),visibility,sizeFields,textField,addPage,reset);
     function columns(){return clamp(Math.floor((board.clientWidth||container.clientWidth||1032)/UNIT),43,6,96);}
-    function persist(){
+    function cache(value){
       try{
         if(raw&&!localStorage.getItem(BACKUP_KEY))localStorage.setItem(BACKUP_KEY,raw);
-        const latest=decode(localStorage.getItem(KEY));saved=storePage(latest,route,preferences,scope);localStorage.setItem(KEY,JSON.stringify(saved));
+        const latest=decode(localStorage.getItem(KEY));saved=(sync?replacePage:storePage)(latest,route,value,scope);localStorage.setItem(KEY,JSON.stringify(saved));
       }catch{say('這個瀏覽器無法保存版面，公司資料不受影響。');}
     }
+    function persist(){
+      const previous=documentData,next=editPresentation(previous,displayBaseline,preferences);
+      documentData=clone(next);displayBaseline=clone(preferences);cache(next);
+      if(sync)try{sync.update(syncKey,next,{base:previous});}catch(error){say(error.message);}
+    }
+    const drafts=new Set();
+    function focusedField(){const current=document.activeElement;return !!(current&&container.contains(current)&&current.matches('input,textarea,select,[contenteditable="true"]'));}
+    function busyForSync(){return editing||!!pointer||focusedField()||[...drafts].some(input=>input.isConnected)||options.isBusy?.();}
+    function applyRemote(value){
+      if(!alive||!object(value))return;
+      documentData=presentationData(value);preferences=normalize(documentData,catalog,columns());displayBaseline=clone(preferences);
+      pendingRemote=false;pending.hidden=true;cache(documentData);
+      if(preferences.active)wrap();else unwrap();render();
+    }
+    function applyPending(force=false){
+      if(!pendingRemote||!alive)return;
+      if(editing||pointer){say('請先完成目前的版面調整。');return;}
+      if(!force&&busyForSync())return;
+      const latest=sync?.get(syncKey);if(object(latest))applyRemote(latest);
+    }
+    function receive(value,meta={}){
+      if(!alive||meta.source==='local'||!object(value)||JSON.stringify(value)===JSON.stringify(documentData))return;
+      if(busyForSync()){pendingRemote=true;pending.hidden=false;return;}
+      applyRemote(value);
+    }
+    const rememberDraft=event=>{if(!editor.contains(event.target)&&event.target.matches('input,textarea,select,[contenteditable="true"]'))drafts.add(event.target);};
+    const afterFocus=()=>Promise.resolve().then(()=>applyPending());
+    container.addEventListener('input',rememberDraft);container.addEventListener('change',rememberDraft);container.addEventListener('focusout',afterFocus);
     function target(item){return item.textNode||(item.type==='text'?item.node:null);}
     function applyText(item){const text=target(item);if(!text)return;
       if(!originals.has(item.id))originals.set(item.id,text.textContent);
@@ -175,6 +251,12 @@
         const content=element('div','page-layout-content');content.append(item.node);wrapper.append(content);labelControls(item,wrapper);board.append(wrapper);wrappers.set(item.id,wrapper);
         if(parent!==container&&parent&&![...parent.children].length){hiddenParents.set(parent,parent.hidden);parent.hidden=true;}
       }
+    }
+    function unwrap(){
+      if(!wrapped)return;
+      for(const item of catalog){const placeholder=placeholders.get(item.id);if(placeholder?.parentNode)placeholder.replaceWith(item.node);}
+      for(const [parent,hidden]of hiddenParents)parent.hidden=hidden;
+      placeholders.clear();hiddenParents.clear();wrappers.clear();board.remove();wrapped=false;
     }
     function inspect(){
       const item=catalog.find(value=>value.id===selected)||catalog[0],card=preferences.cards[item.id],rect=rectangles[item.id]||card;selected=item.id;
@@ -227,6 +309,7 @@
       if(editing){wrap();preferences.active=true;}
       editor.hidden=!editing;board.classList.toggle('page-layout-editing',editing);edit.textContent=editing?'完成調整':'調整版面';edit.setAttribute('aria-pressed',String(editing));render();
       // Entering edit mode is not a save; resizing the viewport is never a save.
+      if(!editing)applyPending();
     }
     async function pinItem(item){
       if(!item?.pin||!onPin||isPinned?.(item.pin))return;
@@ -268,13 +351,19 @@
     const resize=()=>{if(!alive)return;const next=container.clientWidth;if(next===width)return;width=next;if(pointer)endPointer(true);render();};
     if(typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(resize);resizeObserver.observe(container);}else root.addEventListener('resize',resize);
     const controller={setEditing,render,isBusy:()=>alive&&(editing||!!pointer),getPreferences:()=>clone(preferences),destroy(){
-      if(!alive)return;alive=false;pointer=null;resizeObserver?.disconnect();root.removeEventListener('resize',resize);document.removeEventListener('keydown',escape);
+      if(!alive)return;alive=false;pointer=null;unsubscribe?.();resizeObserver?.disconnect();root.removeEventListener('resize',resize);document.removeEventListener('keydown',escape);
+      container.removeEventListener('input',rememberDraft);container.removeEventListener('change',rememberDraft);container.removeEventListener('focusout',afterFocus);
       for(const item of catalog){const placeholder=placeholders.get(item.id);if(placeholder?.parentNode){placeholder.replaceWith(item.node);}if(originals.has(item.id)&&target(item))target(item).textContent=originals.get(item.id);}
       for(const [parent,hidden]of hiddenParents)parent.hidden=hidden;
-      toolbar.remove();editor.remove();board.remove();announcement.remove();if(active.get(container)===controller)active.delete(container);
+      toolbar.remove();editor.remove();board.remove();announcement.remove();pending.remove();if(active.get(container)===controller)active.delete(container);
     }};
-    active.set(container,controller);if(preferences.active)wrap();render();return controller;
+    active.set(container,controller);if(preferences.active)wrap();render();
+    if(sync){
+      if(!object(initial)&&localPage)sync.adopt(syncKey,presentationData(localPage));
+      unsubscribe=sync.subscribe(syncKey,receive);
+    }
+    return controller;
   }
-  const api={KEY,BACKUP_KEY,UNIT,PAGE_ROWS,MAX_PAGES,specs,normalize,arrange,fit,overlaps,decode,storePage,mount};
+  const api={KEY,BACKUP_KEY,UNIT,PAGE_ROWS,MAX_PAGES,specs,normalize,arrange,fit,overlaps,decode,storePage,presentationData,editPresentation,replacePage,mount};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BlueprintPageLayout=api;
 })(globalThis);

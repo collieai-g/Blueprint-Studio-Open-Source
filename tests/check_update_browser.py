@@ -15,6 +15,7 @@ from blueprint_folders import __version__
 from blueprint_library.server import initialize_library, make_server
 from blueprint_library.store import Store
 from blueprint_library.studio import Studio
+from blueprint_library import presentation
 
 
 def main():
@@ -27,7 +28,9 @@ def main():
         initialize_library(data, 'owner', password, company_profile={'name': 'Blueprint Studio'})
         store = Store(data)
         old = store.add_file('original.txt', b'Preserve original attachment')
-        Studio(store, {'username': 'owner', 'role': 'owner', 'name': 'owner'}).state()
+        studio = Studio(store, {'username': 'owner', 'role': 'owner', 'name': 'owner'})
+        studio.state()
+        original_preferences = studio.preferences()
         original = store.export_metadata()
         server = make_server(data, managed=True)
         thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
@@ -72,12 +75,25 @@ def main():
                 page.locator('#update-backup-file').set_input_files({'name': 'wrong.json', 'mimeType': 'application/json', 'buffer': json.dumps(bad).encode()})
                 page.locator('#update-restore').click()
                 page.locator('#update-error').filter(has_text='同一個工作台').wait_for()
+                # A later cloud edit must not silently replace the chosen backup
+                # after the restore reloads the page.
+                current_documents = presentation.read(studio)['documents']
+                for key, content in {
+                    'overview': {'version': 1, 'layoutVersion': 4, 'texts': {'heading': 'NEWER-CLOUD-TITLE'}},
+                    'page:projects': {'cards': {'title': {'text': 'NEWER-CLOUD-PROJECTS'}}},
+                    'pins': {'version': 1, 'refs': [{'kind': 'route', 'route': 'agents'}]},
+                }.items():
+                    presentation.save(studio, {'key': key, 'expected_version': current_documents.get(key, {}).get('version', 0), 'data': content})
                 page.evaluate("localStorage.setItem('blueprint-backend-display-v1', JSON.stringify({layout:'grid',sort:'updated'}))")
                 page.locator('#update-backup-file').set_input_files({'name': 'correct.json', 'mimeType': 'application/json', 'buffer': json.dumps(backup).encode()})
                 with page.expect_navigation():
                     page.locator('#update-restore').click()
                 assert page.evaluate("JSON.parse(localStorage.getItem('blueprint-backend-display-v1')).sort") == 'title'
                 assert page.evaluate("localStorage.getItem('unrelated-private-token')") == 'must-not-export'
+                restored = presentation.read(studio)['documents']
+                assert restored['overview']['data'] == {}, restored
+                assert restored['page:projects']['data'] == {}, restored
+                assert restored['pins']['data'] == {'version': 1, 'refs': []}, restored
                 page.locator('#settings-button').click(); page.locator('[data-update-open]').click()
                 page.wait_for_function("() => !document.getElementById('update-copy').disabled")
                 page.set_viewport_size({'width': 390, 'height': 844})
@@ -94,6 +110,11 @@ def main():
                 browser.close()
             after = store.export_metadata()
             original.pop('exported_at'); after.pop('exported_at')
+            # Only presentation documents changed. The regular account settings,
+            # company records, history and attachments must retain their values.
+            assert studio.preferences() == original_preferences
+            assert all(row['username'] == 'owner' for row in after['studio'].pop('preferences'))
+            assert all(row['username'] == 'owner' for row in original['studio'].pop('preferences'))
             assert after == original
             assert store.get_file(old['id'])[0].read_bytes() == b'Preserve original attachment'
             print('Update browser acceptance passed: authenticated handoff, private preferences, same-site restore, mobile, failed reads, unchanged company data.')

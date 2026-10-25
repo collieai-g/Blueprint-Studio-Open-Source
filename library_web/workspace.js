@@ -1,4 +1,4 @@
-/* Grid preferences are local to this browser, separate from company data. */
+/* Account presentation with a local cache; company records stay separate. */
 'use strict';
 ((root) => {
   const KEY = 'blueprint-workspace-v2', BACKUP_KEY = 'blueprint-workspace-v2.2-backup', VISIBILITY_BACKUP_KEY = 'blueprint-workspace-v2.7.3-backup', CUSTOM_BACKUP_KEY = 'blueprint-workspace-v2.8-backup';
@@ -65,10 +65,10 @@
     try{return scopedPreferences(JSON.parse(localStorage.getItem(KEY)||'null')).visible.includes(id);}catch{return id==='heading';}
   }
   function setVisible(id,visible=true){if(controller)return controller.setVisible(id,visible);if(visible)pendingVisible.add(id);else pendingVisible.delete(id);return true;}
-  function unregisterWidget(id){
+  function unregisterWidget(id,options={}){
     if(!id.startsWith('pin-')||!IDS.includes(id))return false;
     IDS.splice(IDS.indexOf(id),1);delete DEFAULTS[id];delete LABELS[id];pendingVisible.delete(id);
-    if(controller)controller.detach(id);else if(typeof document!=='undefined')document.querySelector(`[data-widget="${id}"]`)?.remove();
+    if(controller)controller.detach(id,options);else if(typeof document!=='undefined')document.querySelector(`[data-widget="${id}"]`)?.remove();
     return true;
   }
   const overlaps = (a,b) => a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
@@ -156,26 +156,48 @@
     value.visible.forEach(id=>Object.assign(value.cards[id],rects[id]));value.columns=columns;
     return value;
   }
-  function start({refresh,isBusy}) {
+  function start({refresh,isBusy,presentationSync}) {
     const $=id=>document.getElementById(id), board=$('workspace-board'); if(!board) return;
     let raw=null,saved;
     try { raw=localStorage.getItem(KEY);saved=JSON.parse(raw||'null'); } catch { /* Safe defaults. */ }
-    let preferences=scopedPreferences(saved),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame;
+    const remote=presentationSync?.get('overview');
+    let preferences=remote===undefined?scopedPreferences(saved):normalize(remote),editing=false,pointer=null,rectangles={},selected='heading',syncing=false,scrollFrame;
+    let shown=structuredClone(remote===undefined?preferences:remote),rendered=structuredClone(preferences),pendingPresentation=false;
     const widgets=new Map([...board.querySelectorAll('[data-widget]')].filter(node=>IDS.includes(node.dataset.widget)).map(node=>[node.dataset.widget,node]));
     const status=$('workspace-sync'), columns=()=>integer(Math.floor(board.clientWidth/UNIT),6,6,96);
     const announce=text=>{$('board-announcement').textContent=text;};
-    const persist=()=>{
+    const persist=(publish=true)=>{
       try {
         if(raw&&!localStorage.getItem(CUSTOM_BACKUP_KEY))localStorage.setItem(CUSTOM_BACKUP_KEY,raw);
         if(raw && saved?.layoutVersion!==4 && !localStorage.getItem(VISIBILITY_BACKUP_KEY)) localStorage.setItem(VISIBILITY_BACKUP_KEY,raw);
         if(raw && ![3,4].includes(saved?.layoutVersion) && !localStorage.getItem(BACKUP_KEY)) localStorage.setItem(BACKUP_KEY,raw);
-        const retained=saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
+        let latest;try{latest=JSON.parse(localStorage.getItem(KEY)||'null');}catch{}
+        const retained=latest&&typeof latest==='object'&&!Array.isArray(latest)?latest:{};
         const keptCards=Object.fromEntries(Object.entries(retained.cards||{}).filter(([id])=>!['connection','intro-title','intro-description'].includes(id)));
         const next={...retained,...preferences,cards:{...keptCards,...preferences.cards},
           ...(accountScope?{scopes:{...retained.scopes,[accountScope]:structuredClone(preferences)}}:{})};
         localStorage.setItem(KEY,JSON.stringify(next));saved=next;
       } catch { announce('這個瀏覽器無法保存排版。公司資料不受影響。'); }
+      if(publish){
+        // Send the actual UI edit, preserving sparse defaults and unmounted pins.
+        const next=root.BlueprintPresentation?.merge(rendered,preferences,shown).data||preferences;
+        presentationSync?.update('overview',next,{base:shown});shown=structuredClone(next);rendered=structuredClone(preferences);
+      }
     };
+    function presentationBusy(){return editing||!!pointer||!!document.querySelector('dialog[open]')||!!document.activeElement?.matches('input,textarea,select,[contenteditable="true"]');}
+    function receivePresentation(value,meta={}){
+      if(value===undefined||meta.source==='local')return;
+      if(meta.conflict||presentationBusy()){pendingPresentation=true;announce('另一邊的版面有更新，完成編輯後會核對。');return;}
+      const previouslyVisible=new Set(preferences.visible);
+      pendingPresentation=false;shown=structuredClone(value);preferences=normalize(value);rendered=structuredClone(preferences);persist(false);applyMode();render();
+      for(const id of preferences.visible)if(!previouslyVisible.has(id))root.dispatchEvent(new CustomEvent('blueprint:overview-visibility',{detail:{id,visible:true}}));
+    }
+    function applyPendingPresentation(){
+      if(presentationBusy())return;
+      const value=presentationSync?.get('overview');
+      if(value!==undefined&&!presentationSync?.status().conflicts.some(item=>item.key==='overview'))receivePresentation(value);
+      root.dispatchEvent(new CustomEvent('blueprint:presentation-idle'));
+    }
     function applyMode() { document.body.dataset.entryMode=preferences.mode;if($('settings-entry-mode'))$('settings-entry-mode').value=preferences.mode; }
     const textNodes=new Map(TEXT_IDS.map(id=>[id,widgets.get(id)?.querySelector('.text-content')?.firstElementChild||widgets.get(id)?.querySelector('.text-content')]));
     const defaultText=new Map([...textNodes].map(([id,node])=>[id,node?.textContent||'']));
@@ -269,6 +291,7 @@
       if(pointer)endPointer(true);
       editing=!editing;board.classList.toggle('editing',editing);$('board-editor').hidden=!editing;$('reset-board').hidden=!editing;
       event.currentTarget.setAttribute('aria-pressed',String(editing));event.currentTarget.textContent=editing?'完成調整':'調整版面';render();
+      if(!editing)applyPendingPresentation();
     });
     $('reset-board').addEventListener('click',()=>{preferences=preset('balanced',columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);persist();render();announce('已還原排版。頁數和公司資料保持不變。');});
     $('apply-board-preset').addEventListener('click',()=>{preferences=preset($('board-preset').value,columns(),preferences.mode,preferences.pages,preferences.visible,preferences.texts);persist();render();announce('已套用排版。公司資料保持不變。');});
@@ -339,7 +362,7 @@
     async function sync(){
       if(syncing||pointer||document.hidden||document.querySelector('dialog[open]')||isBusy()||editing){status.textContent='請先完成編輯，再按更新資料';return;}
       syncing=true;
-      try{if(await refresh()===false)return;status.textContent=`資料已更新 · ${new Date().toLocaleTimeString('zh-HK',{hour:'2-digit',minute:'2-digit'})}`;status.dataset.state='ready';updateDate();}
+      try{await presentationSync?.pull();if(await refresh()===false)return;status.textContent=`資料已更新 · ${new Date().toLocaleTimeString('zh-HK',{hour:'2-digit',minute:'2-digit'})}`;status.dataset.state='ready';updateDate();}
       catch{status.textContent='暫時無法更新，請再按更新資料';status.dataset.state='error';}finally{syncing=false;}
     }
     // Reading, returning to the tab and restoring browser history never replace the page.
@@ -349,22 +372,26 @@
     controller={visible:id=>preferences.visible.includes(id),setVisible,
       setScope(){
         try{saved=JSON.parse(localStorage.getItem(KEY)||'null');}catch{saved=null;}
-        preferences=scopedPreferences(saved);selected='heading';render();
+        preferences=scopedPreferences(saved);shown=structuredClone(preferences);rendered=structuredClone(preferences);selected='heading';render();
       },
       attach(id,node,visible){
-        board.append(node);widgets.set(id,node);preferences=normalize(preferences);setupWidget(node,id);
+        board.append(node);widgets.set(id,node);preferences=normalize({...preferences,cards:{...shown.cards,...preferences.cards},visible:[...new Set([...preferences.visible,...(shown.visible||[])])]});setupWidget(node,id);
         if(visible)setVisible(id,true);else render();
       },
-      detach(id){
+      detach(id,{persist:publish=true}={}){
         widgets.get(id)?.remove();widgets.delete(id);delete preferences.cards[id];preferences.visible=preferences.visible.filter(value=>value!==id);
         if(saved?.cards)delete saved.cards[id];
         [...$('board-visible-fields').querySelectorAll('input')].find(input=>input.dataset.boardVisible===id)?.closest('label')?.remove();
-        if(selected===id)selected='heading';persist();render();
+        if(selected===id)selected='heading';if(publish)persist();render();
         root.dispatchEvent(new CustomEvent('blueprint:overview-visibility',{detail:{id,visible:false}}));
-      },render};
+      },render,isBusy:()=>editing||!!pointer};
     for(const id of pendingVisible)setVisible(id,true);pendingVisible.clear();
     applyMode();render();status.textContent='';status.dataset.state='ready';
+    presentationSync?.subscribe('overview',receivePresentation);
+    if(remote===undefined&&raw)presentationSync?.adopt('overview',preferences);
+    document.addEventListener('focusout',()=>{if(pendingPresentation)setTimeout(applyPendingPresentation,0);});
+    document.addEventListener('close',()=>{if(pendingPresentation)applyPendingPresentation();},true);
   }
-  const api={normalize,arrange,fit,preset,overlaps,start,registerWidget,unregisterWidget,setVisible,isVisible,setScope,scopedPreferences,CORE_IDS,KEY,BACKUP_KEY,VISIBILITY_BACKUP_KEY,CUSTOM_BACKUP_KEY,IDS,TEXT_IDS,UNIT,PAGE_ROWS,MAX_PAGES,minimum};
+  const api={normalize,arrange,fit,preset,overlaps,start,registerWidget,unregisterWidget,setVisible,isVisible,setScope,scopedPreferences,isBusy:()=>!!controller?.isBusy(),CORE_IDS,KEY,BACKUP_KEY,VISIBILITY_BACKUP_KEY,CUSTOM_BACKUP_KEY,IDS,TEXT_IDS,UNIT,PAGE_ROWS,MAX_PAGES,minimum};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BlueprintWorkspace=api;
 })(globalThis);

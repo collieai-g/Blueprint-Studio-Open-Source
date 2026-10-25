@@ -1,5 +1,25 @@
 # Blueprint Studio Open Source
 
+V2.8.1 synchronizes presentation preferences through /api/studio/presentation.
+Read docs/PRESENTATION_SYNC.md before modifying it. Layout, display text and
+reference-only overview pins belong to the authenticated account, never a caller
+supplied username. Use per-document versions and atomic compare-and-set. Keep
+studio_preferences ordinary settings independent from the reserved _presentation
+state; schema remains 7. Visible clients may poll only presentation changes at
+about two-second intervals; this does not authorize polling company records.
+Defer remote application during layout edits or focused forms, preserve local
+drafts on offline errors and conflicts, and provide explicit conflict resolution.
+Retain old local keys and backups. Unsupported backends must report local-only
+mode honestly. MCP presentation reads and writes share the same API and identity.
+Browser requests assert their startup username through X-Blueprint-Account;
+compare it to the authenticated identity and reject stale-account tabs. Periodic
+full snapshots detect restored or divergent versions; pause automatic writes and
+retain drafts until explicit reconciliation. Scope pending drafts per account and
+per tab, recover them on reload, and verify remote readback before completing a
+presentation backup restore.
+Pure Sites installations need their actual authenticated storage adapter wired and
+verified; changing UI files alone does not provide durable synchronization.
+
 V2.8 adds native Blueprint Integration Contract 1.0 and additive schema 7. Read
 docs/INTEGRATION_GUIDE.md and contracts/integration-v1 before changing it. Each
 private Store represents one company; dedicated hashed bearer credentials are
@@ -21,7 +41,7 @@ browser history restoration must not refresh company data or replace active view
 Secondary navigation sits in the top bar; omit visible workspace/page breadcrumbs.
 Keep one top-right Operations menu for search, explicit refresh and manual actions.
 Remove the narrow-sidebar option and ignore its stored display flag. Every page
-supports independent local layout and plain display-text overrides using the same
+supports independent account-scoped layout and plain display-text overrides using the same
 bounded grid rules. Keep actual form nodes and drafts alive during layout changes.
 Overview modules and pinned Work/AI cards are opt-in, save stable references only,
 and reread current authorized data; never persist private card snapshots or clone
@@ -63,7 +83,8 @@ Follow docs/OPERATING_MODEL.md when distinguishing daily use from development.
 Daily work, tasks, files, bookmarks and reports use authorized data APIs with
 version checks and readback; do not turn them into Git commits or deployments.
 Existing settings and compatible Agent registration also save directly; browser
-layout preferences stay in the browser. Long-term company customization uses a
+layout preferences use the authenticated presentation API when supported, with
+scoped local cache and pending edits. Long-term company customization uses a
 verified private source repository, preserving its customizations when integrating
 selected upstream releases. Upstream publication does not synchronize company
 repositories; GitHub pushes do not deploy Sites. Deploy only affected services:
@@ -78,7 +99,7 @@ backend owns company data, attachments and backups. Never replace an existing D1
 Site with this gateway as an implicit migration. Keep per-user private account
 mapping, backend role checks, the authenticated API contract probe and no-redirect
 credential boundary. Native and gateway versions are independent. This path has
-42 tools and no D1/R2 company-data backup dependency; it still requires real host,
+44 tools and no D1/R2 company-data backup dependency; it still requires real host,
 platform publication, backup/restore and live client acceptance. Consult
 docs/AGENT_ROADMAP.md and docs/AGENT_CONTRACT.md for the shared Agent workbench.
 V2.6 adds pinned declarative Agent packages and persistent jobs handled by the
@@ -110,8 +131,8 @@ OS data lease, startup journal, rehearsal, previous rows/attachments/credentials
 and failed-data copies. Never initialize a nonempty directory or roll back code
 by silently lowering a data version. Runtime backup pauses/drains HTTP requests,
 not arbitrary SQLite writers; use one service and HTTP/MCP for active access.
-Offline restore only targets a new directory. Native has 42 MCP tools; Sites keeps
-the 40-tool shared contract and needs its own proven backup/restore adapter. Do not
+Offline restore only targets a new directory. Native has 44 MCP tools; Sites keeps
+the 42-tool shared contract and needs its own proven backup/restore adapter. Do not
 promise automatic off-host copying, platform deployment or loaded chat tools from
 native maintenance status. Keep all private runtime files out of Git.
 
@@ -221,7 +242,8 @@ Do not add unrelated company features, simulated AI connections or OS icon hooks
 - Publish reusable tool changes here. Keep private studio projects and personal
   instructions in their own directories; do not stage them into this repository.
 - Preserve existing source files and `AGENTS.md` when adding markers.
-- Browser storage belongs to that browser; use ZIP/JSON for transfer and backup.
+- Browser-only display settings and unsent drafts belong to that browser. Server-saved
+  presentation preferences synchronize by authenticated account; retain local backups.
 - After editing web source, run `python tools/build_web.py`.
 - Verify with `python -m unittest discover -s tests -v` and
   `node --test tests/test_packager.cjs`.

@@ -60,3 +60,34 @@ test('malformed local preferences fall back without changing legacy overview key
   assert.equal(layout.KEY,'blueprint-page-layouts-v1');assert.notEqual(layout.KEY,'blueprint-workspace-v2');
   assert.equal(layout.normalize(null,items).active,false);
 });
+test('editing a partial synced page sends only actual changes and retains unmounted cards',()=>{
+  const raw={cards:{title:{text:'原有標題'},'not-in-current-filter':{x:4,w:20,text:'另一項目'}}};
+  const before=layout.normalize(raw,items),next=structuredClone(before);
+  next.cards.title.text='新的標題';
+  const changed=layout.editPresentation(raw,before,next);
+  assert.deepEqual(changed,{cards:{title:{text:'新的標題'},'not-in-current-filter':{x:4,w:20,text:'另一項目'}}});
+  assert.deepEqual(raw.cards.title,{text:'原有標題'});
+  assert.equal(changed.pages,undefined);
+  assert.equal(changed.cards['project-a'],undefined);
+});
+test('restoring display text removes the override without restoring an older title',()=>{
+  const raw={version:1,cards:{title:{text:'自訂標題',x:2},future:{w:9,h:5}}};
+  const before=layout.normalize(raw,items),next=structuredClone(before);delete next.cards.title.text;
+  const changed=layout.editPresentation(raw,before,next);
+  assert.deepEqual(changed.cards.title,{x:2});
+  assert.deepEqual(changed.cards.future,{w:9,h:5});
+});
+test('remote empty page replaces its cache without reviving removed geometry or another account',()=>{
+  const before=layout.storePage({version:1,pages:{}},'projects',{cards:{title:{text:'舊標題'}}},'company:alice');
+  const withOther=layout.storePage(before,'projects',{cards:{title:{text:'Bob'}}},'company:bob');
+  const result=layout.replacePage(withOther,'projects',{},'company:alice');
+  assert.deepEqual(result.scopes['company:alice'].pages.projects,{});
+  assert.equal(result.scopes['company:bob'].pages.projects.cards.title.text,'Bob');
+  assert.equal(before.scopes['company:alice'].pages.projects.cards.title.text,'舊標題');
+});
+test('legacy page migration includes bounded presentation values only',()=>{
+  const source=JSON.parse('{"version":1,"active":true,"pages":1,"record":{"title":"private"},"cards":{"title":{"text":"Title","record_id":"private","w":20},"future":{"x":1,"y":2,"visible":false},"__proto__":{"text":"unsafe"},"bad":{"w":10000,"text":"bad\\u0000text"}}}');
+  const migrated=layout.presentationData(source);
+  assert.deepEqual(migrated,{version:1,active:true,pages:1,cards:{title:{w:20,text:'Title'},future:{x:1,y:2,visible:false},bad:{}}});
+  assert.equal(Object.hasOwn(migrated.cards,'__proto__'),false);
+});

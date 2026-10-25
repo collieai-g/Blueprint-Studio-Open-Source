@@ -31,7 +31,7 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
             'templates/agent/agent.json', 'docs/OPERATING_MODEL.md',
             'blueprint_library/integrations.py', 'blueprint_library/integrations_http.py',
             'library_web/integrations.js', 'library_web/integrations.css',
-            'library_web/page-layout.js', 'library_web/page-layout.css', 'library_web/overview-cards.js',
+            'library_web/page-layout.js', 'library_web/page-layout.css', 'library_web/overview-cards.js', 'library_web/presentation-sync.js',
             'contracts/integration-v1/openapi.json', 'contracts/integration-v1/README.md',
             'contracts/integration-v1/SHA256SUMS',
             'contracts/integration-v1/schemas/manifest.schema.json',
@@ -45,6 +45,7 @@ REQUIRED = {'blueprint_library/runtime.py', 'integrations/sites/native-gateway.m
             'contracts/integration-v1/fixtures/command.json',
             'contracts/integration-v1/fixtures/command-results.json',
             'docs/INTEGRATION_GUIDE.md',
+            'docs/PRESENTATION_SYNC.md', 'blueprint_library/presentation.py', 'integrations/sites/presentation.mjs',
             'examples/integration_service.py'}
 
 

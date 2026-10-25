@@ -8,7 +8,7 @@ export const GATEWAY_VERSION = '1.0.0';
 const CONTRACT = 'blueprint-native/1';
 const JSON_LIMIT = 512 * 1024;
 const FILE_LIMIT = Math.floor(20 * 1024 * 1024 * 4 / 3) + 128 * 1024;
-const ASSETS = new Set(['/', '/index.html', '/AI_CONNECT.md', '/app.js', '/workdays.js', '/workspace.js', '/page-layout.js', '/page-layout.css', '/overview-cards.js',
+const ASSETS = new Set(['/', '/index.html', '/AI_CONNECT.md', '/app.js', '/workdays.js', '/workspace.js', '/presentation-sync.js', '/page-layout.js', '/page-layout.css', '/overview-cards.js',
   '/brand.svg', '/style.css', '/connection.js', '/update.js', '/connection-guide.json',
   '/studio.js', '/studio.css', '/agents.js', '/agents.css', '/integrations.js', '/integrations.css', '/skills.js', '/skills.css', '/navigation.js', '/manifest.webmanifest', '/service-worker.js']);
 const failure = (status, message) => { throw Object.assign(new Error(message), { status, safe: true }); };

@@ -140,6 +140,103 @@
       throw error;
     }
   }
+  const copy=value=>JSON.parse(JSON.stringify(value));
+  const own=(value,key)=>Object.prototype.hasOwnProperty.call(value,key);
+  const equal=(a,b)=>a===b||(Array.isArray(a)&&Array.isArray(b)?a.length===b.length&&a.every((value,index)=>equal(value,b[index])):
+    object(a)&&object(b)&&Object.keys(a).length===Object.keys(b).length&&Object.keys(a).every(key=>own(b,key)&&equal(a[key],b[key])));
+  const safeId=(value,limit)=>typeof value==='string'&&value.length<=limit&&/^[A-Za-z0-9][A-Za-z0-9:_.\/-]*$/.test(value)&&!value.split(/[:.\/-]/).some(part=>['__proto__','constructor','prototype'].includes(part));
+  const widgetId=value=>typeof value==='string'&&(CORE_CARDS.includes(value)||/^pin-(?:studio_record|agent|agent_job|skill|workday|item)-[A-Za-z0-9_.-]{1,160}$/.test(value));
+  function presentationValue(key,value){
+    if(!object(value))throw new Error('排版備份缺少有效的頁面設定。');
+    const overview=key==='overview',result={},fields=overview?['version','layoutVersion','mode','pages','columns','visible','texts']:['version','active','pages','columns'];
+    for(const field of fields)if(own(value,field))result[field]=copy(value[field]);
+    const integer=(number,min,max)=>Number.isInteger(number)&&number>=min&&number<=max;
+    if(own(result,'version')&&result.version!==1||own(result,'pages')&&!integer(result.pages,1,3)||own(result,'columns')&&!integer(result.columns,6,96)||own(result,'active')&&typeof result.active!=='boolean')throw new Error('排版備份的頁數或尺寸不正確。');
+    if(overview){
+      // Older browser-only layouts use the current UI's migration behavior.
+      if(result.layoutVersion!==4){result.layoutVersion=4;result.visible=['heading'];}
+      if(own(result,'mode')&&!['ai','manual'].includes(result.mode))throw new Error('排版備份的操作模式不正確。');
+      if(own(result,'visible')&&(!Array.isArray(result.visible)||result.visible.length>40||new Set(result.visible).size!==result.visible.length||result.visible.some(id=>!widgetId(id))))throw new Error('排版備份包含不支援的總覽卡片。');
+      if(own(result,'texts')){
+        if(!object(result.texts)||Object.keys(result.texts).some(id=>!['heading','description','date'].includes(id)))throw new Error('排版備份的顯示文字不正確。');
+        for(const text of Object.values(result.texts))if(typeof text!=='string'||text.length>2000||text.includes('\x00'))throw new Error('排版備份的顯示文字不正確。');
+      }
+    }
+    if(own(value,'cards')){
+      if(!object(value.cards)||Object.keys(value.cards).length>(overview?40:200))throw new Error('排版備份包含過多卡片。');
+      result.cards={};
+      for(const [id,card]of Object.entries(value.cards)){
+        if(!(overview?widgetId(id):safeId(id,240))||!object(card))throw new Error('排版備份的卡片識別碼不正確。');
+        const selected={};
+        for(const [field,min,max]of [['x',0,95],['y',0,143],['w',1,96],['h',1,48]])if(own(card,field)){
+          if(!integer(card[field],min,max))throw new Error('排版備份的卡片尺寸不正確。');selected[field]=card[field];
+        }
+        for(const field of overview?['collapsed']:['collapsed','visible'])if(own(card,field)){
+          if(typeof card[field]!=='boolean')throw new Error('排版備份的卡片設定不正確。');selected[field]=card[field];
+        }
+        if(!overview&&own(card,'text')){
+          if(typeof card.text!=='string'||card.text.length>4000||card.text.includes('\x00'))throw new Error('排版備份的顯示文字不正確。');selected.text=card.text;
+        }
+        result.cards[id]=selected;
+      }
+    }
+    return result;
+  }
+  function presentationDocuments(data,site,identity,existing={}){
+    validate(data,site);
+    const scope=identityScope(site,identity);
+    if(!scope||data.account_scope&&scope!==data.account_scope)throw new Error('請使用建立此排版備份的同一帳戶。');
+    const documents={},preferences=data.preferences;
+    if(own(preferences,'blueprint-workspace-v2')){
+      const value=preferences['blueprint-workspace-v2'];
+      if(value===null)documents.overview={};
+      else{const parsed=JSON.parse(value),selected=object(parsed?.scopes)?parsed.scopes[scope]||{}:parsed;
+        documents.overview=presentationValue('overview',selected);}
+    }
+    if(own(preferences,'blueprint-page-layouts-v1')){
+      const value=preferences['blueprint-page-layouts-v1'],parsed=value===null?{}:JSON.parse(value);
+      const pages=parsed?.scopes?.[scope]?.pages||{};
+      if(!object(pages)||Object.keys(pages).length>256)throw new Error('排版備份的頁面清單不正確。');
+      for(const key of Object.keys(existing))if(key.startsWith('page:')&&safeId(key.slice(5),300))documents[key]={};
+      for(const [route,page]of Object.entries(pages)){
+        if(!safeId(route,300))throw new Error('排版備份的頁面識別碼不正確。');
+        documents['page:'+route]=presentationValue('page:'+route,page);
+      }
+    }
+    const pins=Object.entries(preferences).filter(([key])=>pinScope(key,site)?.username===identity.username);
+    if(pins.length){
+      const selected=pins.map(([,value])=>value===null?{version:1,refs:[]}:JSON.parse(value));
+      if(selected.some(value=>!equal(value,selected[0])))throw new Error('排版備份包含不同公司的總覽卡片，請使用目前工作室的單一備份。');
+      documents.pins=copy(selected[0]);
+    }else if(data.account_scope===scope&&KEYS.every(key=>own(preferences,key)))documents.pins={version:1,refs:[]};
+    return documents;
+  }
+  async function restorePresentation(data,site,storage,identity,sync){
+    // Validate everything before changing local preferences or queuing server writes.
+    const initial=presentationDocuments(data,site,identity);
+    if(!Object.keys(initial).length||!sync||sync.status().state==='unsupported'){
+      restore(data,site,storage,identity);return {synced:false,localOnly:true};
+    }
+    const ready=await sync.pull({full:true}),status=sync.status();
+    if(status.state==='unsupported'){
+      restore(data,site,storage,identity);return {synced:false,localOnly:true};
+    }
+    if(['unauthorized','diverged','stopped'].includes(status.state))throw new Error(status.message||'請先恢復帳戶版面連接，再還原排版。');
+    const previous=sync.getDocuments(),documents=presentationDocuments(data,site,identity,previous),keys=Object.keys(documents);
+    const scope=identityScope(site,identity),pendingKey=BACKUP+':pending-restore:'+encodeURIComponent(scope);
+    storage.setItem(BACKUP+':before-cloud-restore:'+Date.now(),JSON.stringify({account_scope:scope,complete:ready,documents:previous}));
+    restore(data,site,storage,identity);
+    storage.setItem(pendingKey,JSON.stringify(data));
+    // This is an explicit replacement. Base each change on the current effective
+    // document; concurrent server changes still meet the normal CAS/conflict path.
+    for(const key of keys)sync.update(key,documents[key],{base:sync.get(key)});
+    if(!ready)throw new Error('已保留這份還原排版，但尚未讀取完整帳戶設定。請連線後再次按還原，完成同步。');
+    await sync.flush();
+    if(!(await sync.pull({full:true})))throw new Error('已保留這份還原排版，但尚未確認帳戶同步。請連線後再次按還原。');
+    const latest=sync.status();
+    if(keys.some(key=>latest.pending.includes(key)||latest.conflicts.some(item=>item.key===key)||!equal(sync.getDocument(key)?.data,documents[key])))throw new Error('排版還原尚未全部同步；修改與備份已保留，請先處理操作列的同步提示，再次按還原。');
+    storage.removeItem(pendingKey);return {synced:true,localOnly:false};
+  }
   function prompt(data) {
     validate(data, data.origin);
     return [
@@ -160,7 +257,7 @@
   }
   function init({ api, openDialog, notice }) {
     const $ = id => document.getElementById(id);
-    let current = null, info = null, generation = 0;
+    let current = null, info = null, generation = 0,restoring=false;
     const error = message => { $('update-error').textContent = message || ''; $('update-error').hidden = !message; };
     function backupStatus(status) {
       $('native-backup').hidden = !status?.supported;
@@ -243,27 +340,33 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
     $('update-restore').addEventListener('click', async () => {
+      if(restoring)return;
+      restoring=true;$('update-restore').disabled=$('update-restore-local').disabled=true;
       try {
         const file = $('update-backup-file').files[0];
         if (!file) throw new Error('請先選擇之前下載的排版接續資料。');
         if (file.size > 2 * 1024 * 1024) throw new Error('排版接續資料過大。');
         const currentInfo=await api('/api/info');
-        restore(JSON.parse(await file.text()), location.origin, localStorage,currentInfo.account);
+        await restorePresentation(JSON.parse(await file.text()), location.origin, localStorage,currentInfo.account,root.BlueprintStudio?.presentation());
         location.reload();
       } catch (e) { error('未能還原排版：' + e.message); }
+      finally{restoring=false;$('update-restore').disabled=$('update-restore-local').disabled=false;}
     });
     $('update-restore-local').addEventListener('click', async () => {
+      if(restoring)return;
+      restoring=true;$('update-restore').disabled=$('update-restore-local').disabled=true;
       try {
         const saved = localStorage.getItem(BACKUP);
         if (!saved) throw new Error('這個瀏覽器尚未保存更新前排版。');
         const currentInfo=await api('/api/info');
-        restore(JSON.parse(saved), location.origin, localStorage,currentInfo.account);
+        await restorePresentation(JSON.parse(saved), location.origin, localStorage,currentInfo.account,root.BlueprintStudio?.presentation());
         location.reload();
       } catch (e) { error('未能還原排版：' + e.message); }
+      finally{restoring=false;$('update-restore').disabled=$('update-restore-local').disabled=false;}
     });
     $('update-dialog').addEventListener('close', () => { ++generation; });
   }
-  const exported = { handoff, validate, restore, prompt, init };
+  const exported = { handoff, validate, restore, presentationDocuments, restorePresentation, prompt, init };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   if (root) root.BlueprintUpdate = exported;
 })(typeof window !== 'undefined' ? window : null);

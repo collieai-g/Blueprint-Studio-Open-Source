@@ -68,6 +68,30 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
             await self.session(work)
         self.assertEqual(self.store.workday_stats()['workdays'], 3)
 
+    async def test_presentation_tools_save_read_back_and_preserve_conflicts(self):
+        data = {'texts': {'heading': '跨分頁測試標題'},
+                'cards': {'heading': {'x': 2, 'y': 1, 'w': 18, 'h': 3}}}
+
+        async def work(client):
+            before = await self.call(client, 'get_presentation', {'key': 'overview'})
+            self.assertEqual(before['documents'], {})
+            payload = {'key': 'overview', 'expected_version': 0, 'data_json': json.dumps(data)}
+            saved = await self.call(client, 'update_presentation', payload)
+            reread = await self.call(client, 'get_presentation', {'key': 'overview'})
+            self.assertEqual(saved, reread)
+            self.assertEqual(reread['documents']['overview']['data'], data)
+            self.assertTrue((await client.call_tool('blueprint_update_presentation', payload)).isError)
+            for invalid in [{**payload, 'data_json': '[]'}, {**payload, 'username': 'other'}]:
+                self.assertTrue((await client.call_tool('blueprint_update_presentation', invalid)).isError)
+        await self.session(work)
+
+        async def readonly(client):
+            listed = [tool.name for tool in (await client.list_tools()).tools]
+            self.assertIn('blueprint_get_presentation', listed)
+            self.assertNotIn('blueprint_update_presentation', listed)
+            self.assertEqual((await self.call(client, 'get_presentation', {'key': 'overview'}))['documents']['overview']['data'], data)
+        await self.session(readonly, read_only=True)
+
     async def test_agent_job_through_independent_stdio_client(self):
         async def work(client):
             manifest = {'contract_version': 1, 'id': 'stdio-summary', 'name': 'MCP 摘要測試',

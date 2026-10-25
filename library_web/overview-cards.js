@@ -85,20 +85,55 @@
   }
   const helpers={KEY,MAX_PINS,MODULES,reference,widgetId,normalize,scopeKey,recordView,agentView,jobView,workdayView,itemView,readReference};
   if(typeof module!=='undefined'&&module.exports){module.exports=helpers;return;}
-  let dependencies=null,storageKey='',saved={version:1,refs:[]},generation=0,subscribed=false;
+  let dependencies=null,storageKey='',saved={version:1,refs:[]},generation=0,subscribed=false,unsubscribe=null,pendingPins=null;
   const widgets=new Map();
   const node=(tag,cls,copy)=>{const result=document.createElement(tag);if(cls)result.className=cls;if(copy!==undefined)result.textContent=String(copy);return result;};
   const button=(label,work,cls='text-button')=>{const result=node('button',cls,label);result.type='button';result.addEventListener('click',()=>Promise.resolve().then(work).catch(error=>dependencies?.notice?.(error.message,true)));return result;};
   function overviewVisible(){const panel=document.getElementById('dashboard-panel');return !!panel&&!panel.hidden;}
-  function save(){
-    try{localStorage.setItem(storageKey,JSON.stringify(normalize(saved)));}
-    catch{throw new Error('這個瀏覽器無法保存總覽卡片。');}
+  function cache(){
+    try{localStorage.setItem(storageKey,JSON.stringify(normalize(saved)));return true;}
+    catch{return false;}
+  }
+  function save(base){
+    if(!cache()&&!dependencies.sync)throw new Error('這個瀏覽器無法保存總覽卡片。');
+    dependencies.sync?.update('pins',normalize(saved),{base});
+  }
+  function editingOverview(){
+    if(root.BlueprintWorkspace.isBusy?.())return true;
+    const board=document.getElementById('workspace-board'),active=document.activeElement;
+    if(board?.classList.contains('editing')||board?.classList.contains('adjusting'))return true;
+    return !!active?.matches?.('input,textarea,select,[contenteditable="true"]')&&
+      !!active.closest('#dashboard-panel,#board-editor');
+  }
+  function receivePins(value,meta={}){
+    if(value===undefined||meta.conflict)return;
+    const next=normalize(value);
+    if(JSON.stringify(next)===JSON.stringify(saved)){pendingPins=null;return;}
+    if(editingOverview()){pendingPins=next;return;}
+    pendingPins=null;
+    const previous=new Set(saved.refs.map(widgetId)),wanted=new Set(next.refs.map(widgetId));
+    saved=next;cache();
+    for(const [id,entry]of widgets){
+      // Route modules remain available in the layout editor even when unpinned.
+      if(entry.ref.kind==='route'||wanted.has(id))continue;
+      root.BlueprintWorkspace.unregisterWidget?.(id,{persist:false});entry.node.remove();widgets.delete(id);
+    }
+    const added=[];
+    for(const ref of saved.refs){const id=widgetId(ref);install(ref);if(!previous.has(id))added.push(id);}
+    // A preferences update only reads newly selected sources, never refreshes company views.
+    if(added.length)refresh(added);
+  }
+  function resumePins(){
+    if(editingOverview()||!pendingPins)return;
+    const conflict=dependencies?.sync?.status().conflicts?.some(entry=>entry.key==='pins');
+    if(conflict)return;
+    receivePins(dependencies?.sync?.get('pins')??pendingPins);
   }
   async function removeReference(ref){
-    const id=widgetId(ref);
-    saved.refs=saved.refs.filter(source=>widgetId(source)!==id);save();
+    const id=widgetId(ref),base=normalize(saved);
+    saved={version:1,refs:saved.refs.filter(source=>widgetId(source)!==id)};save(base);
     if(root.BlueprintWorkspace.unregisterWidget)root.BlueprintWorkspace.unregisterWidget(id);else root.BlueprintWorkspace.setVisible(id,false);
-    widgets.get(id)?.node.remove();widgets.delete(id);generation++;await refresh();
+    widgets.get(id)?.node.remove();widgets.delete(id);
     dependencies.notice?.('已從總覽收起，原有資料仍然保留。');
   }
   function install(ref,label){
@@ -130,11 +165,13 @@
     return dependencies.navigate(ref.kind==='route'?ref.route:ref.kind==='studio_record'?'record/'+ref.id:ref.kind==='agent'?'agent/'+ref.id:ref.kind==='agent_job'?'agent-job/'+ref.id:'skills');
   }
   async function load(entry,run){
+    const request=(entry.request||0)+1;entry.request=request;
+    const current=()=>run===generation&&widgets.get(entry.id)===entry&&entry.request===request;
     entry.content.replaceChildren(node('p','muted','正在讀取目前資料…'));
     if(entry.ref.kind!=='route')entry.title.textContent='已加入的卡片';
     try{
       const result=await readReference(dependencies.api,entry.ref);
-      if(run!==generation||!widgets.has(entry.id))return;
+      if(!current())return;
       entry.title.textContent=result.title;
       if(Array.isArray(result.items)){
         entry.content.replaceChildren(...result.items.map(item=>renderItem(item)));
@@ -142,39 +179,54 @@
         if(typeof result.total==='number')entry.content.append(node('p','muted','共 '+result.total+' 項'));
       }else entry.content.replaceChildren(renderItem(result,false));
     }catch(error){
-      if(run!==generation||!widgets.has(entry.id))return;
+      if(!current())return;
       entry.title.textContent=entry.ref.kind==='route'?MODULES[entry.id].label:'已加入的卡片';
       entry.content.replaceChildren(node('p','muted',error.status===403||error.status===404?'來源已移除或目前沒有讀取權限。':'暫時未能讀取來源，請使用操作選單更新資料。'));
     }
   }
   async function refresh(ids){
     if(!dependencies||!overviewVisible())return;
-    const run=++generation;
+    const run=generation;
     const selected=[...widgets.values()].filter(entry=>(!ids||ids.includes(entry.id))&&root.BlueprintWorkspace.isVisible(entry.id));
     await Promise.all(selected.map(entry=>load(entry,run)));
   }
   async function pin(value){
     if(!dependencies)throw new Error('總覽尚未準備好。');
     const ref=reference(value),id=widgetId(ref),exists=saved.refs.some(source=>widgetId(source)===id);
-    if(!exists){if(saved.refs.length>=MAX_PINS)throw new Error('最多加入 24 張跨頁卡片。請先從總覽收起不需要的卡片。');saved.refs.push(ref);save();}
+    if(!exists){if(saved.refs.length>=MAX_PINS)throw new Error('最多加入 24 張跨頁卡片。請先從總覽收起不需要的卡片。');const base=normalize(saved);saved={version:1,refs:[...saved.refs,ref]};save(base);}
     install(ref,value?.label);
     if(root.BlueprintWorkspace.setVisible(id,true)===false)throw new Error('總覽目前的空間不足。請先到總覽縮小卡片或增加一頁，再加入此卡片。');
-    if(overviewVisible())await refresh();
+    if(overviewVisible())await refresh([id]);
     dependencies.notice?.('已加入總覽，可在總覽調整位置與大小。');
     return {id,reference:ref,created:!exists};
   }
   function init(options){
-    dependencies=options;generation++;
+    unsubscribe?.();unsubscribe=null;pendingPins=null;dependencies=options;generation++;
     root.BlueprintWorkspace.setScope?.(options.identity?.username?location.origin+'|'+options.identity.username:'');
     const nextKey=scopeKey({origin:location.origin,identity:options.identity,companyId:options.companyId||''});
-    if(storageKey&&storageKey!==nextKey){for(const entry of widgets.values()){root.BlueprintWorkspace.unregisterWidget?.(entry.id);entry.node.remove();}widgets.clear();}
+    if(storageKey&&storageKey!==nextKey){for(const entry of widgets.values()){root.BlueprintWorkspace.unregisterWidget?.(entry.id,{persist:false});entry.node.remove();}widgets.clear();}
     storageKey=nextKey;
-    try{saved=normalize(JSON.parse(localStorage.getItem(storageKey)||'null'));}catch{saved={version:1,refs:[]};}
+    let local=null;
+    try{const value=JSON.parse(localStorage.getItem(storageKey)||'null');if(value?.version===1&&Array.isArray(value.refs))local=normalize(value);}catch{/* Only this authenticated scope can supply legacy choices. */}
+    const remote=options.sync?.get('pins');
+    saved=remote===undefined?local||{version:1,refs:[]}:normalize(remote);
+    // A server document with an empty refs list is authoritative too.
+    const wanted=new Set(saved.refs.map(widgetId));
+    for(const [id,entry]of widgets)if(entry.ref.kind!=='route'&&!wanted.has(id)){
+      root.BlueprintWorkspace.unregisterWidget?.(id,{persist:false});entry.node.remove();widgets.delete(id);
+    }
     for(const module of Object.values(MODULES))install({kind:'route',route:module.route});
     for(const ref of saved.refs)install(ref);
+    if(remote!==undefined)cache();
+    if(options.sync){
+      unsubscribe=options.sync.subscribe('pins',receivePins);
+      if(remote===undefined&&local&&!options.sync.getDocument('pins'))options.sync.adopt('pins',local);
+    }
     if(!subscribed){
       subscribed=true;
-      root.addEventListener('blueprint:overview-visibility',event=>{if(event.detail?.visible&&widgets.has(event.detail.id))refresh();});
+      root.addEventListener('blueprint:overview-visibility',event=>{if(event.detail?.visible&&widgets.has(event.detail.id))refresh([event.detail.id]);});
+      root.addEventListener('blueprint:presentation-idle',resumePins);
+      document.addEventListener('focusout',()=>root.setTimeout(resumePins,0));
     }
   }
   root.BlueprintOverviewCards={...helpers,init,pin,refresh,remove:removeReference};

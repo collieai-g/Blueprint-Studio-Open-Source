@@ -36,6 +36,12 @@ Two real interfaces work together:
 
 Your client or window arrangement places the interfaces side by side. Blueprint works with the existing Codex interface; it does not rebuild or embed Codex as its own chat panel.
 
+## V2.8.1: share presentation settings across Codex, tabs and devices
+
+Card geometry, display text, page layouts and overview references can now be saved to the authenticated account through a compatible backend. Visible pages check presentation changes about every two seconds. Codex can read and update the same versioned preferences. Active edits and drafts are preserved, and conflicting changes require explicit resolution.
+
+The database remains at **schema 7**. Update both the compatible backend and UI; pure Sites deployments must connect their existing identity and storage adapters. Publishing source does not deploy a private workspace. See [presentation synchronization](docs/PRESENTATION_SYNC.md) and [release notes](docs/RELEASE.md).
+
 ## V2.8.0: connect independent services to company records
 
 The native backend adds [Blueprint Integration Contract 1.0](docs/INTEGRATION_GUIDE.md). Independent services use dedicated scoped credentials to submit records, read authorized material and receive durable commands, then report actual execution results. Commands remain pending until the service responds. The server checks retries, source versions and resumable synchronization. Each private data directory still represents one company.
@@ -75,7 +81,7 @@ If you have not installed the workspace, start with the [installation instructio
 | **AI** | Skills and handoff, compatible Agents and commands | “Use this video Skill and the selected material to prepare production.” |
 | **Data** | Files, bookmarks, topics and pinned records | “Group this report and its reference links under one topic.” |
 
-The workspace uses white, light gray and a faint grid. Add the overview cards you want through Adjust layout, then move, resize or collapse them; preferences stay in the current browser. Secondary pages retain existing records, permissions and compatible links.
+The workspace uses white, light gray and a faint grid. Add the overview cards you want through Adjust layout, then move, resize or collapse them; a compatible backend saves preferences to your account for use across tabs and devices in the same workspace. Secondary pages retain existing records, permissions and compatible links.
 
 Idle time and returning to the window do not rebuild the screen. Workbench writes update their corresponding results; use **Update data** after an external tool saves new records.
 
@@ -161,7 +167,7 @@ The sidebar footer has a single Settings entry for preferences, account details,
 
 Codex and other compatible AI apps can only use the tools the active client actually provides. Browser control must reach the correct signed-in tab. Chat or preview alone can prepare instructions and files but cannot prove workbench operation. Start AI setup on the left with [AI_CONNECT.md](AI_CONNECT.md). For MCP, follow the [technical guide](docs/AI_CONNECTION.md) and [acceptance steps](docs/CONNECT.md) to verify real writes and readback without a right-hand wizard.
 
-The project provides 40 shared MCP tools. Native and Sites-to-native deployments add two owner-only backup tools, for 42 in total. These tools are an optional integration route, not a prerequisite for browser-based operation.
+The project provides 42 shared MCP tools. Native and Sites-to-native deployments add two owner-only backup tools, for 44 in total. These tools are an optional integration route, not a prerequisite for browser-based operation.
 
 A runnable Python backend is provided for local and cloud use, with Docker, Render and Railway guidance. A [Sites gateway with a native backend](docs/SITES_NATIVE_GATEWAY.md) is another route. A backend that stores data within Sites still needs its platform adaptation and proven backup/restore; there is no universal installation requiring no setup.
 

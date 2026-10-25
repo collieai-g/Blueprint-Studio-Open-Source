@@ -21,6 +21,7 @@
 | GET `/api/studio/state` | identity、schemas、catalog、preferences、summary、templates、capabilities、schema_version |
 | GET `/api/studio/summary?month=YYYY-MM` | 真實正式對話、提醒、分貨幣財務小計；員工 finance=null |
 | GET/PATCH `/api/studio/preferences` | `{version,data}`；PATCH `{expected_version,data}`，按身份保存 |
+| GET/PATCH `/api/studio/presentation` | 帳戶版面文件、各自版本及增量檢查；見 [版面同步](PRESENTATION_SYNC.md) |
 | GET/POST `/api/studio/records` | GET kind/q/category/relation/archived/limit/offset → `{records,total,offset,limit}`；POST → `{record,created}` |
 | GET/PATCH `/api/studio/records/ID` | `{record}`；POST 可帶 kind/title/data/refs/visibility/source_key；PATCH 不改 kind 或自行升權 |
 | GET `/api/studio/records/ID/history` | `{versions}`，最近 100 版本，先檢查目前權限 |
@@ -90,3 +91,9 @@ const response = await retainProtectedRequest(ctx, () => handleProtectedRequest(
 `AI_CONNECT.md` 為客戶端閱讀的共用入口，連同已驗證身份下的 `/api/info`、`/connection-guide.json` 及現有 MCP 描述核對 origin、身份、規則與工具。它不授予控制權，也不自行寫入測試。MCP 驗收由實際客戶端產生並私人保存 challenge／client／date，透過真正工具保存，再另行讀回核對。
 
 右側不載入接駁精靈，正常 AI 區不列模型／外部接入登記；舊 `#/connections` 管理員唯讀頁面保留已有紀錄與權限。工具 API、來源保護和 schema 6 不因導覽簡化而移除或放寬。
+
+## V2.8.1 帳戶版面同步
+
+`state.capabilities.presentation_sync: true` 表示後台提供版面 API。總覽、每頁排版、純文字顯示覆寫及總覽來源引用按已登入身份保存，使用獨立文件版本作原子比對。資料放在既有 `studio_preferences.data` 的保留欄位 `_presentation`，schema 仍為 7；普通偏好路由不暴露或接受此欄位，修改普通設定須保留最新的版面資料。
+
+可見網頁約每兩秒只檢查版面版本；公司紀錄不會因此自動重載。瀏覽器保留未同步修改，衝突需明確處理；原有表單節點和草稿仍然保留。完整 HTTP、MCP、Sites 適配與驗收規格見 [PRESENTATION_SYNC.md](PRESENTATION_SYNC.md)。

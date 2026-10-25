@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { handoff, restore, validate, prompt } = require('../library_web/update.js');
+const { handoff, restore, validate, prompt, presentationDocuments, restorePresentation } = require('../library_web/update.js');
+const presentation=require('../library_web/presentation-sync.js');
 function storage(initial = {}) {
   const data = { ...initial };
   return { data, getItem: key => data[key] ?? null, setItem: (key, value) => { data[key] = value; }, removeItem: key => { delete data[key]; } };
@@ -107,4 +108,94 @@ test('restoring an empty account layout resets only that account and retains oth
   const pages=JSON.parse(destination.data['blueprint-page-layouts-v1']),workspace=JSON.parse(destination.data['blueprint-workspace-v2']);
   assert.deepEqual(pages.scopes[scope],{pages:{}});assert.deepEqual(pages.scopes[other],{pages:{skills:{active:true}}});
   assert.deepEqual(workspace.scopes[scope].texts,{});assert.equal(workspace.scopes[other].texts.heading,'keep');
+});
+function accountBackup(preferences){return {format:'blueprint-update-handoff',format_version:1,origin:site,account_scope:site+'|owner',preferences};}
+function presentationBackend(initial={}){
+  let revision=Object.keys(initial).length,online=true,beforeWrite=null;
+  const documents=Object.fromEntries(Object.entries(initial).map(([key,data])=>[key,{version:1,data:structuredClone(data)}]));
+  const calls=[];
+  return {documents,calls,setOnline:value=>{online=value;},beforeWrite:value=>{beforeWrite=value;},
+    async api(path,options={}){
+      if(!online)throw Object.assign(new Error('offline'),{status:503});
+      if(options.method==='PATCH'){
+        const body=options.body;calls.push(structuredClone(body));
+        if(beforeWrite){const run=beforeWrite;beforeWrite=null;run(documents);revision++;}
+        if((documents[body.key]?.version||0)!==body.expected_version)throw Object.assign(new Error('conflict'),{status:409});
+        documents[body.key]={version:body.expected_version+1,data:structuredClone(body.data)};revision++;
+        return {version:revision,documents:{[body.key]:structuredClone(documents[body.key])}};
+      }
+      return {version:revision,documents:structuredClone(documents)};
+    }};
+}
+test('restore extracts primary account documents and resets pages absent from a complete page snapshot',()=>{
+  const scope=site+'|owner';
+  const data=accountBackup({
+    'blueprint-workspace-v2':JSON.stringify({version:1,scopes:{[scope]:{version:1,layoutVersion:4,texts:{heading:'Restored'}}}}),
+    'blueprint-workspace-v2.8-backup':JSON.stringify({version:1,scopes:{[scope]:{texts:{heading:'Do not publish this backup'}}}}),
+    'blueprint-page-layouts-v1':JSON.stringify({version:1,pages:{},scopes:{[scope]:{pages:{projects:{cards:{title:{text:'Projects'}}}}}}}),
+    'blueprint-page-layouts-v1-backup':JSON.stringify({version:1,pages:{},scopes:{[scope]:{pages:{agents:{cards:{title:{text:'Historical only'}}}}}}})
+  });
+  const docs=presentationDocuments(data,site,{username:'owner'},{'page:old':{version:1,data:{active:true}},overview:{version:1,data:{texts:{heading:'Newer'}}}});
+  assert.deepEqual(docs.overview,{version:1,layoutVersion:4,texts:{heading:'Restored'}});
+  assert.deepEqual(docs['page:projects'],{cards:{title:{text:'Projects'}}});
+  assert.deepEqual(docs['page:old'],{});assert.equal(docs['page:agents'],undefined);
+  assert.equal(docs.pins,undefined);
+  const emptySnapshot=handoff(site,{account:{username:'owner'}},storage(),'native');
+  assert.deepEqual(presentationDocuments(emptySnapshot,site,{username:'owner'}).pins,{version:1,refs:[]});
+  assert.throws(()=>presentationDocuments(data,site,{username:'staff'}),/同一帳戶/);
+  const historical=accountBackup({'blueprint-page-layouts-v1-backup':data.preferences['blueprint-page-layouts-v1-backup']});
+  assert.deepEqual(presentationDocuments(historical,site,{username:'owner'},{'page:old':{version:1,data:{}}}),{});
+});
+test('restoring account layout updates authoritative server documents before reporting success',async()=>{
+  const backend=presentationBackend({overview:{texts:{heading:'Current'}},'page:extra':{cards:{title:{text:'Extra'}}},pins:{version:1,refs:[{kind:'route',route:'agents'}]}});
+  const local=storage(),sync=presentation.create({api:backend.api,scope:site+'|owner',username:'owner',storage:local,clientId:'restore',pollMs:0,debounceMs:100000});
+  try{
+    await sync.start();
+    const pinKey='blueprint-overview-cards-v1:'+encodeURIComponent(site)+'||owner';
+    const data=accountBackup({'blueprint-workspace-v2':JSON.stringify({version:1,layoutVersion:4,texts:{heading:'Backup heading'}}),'blueprint-page-layouts-v1':null,[pinKey]:null});
+    const result=await restorePresentation(data,site,local,{username:'owner'},sync);
+    assert.equal(result.synced,true);
+    assert.equal(backend.documents.overview.data.texts.heading,'Backup heading');
+    assert.deepEqual(backend.documents['page:extra'].data,{});
+    assert.deepEqual(backend.documents.pins.data,{version:1,refs:[]});
+    assert.ok(Object.keys(local.data).some(key=>key.includes(':before-cloud-restore:')));
+    assert.ok(Object.keys(local.data).some(key=>key.includes(':before-restore:')));
+    assert.ok(!Object.keys(local.data).some(key=>key.includes(':pending-restore:')));
+    assert.ok(backend.calls.every(call=>call.expected_version>=1));
+  }finally{sync.stop();}
+});
+test('offline restore retains its selected backup and pending edits without claiming synchronized success',async()=>{
+  const backend=presentationBackend({overview:{texts:{heading:'Current'}}}),local=storage();
+  const sync=presentation.create({api:backend.api,scope:site+'|owner',storage:local,clientId:'offline',pollMs:0,debounceMs:100000});
+  try{
+    await sync.start();backend.setOnline(false);
+    const data=accountBackup({'blueprint-workspace-v2':JSON.stringify({version:1,layoutVersion:4,texts:{heading:'Offline restore'}})});
+    await assert.rejects(restorePresentation(data,site,local,{username:'owner'},sync),/尚未讀取完整帳戶設定/);
+    assert.equal(backend.documents.overview.data.texts.heading,'Current');
+    assert.equal(sync.get('overview').texts.heading,'Offline restore');
+    assert.ok(Object.keys(local.data).some(key=>key.includes(':pending-restore:')));
+    assert.equal(JSON.parse(local.data['blueprint-workspace-v2']).scopes[site+'|owner'].texts.heading,'Offline restore');
+    backend.setOnline(true);
+    assert.equal((await restorePresentation(data,site,local,{username:'owner'},sync)).synced,true);
+    assert.equal(backend.documents.overview.data.texts.heading,'Offline restore');
+  }finally{sync.stop();}
+});
+test('concurrent same-field changes during restore are preserved as an explicit conflict',async()=>{
+  const backend=presentationBackend({overview:{version:1,layoutVersion:4,texts:{heading:'Current'}}}),local=storage();
+  const sync=presentation.create({api:backend.api,scope:site+'|owner',storage:local,clientId:'conflict',pollMs:0,debounceMs:100000});
+  try{
+    await sync.start();backend.beforeWrite(documents=>{documents.overview={version:2,data:{version:1,layoutVersion:4,texts:{heading:'Other device'}}};});
+    const data=accountBackup({'blueprint-workspace-v2':JSON.stringify({version:1,layoutVersion:4,texts:{heading:'Restored heading'}})});
+    await assert.rejects(restorePresentation(data,site,local,{username:'owner'},sync),/尚未全部同步/);
+    assert.equal(backend.documents.overview.data.texts.heading,'Other device');
+    assert.equal(sync.get('overview').texts.heading,'Restored heading');
+    assert.equal(sync.status().conflicts[0].key,'overview');
+    assert.ok(Object.keys(local.data).some(key=>key.includes(':pending-restore:')));
+  }finally{sync.stop();}
+});
+test('unsupported backends retain local restore and never submit cloud changes',async()=>{
+  const local=storage(),data=accountBackup({'blueprint-workspace-v2':null});let called=false;
+  const result=await restorePresentation(data,site,local,{username:'owner'},{status:()=>({state:'unsupported'}),pull:()=>{called=true;}});
+  assert.deepEqual(result,{synced:false,localOnly:true});assert.equal(called,false);
+  assert.deepEqual(JSON.parse(local.data['blueprint-workspace-v2']).scopes[site+'|owner'].texts,{});
 });

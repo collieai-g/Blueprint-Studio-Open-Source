@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/page-layout.css">
   <script src="/workdays.js" defer></script>
   <script src="/workspace.js" defer></script>
+  <script src="/presentation-sync.js" defer></script>
   <script src="/overview-cards.js" defer></script>
   <script src="/update.js" defer></script>
   <script src="/navigation.js" defer></script>
@@ -61,6 +62,7 @@
     <main id="main" tabindex="-1" aria-busy="true">
       <section id="workspace-startup" class="studio-empty" role="status" aria-live="polite"><p id="workspace-startup-message">正在載入工作台…</p><button id="retry-workspace" class="button secondary" type="button" hidden>重新連接</button></section>
       <p class="workspace-status"><span id="workspace-sync" role="status" aria-live="polite">正在載入資料…</span></p>
+      <div class="presentation-status"><span id="presentation-sync" role="status" aria-live="polite"></span><button id="presentation-retry" class="text-button" type="button" hidden>重試版面同步</button><span id="presentation-conflicts" hidden><button id="presentation-use-remote" class="text-button" type="button">採用另一邊的版面</button><button id="presentation-use-local" class="text-button" type="button">保留本機修改</button></span></div>
       <div class="page-heading" id="view-heading" hidden><div><p class="eyebrow" id="page-eyebrow">YOUR WORKSPACE</p><h1 id="page-title">工作台<span class="title-dot" aria-hidden="true">.</span></h1><p id="page-description">管理公司的日常工作，隨時接續下一步。</p></div><div class="page-date" id="page-date"></div></div>
       <div id="studio-view-tabs" class="studio-tabs" hidden></div>
       <section id="studio-panel" class="studio-panel" hidden aria-label="公司工作內容"></section>
@@ -72,7 +74,7 @@
           <div class="layout-presets"><label>選擇排版<select id="board-preset"><option value="balanced">整齊排列</option><option value="focus">工作優先</option><option value="compact">簡潔排列</option></select></label><button id="apply-board-preset" class="button secondary small" type="button">套用排版</button></div>
           <div class="layout-selection"><label>調整項目<select id="board-selected"></select></label><label>寬度<input id="board-width" type="number" required min="1" max="96" aria-label="寬度（格）"></label><span class="layout-times" aria-hidden="true">×</span><label>高度<input id="board-height" type="number" required min="1" max="48" aria-label="高度（格）"></label><span>格</span><button id="apply-board-size" class="button secondary small" type="button">設定大小</button><span id="text-size-options"><button class="button quiet small" type="button" data-text-size="2">兩格</button><button class="button quiet small" type="button" data-text-size="4">四格</button></span><label>移到頁面<select id="board-page"></select></label></div>
           <p id="board-help" class="board-help">拖動項目來移動，拉右下角來改變大小。每次調整一格。文字沒有底框；邊線只在調整時顯示。也可選取移動按鈕，用方向鍵調整。</p>
-          <p class="board-help">排版會保存在這個瀏覽器。縮小項目只會改變顯示，不會刪除內容。</p>
+          <p class="board-help">支援同步的後台會保存同一帳戶的排版；同步狀態顯示在頁面上方。縮小項目只會改變顯示。</p>
         </div>
         <p id="board-announcement" class="sr-only" role="status" aria-live="polite"></p>
         <div id="workspace-board" class="workspace-board" aria-label="可調整的工作台版面">
@@ -169,7 +171,7 @@
     <div class="dialog-heading"><h2 id="settings-heading">設定</h2><button class="icon-button" type="button" data-close aria-label="關閉設定">×</button></div>
     <div class="settings-shortcuts"><button id="studio-account" class="button secondary small" type="button" hidden><span data-icon="settings"></span>帳戶資料</button><button id="help-button" class="button secondary small" type="button"><span data-icon="help"></span>使用說明</button></div>
     <div class="settings-company" data-admin-only hidden><div><h3>公司資料</h3><p id="settings-company-summary" class="muted">設定公司名稱、行業與目標。</p></div><button id="edit-company-profile" class="button secondary small" type="button">修改資料</button></div>
-    <section class="settings-section"><h3>此瀏覽器的顯示</h3><p class="muted">以下選擇只保存在目前瀏覽器，不會更改其他人的畫面。</p>
+    <section class="settings-section"><h3>顯示偏好</h3><p class="muted">檔案檢視與排序保存在此瀏覽器；個人版面按頁面上方的同步狀態保存。</p>
       <label class="field">輸入方式<select id="settings-entry-mode"><option value="ai">AI 協作（收起重複填表入口）</option><option value="manual">顯示手動輸入入口</option></select><span class="muted">搜尋、上載、勾選待辦及必要修改會保留。</span></label>
       <label class="field">資料顯示<select id="settings-layout"><option value="grid">卡片顯示</option><option value="list">清單顯示</option></select></label>
       <label class="field">預設排序<select id="settings-sort"><option value="updated">最近更新</option><option value="created">最近加入</option><option value="title">名稱排序</option></select></label>
@@ -181,7 +183,7 @@
   <dialog id="help-dialog" aria-labelledby="help-heading">
     <div class="dialog-heading"><h2 id="help-heading">使用說明</h2><button class="icon-button" type="button" data-close aria-label="關閉使用說明">×</button></div>
     <div class="help-section"><h3>工作與資料</h3><p>「工作」保存項目、待辦與每日紀錄；「資料」整理文件、收藏、主題及封存內容。你可在左側向 Codex 說明要求，在右側核對保存結果。</p></div>
-    <div class="help-section"><h3>調整每頁版面</h3><p>按右上方「調整版面」，選擇顯示內容、修改標題或說明，再移動、調整大小或收合卡片。可將工作和 AI 卡片放到總覽；版面設定保存在目前瀏覽器，不會修改原有公司資料。</p></div>
+    <div class="help-section"><h3>調整每頁版面</h3><p>按右上方「調整版面」，選擇顯示內容、修改標題或說明，再移動、調整大小或收合卡片。可將工作和 AI 卡片放到總覽。支援同步的後台會保存同一帳戶的版面，其他分頁和裝置會自動接收；編輯期間保留手上的修改，衝突時由你選擇。舊後台會明確顯示僅在本機保存。</p></div>
     <div class="help-section"><h3>查看最新資料</h3><p>在工作台內保存後會更新相關內容；外部保存後，從上方「操作」選擇「更新資料」。閒置或切回視窗不會自動重建畫面。</p></div>
     <div class="help-section"><h3>常用操作</h3><p>用 Ctrl／⌘ K 搜尋資料，按 Esc 關閉視窗。搜尋、更新資料、手動上載、收藏及匯入工作都在上方「操作」內。</p><p><a class="button secondary small" href="https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noopener noreferrer">閱讀完整使用手冊<span aria-hidden="true"> ↗</span></a></p></div>
   </dialog>
@@ -199,12 +201,12 @@
     <section id="native-backup" hidden>
       <p id="native-backup-status" class="muted" role="status"></p>
       <div class="actions"><button id="native-backup-create" class="button secondary" type="button">備份公司資料</button><a id="native-backup-download" class="button secondary" hidden>下載完整私人備份</a></div>
-      <p class="muted">完整備份包含登入設定及原始附件，請保存到自己的私人位置。瀏覽器排版請另外使用下方「下載接續資料」。</p>
+      <p class="muted">完整備份包含登入設定、原始附件及已同步的帳戶版面，請私人保存。此瀏覽器的設定亦可使用下方「下載接續資料」另存。</p>
     </section>
     <div class="actions"><button id="update-copy" class="button primary" type="button" disabled>複製更新指令</button><button id="update-download" class="button secondary" type="button" disabled>下載接續資料</button></div>
     <details class="instruction-details"><summary>查看交給 AI 的內容</summary><textarea id="update-prompt" rows="8" readonly aria-label="更新工作台指令"></textarea></details>
     <p class="muted">AI 會核對版本、準備完整備份、更新原網站並實測。這裏保存的是瀏覽器排版；下載或複製指令並不表示網站已更新。</p>
-    <details><summary>還原之前的排版</summary><p class="muted">只還原同一網站的瀏覽器排版與顯示偏好。還原前會保留目前排版，伺服器的工作資料不受影響。</p><button id="update-restore-local" class="button secondary" type="button">還原此瀏覽器保留的排版</button><label class="field">或選擇接續資料<input id="update-backup-file" type="file" accept="application/json,.json"></label><button id="update-restore" class="button secondary" type="button">還原排版並重新開啟</button></details>
+    <details><summary>還原之前的排版</summary><p class="muted">還原同一網站、同一帳戶的排版與顯示偏好。相容後台會將還原排版同步到其他裝置；還原前會保留目前排版，工作紀錄不受影響。</p><button id="update-restore-local" class="button secondary" type="button">還原此瀏覽器保留的排版</button><label class="field">或選擇接續資料<input id="update-backup-file" type="file" accept="application/json,.json"></label><button id="update-restore" class="button secondary" type="button">還原排版並重新開啟</button></details>
     <p id="update-error" class="form-error" role="alert" hidden></p>
   </dialog>
 </body>

@@ -24,6 +24,22 @@ def handle(handler, method, path, query):
     if path=='/api/studio/preferences':
         if method=='GET':return send(studio.preferences())
         if method=='PATCH':return send(studio.save_preferences(body()))
+    if path=='/api/studio/presentation':
+        expected_account=handler.headers.get('X-Blueprint-Account')
+        # Browser Headers values must be ASCII. Match encodeURIComponent rather
+        # than decoding caller input; the header is a guard, never an identity.
+        if expected_account is not None and expected_account!=quote(studio.actor,safe="~()*!.'-_"):
+            raise LibraryError('登入帳戶已改變，請重新載入工作台後再同步版面。',403)
+        if set(query)-{'key','since_version'} or any(len(values)!=1 for values in query.values()):
+            raise LibraryError('版面查詢參數不正確。')
+        if method=='GET':
+            key=query.get('key',[None])[0]
+            since=query.get('since_version',[None])[0]
+            if since is not None:
+                if not re.fullmatch(r'[0-9]{1,16}',since):raise LibraryError('版面版本需要有效的非負整數。')
+                since=int(since)
+            return send(studio.presentation(key=key,since_version=since))
+        if method=='PATCH':return send(studio.save_presentation(body()))
     if path=='/api/studio/users':
         if method=='GET':return send({'users':studio.users()})
         if method=='POST':return send({'user':studio.save_user(body())})

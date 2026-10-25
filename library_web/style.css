@@ -755,3 +755,7 @@ input, textarea, select { border-color: #dfe4e8; }
 
 .short-widget .widget-content { padding:2px 0; }
 .short-widget .widget-count { margin:0; font-size:24px; line-height:1; }
+.presentation-status { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; color:var(--muted,#687078); font-size:12px; padding:0 0 8px; }
+.presentation-status:has(#presentation-sync:empty) { display:none; }
+.presentation-status [data-state=conflict],.presentation-status [data-state=offline],.presentation-status [data-state=error] { color:#83531b; }
+.presentation-status button { font-size:12px; min-height:32px; }
