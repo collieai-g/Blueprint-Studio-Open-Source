@@ -4,6 +4,8 @@
 
 ## 開發步驟
 
+本機修改、合成測試及回饋正確倉庫的步驟見[開發指南](../../docs/DEVELOPMENT.md)；公開前依[私隱規則](../../docs/PRIVACY.md)核對內容，實際接駁依[驗收規則](../../docs/DEVELOPMENT_ACCEPTANCE.md)逐層驗證。
+
 1. 按[Agent 規格 v1](../../docs/AGENT_CONTRACT.md)修改 `agent.json`。`id` 保持穩定，套件更新時增加 `version`。
 2. 定義每個操作的輸入與規則。畫面由藍圖使用共用控制項產生；不要加入網頁 script 或模型憑證。
 3. 提交到自己的倉庫，用 `git rev-parse HEAD` 取得完整 commit SHA；審核這個版本的 manifest。

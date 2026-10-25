@@ -189,6 +189,8 @@ Codex 及其他相容 AI 能做甚麼，取決於目前客戶端實際提供的�
 
 ## 文件與參與
 
+想把測試中發現的問題修正到開源項目，先讀[參與貢獻](CONTRIBUTING.md)與[開發流程](docs/DEVELOPMENT.md)。以合成資料重現、修改對應元件並提交可審閱 PR；私人工作台內容另存。相關[驗收規則](docs/DEVELOPMENT_ACCEPTANCE.md)、[私隱規則](docs/PRIVACY.md)與[分批計劃](docs/DEVELOPMENT_PLAN.md)說明交付範圍。
+
 | 你想了解 | 文件 |
 | --- | --- |
 | 開啟左右介面，完成第一項日常工作 | [使用指南](docs/USER_GUIDE.md) |
