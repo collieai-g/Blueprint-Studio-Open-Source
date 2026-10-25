@@ -1,5 +1,17 @@
 # Blueprint Studio Open Source
 
+For reusable source changes, read CONTRIBUTING.md, docs/DEVELOPMENT.md,
+docs/DEVELOPMENT_ACCEPTANCE.md and docs/PRIVACY.md. Follow the existing
+source_release route in docs/INSTALL_UPDATE_FLOW.md: identify the responsible
+host, Agent, adapter or configuration before editing; use synthetic reproduction
+data, pin each relevant source and record actual checks and untested limits.
+Source-only work delivers a reviewable PR without private workbench access,
+business writes, a new installation or deployment. Reuse the user's selected
+scope. Keep private sources, runtime data, settings, credentials, backups and
+progress out of public contributions; runtime data stays outside every source
+repository. docs/DEVELOPMENT_PLAN.md separates this documentation batch from
+future performance, diagnostics and local-development capabilities.
+
 V2.9 uses docs/INSTALL_UPDATE_FLOW.md as the shared lifecycle definition. Owner-only
 operation records, backup coverage and client-copy attestations live in the private
 maintenance directory, outside company business coverage and Git. Retain legacy

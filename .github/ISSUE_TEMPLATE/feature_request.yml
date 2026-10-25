@@ -1,0 +1,73 @@
+name: 功能建議
+description: 說明使用情境、範圍及可用合成資料驗收的結果。
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        這是公開建議，不會自動建立服務、部署私人工作台或接通 Agent。
+        請讀 [貢獻指南](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/CONTRIBUTING.md)、[開發流程](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/DEVELOPMENT.md)、[驗收規則](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/DEVELOPMENT_ACCEPTANCE.md)及[私隱規則](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/docs/PRIVACY.md)。
+        用合成例子描述需求；不要公開真實工作台網址／ID、私人路徑、原始日誌／截圖／本文、公司附件、備份或憑證。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用情境與問題
+      description: 誰在甚麼情況下需要完成甚麼工作？以虛構角色及資料說明。
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: 建議改動所屬層
+      options:
+        - "unknown（需要共同定位）"
+        - "Blueprint 共用程式／HTTP API"
+        - "工作台 UI／排版同步"
+        - "獨立 Agent／套件合約"
+        - "平台 adapter／AI 客戶端接駁"
+        - "文件／開發與驗收流程"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建議行為與範圍
+      description: 說明預期行為、現有替代方法，以及此次涉及與未涉及的部分。
+    validations:
+      required: true
+  - type: dropdown
+    id: source_visibility
+    attributes:
+      label: 參考來源狀態
+      options:
+        - "不涉及來源"
+        - "公開來源（可於下欄填寫）"
+        - "私人來源，不公開"
+        - "unknown（尚未核實）"
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: 公開參考來源（可選）
+      description: 只填可公開的 Blueprint／Agent／adapter 名稱、版本、公開網址及完整 commit。私人來源無需提供位置。
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 合成驗收場景
+      description: 寫出合成輸入、操作、可觀察結果及檢查方式。分開來源測試、實際部署、AI 寫入／讀回；尚未執行寫「未測」，不適用寫原因。
+      placeholder: |
+        合成場景與輸入：
+        預期結果：
+        檢查方式與目前狀態：
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 公開前私隱核對
+      options:
+        - label: 我已用可公開資訊與合成例子描述需求，私人來源或未知項已明確標示。
+          required: true
+        - label: 我未附上正式工作台資料、私人來源位置、原始證據、備份、聊天或憑證。
+          required: true

@@ -14,6 +14,7 @@
 
 | 你目前的情況 | 交給 AI 的入口 | 完成標誌 |
 | --- | --- | --- |
+| 修正通用程式、文件或開發流程 | [參與貢獻](CONTRIBUTING.md) · [開發指南](docs/DEVELOPMENT.md) | 按 source_release 完成必要檢查及可審閱 PR；不建立或部署私人工作台 |
 | 已安裝，想開始日常管理 | [使用指南](docs/USER_GUIDE.md) | 左側說明要求，右側核對同一份工作與成果 |
 | 已有工作台，想接通目前 AI | [AI_CONNECT.md](AI_CONNECT.md) | 左側核對能力、登入、工具及真實保存與讀回 |
 | 第一次安裝 | [INSTALL_AI.txt](INSTALL_AI.txt) | 原版工作台可登入、資料可保存、AI 能寫入與讀回，完成第一項工作 |

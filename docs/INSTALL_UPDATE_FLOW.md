@@ -2,6 +2,8 @@
 
 這是首次安裝、原站更新與開源發行共用的流程定義。文字入口只選擇任務，平台細節沿用[安裝指南](INSTALL.md)、[更新路線](UPDATE_ROUTE.md)及[原生生命週期](NATIVE_LIFECYCLE.md)。先讀已保存的選擇和證據；不要重新詢問已有答案。
 
+開源來源修改的重現、元件分流及 PR 步驟見[開發指南](DEVELOPMENT.md)；相關[驗收](DEVELOPMENT_ACCEPTANCE.md)與[私隱規則](PRIVACY.md)沿用本頁的 `source_release` 任務，不另建安裝流程。
+
 ## 先按任務減少工作
 
 | 任務 | 必須完成 | 不需要執行 |

@@ -188,6 +188,8 @@ This is a historical V2.4 screenshot, not the current four-entry interface. [His
 
 ## Documentation and contributions
 
+To turn a test finding into an upstream fix, start with [Contributing](CONTRIBUTING.md) and the [development workflow](docs/DEVELOPMENT.md). Reproduce with synthetic data, update the responsible component and open a reviewable PR. Keep private workbench content separate. The [acceptance rules](docs/DEVELOPMENT_ACCEPTANCE.md), [privacy rules](docs/PRIVACY.md) and [phased plan](docs/DEVELOPMENT_PLAN.md) define the scope; these detailed guides are in Traditional Chinese.
+
 | You want to learn about | Read |
 | --- | --- |
 | Two panels and your first daily task | [User guide](docs/USER_GUIDE.md) |
