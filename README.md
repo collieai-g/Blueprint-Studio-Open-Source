@@ -193,6 +193,8 @@ Codex 及其他相容 AI 能做甚麼，取決於目前客戶端實際提供的�
 
 藍圖以 Codex 為主要協作環境，將開發集中在公司的材料、專業做法、工作介面與成果。方向見[專用工作台設計與開發指示](docs/HARNESS_ENGINEERING.md)及[企業工作台參考](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/research/codex-workbench-reference.md)；新增自動檢查與測試 Harness 保留於[下一版候選](docs/HARNESS_VALIDATION_NEXT.md)。
 
+下一輪公司日常介面的[增補與精簡方案](docs/COMPANY_INTERFACE_PLAN.md)盤點現有內容，提出資料收集整合、月曆與個人打卡的設計及開發次序，尚未改動正式介面。
+
 | 你想了解 | 文件 |
 | --- | --- |
 | 開啟左右介面，完成第一項日常工作 | [使用指南](docs/USER_GUIDE.md) |
