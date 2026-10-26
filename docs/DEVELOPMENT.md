@@ -4,7 +4,7 @@
 
 [驗收規則](DEVELOPMENT_ACCEPTANCE.md) · [私隱規則](PRIVACY.md) · [分批計劃](DEVELOPMENT_PLAN.md)
 
-設計左右協作、右側介面或不同 AI 接駁時，參考 [Harness engineering 設計](HARNESS_ENGINEERING.md)，先定義完整工作場景，再選受影響的合約及檢查。該設計分開標示現有能力與後續候選，不增加未實作的執行器或部署要求。
+產品與介面提案先讀[專用工作台設計與開發指示](HARNESS_ENGINEERING.md)，以 Codex 與藍圖共同完成的具體工作定義材料、操作及成果。本版聚焦產品邏輯及服務形成；新增自動檢查、測試與 AI 行為評估 Harness 於[下一版候選](HARNESS_VALIDATION_NEXT.md)另行處理，個別改動仍沿用本頁既有規範。
 
 這份指南說明如何在本機修改 Blueprint 或獨立 Agent，再把可共用的修正交回正確的程式倉庫。先用合成資料重現問題，保留來源版本與測試結果，再提出可審閱的 Pull Request（PR，合併請求）。
 

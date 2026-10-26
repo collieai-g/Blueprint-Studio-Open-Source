@@ -1,6 +1,8 @@
 # 藍圖 Harness engineering 研究依據
 
-[設計與開發次序](../docs/HARNESS_ENGINEERING.md) · [左右協作](../docs/LEFT_RIGHT_WORKFLOW.md) · [運作分工](../docs/OPERATING_MODEL.md)
+[下一版工程候選](../docs/HARNESS_VALIDATION_NEXT.md) · [本版產品指示](../docs/HARNESS_ENGINEERING.md) · [左右協作](../docs/LEFT_RIGHT_WORKFLOW.md) · [運作分工](../docs/OPERATING_MODEL.md)
+
+本筆記保留自動檢查、測試與 AI 行為評估的研究，於下一版再處理；目前先完成 Codex 專用工作台的產品邏輯、介面與服務形成設計。
 
 藍圖需要研究的工程主體，是人、當前 AI 客戶端、選定材料、正式操作與私人持久成果之間的協作。以下比較官方原始文件及藍圖現有實作，選取可支援這個運作方式的原則。外部範例不是藍圖的依賴，也不代表已安裝其 SDK、模型或 tracing 服務。
 
