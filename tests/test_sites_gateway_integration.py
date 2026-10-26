@@ -16,6 +16,7 @@ from blueprint_library.server import initialize_library, make_server
 from blueprint_library.store import Store
 from blueprint_library.studio import Studio
 from blueprint_library.agents import Agents
+from blueprint_library.calendar import Calendar
 from tools.build_sites_gateway import build
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +57,10 @@ class SitesGatewayIntegrationTests(unittest.TestCase):
                 self.assertEqual(restored_job['state'], 'completed')
                 self.assertEqual(restored_job['result_source'], 'Gateway integration fixture')
                 self.assertEqual(restored_job['source_refs'], [{'kind': 'item', 'id': evidence['item_id']}])
+                calendar = Calendar(restored, {'username': 'owner', 'role': 'owner'})
+                restored_entry = calendar.get_entry(evidence['calendar_entry_id'])['entry']
+                self.assertEqual(restored_entry['title'], '跨入口月曆待辦')
+                self.assertTrue(restored_entry['done'])
             finally:
                 server.shutdown(); server.server_close(); thread.join()
             # A new process/adapter version can use the same data and credentials.

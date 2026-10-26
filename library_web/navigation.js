@@ -8,7 +8,8 @@
       ['projects','項目','checklist','查看階段、里程碑及相關成果。','project'],
       ['inbox','收件匣','inbox','集中處理新收到的內容。','inbox'],
       ['overview/todos','待辦','checklist','查看及完成接下來要做的事。'],
-      ['overview/workdays','工作紀錄','calendar','找回每天的成果、決定和下一步。']]},
+      ['overview/workdays','工作紀錄','calendar','找回每天的成果、決定和下一步。'],
+      ['calendar','日曆','calendar','按日期和員工查看出勤、工作紀錄與待辦。']]},
     {id:'specialists',label:'AI',icon:'chat',route:'skills',items:[
       ['skills','Skill 與交接','document','準備專業指引與指定素材，交給目前使用的 AI。'],
       ['agents','Agent 工作台','automation','管理獨立 Agent，將工作交給目前使用的 AI。'],

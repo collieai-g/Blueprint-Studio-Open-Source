@@ -752,7 +752,7 @@
   }); }
   $('retry-workspace').addEventListener('click', () => location.reload());
   init().then(async () => {
-    if (!window.BlueprintStudio || !window.BlueprintWorkspace || !window.BlueprintNavigation || !window.BlueprintSkills || !window.BlueprintAgents || !window.BlueprintIntegrations || !window.BlueprintPageLayout || !window.BlueprintOverviewCards) throw new Error('工作台介面未能完整載入，請重新連接。');
+    if (!window.BlueprintStudio || !window.BlueprintWorkspace || !window.BlueprintNavigation || !window.BlueprintSkills || !window.BlueprintAgents || !window.BlueprintIntegrations || !window.BlueprintCalendar || !window.BlueprintPageLayout || !window.BlueprintOverviewCards) throw new Error('工作台介面未能完整載入，請重新連接。');
     await window.BlueprintStudio.init({api, notice, icon, openDialog, closeSidebar, setView, openDetail, openAdd, openCommand,
       isBusy: workspaceBusy, hideLegacy: () => { state.view = 'studio'; clearSelection(); workdaysUI?.setView('studio'); }
     });

@@ -38,7 +38,8 @@ def build(output):
         'const createNativeGateway = (() => {\n' + sources[2].replace('export ', '') + '\nreturn createNativeGateway; })();\n'
         'const tools = ' + json.dumps(json.loads((ROOT / 'integrations/mcp/tools.json').read_text())['tools'], ensure_ascii=False) + ';\n'
         'const maintenanceTools = ' + json.dumps(json.loads((ROOT / 'integrations/mcp/maintenance-tools.json').read_text())['tools'], ensure_ascii=False) + ';\n'
-        'export default { fetch: createNativeGateway({ tools, maintenanceTools }) };\n'
+        'const calendarTools = ' + json.dumps(json.loads((ROOT / 'integrations/mcp/calendar-tools.json').read_text())['tools'], ensure_ascii=False) + ';\n'
+        'export default { fetch: createNativeGateway({ tools, maintenanceTools, calendarTools }) };\n'
     )
     output.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     with output.open('x', encoding='utf-8') as stream:

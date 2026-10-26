@@ -64,11 +64,26 @@ try:
         assert response.read() == (Path(__file__).resolve().parents[1] / 'AI_CONNECT.md').read_bytes()
     assert docker('exec', name, 'id', '-u') == '10001'
     bridge = Bridge(remote.url)
-    assert len(bridge.tools()) == 48
+    assert len(bridge.tools()) == 52
     created = bridge.call('blueprint_save_text_file', {'name':'retained.txt', 'text':'Original attachment after restart'})
     assert 'item' in created, tuple(created)
     item = created['item']
     before = bridge.call('blueprint_get_item', {'id': item['id']})
+    calendar = bridge.call('blueprint_calendar_meta', {})
+    assert calendar['timezone'] == 'Asia/Hong_Kong'
+    employee = remote._request('POST', '/api/studio/calendar/employees', payload={
+        'name': 'Container calendar owner', 'username': test_env['BLUEPRINT_ADMIN_USERNAME'],
+        'employment_type': 'full_time', 'request_key': 'container-employee'})['employee']
+    attendance = remote._request('POST', '/api/studio/calendar/attendance', payload={
+        'action': 'clock_in', 'request_key': 'container-clock-in'})['attendance']
+    attendance = remote._request('POST', '/api/studio/calendar/attendance', payload={
+        'action': 'clock_out', 'attendance_id': attendance['id'],
+        'expected_version': attendance['version'], 'request_key': 'container-clock-out'})['attendance']
+    entry_payload = {'kind': 'work_log', 'title': 'Container persistent work log',
+                     'date': calendar['today'], 'employee_id': employee['id'],
+                     'minutes': 10, 'request_key': 'container-calendar-entry'}
+    calendar_entry = bridge.call('blueprint_calendar_entry_create', entry_payload)['entry']
+    assert remote._request('GET', '/api/studio/calendar/entries/' + calendar_entry['id'])['entry'] == calendar_entry
     with tempfile.TemporaryDirectory(prefix='blueprint-container-acceptance-') as temporary:
         receipt = verify_installation(remote.url, Path(temporary) / 'download')
         assert receipt['authenticated_restore']
@@ -77,6 +92,10 @@ try:
     docker('start', name)
     ready(remote)
     assert bridge.call('blueprint_get_item', {'id': item['id']}) == before
+    assert remote._request('GET', '/api/studio/calendar/attendance/' + attendance['id'])['attendance'] == attendance
+    assert bridge.call('blueprint_calendar_entry_create', entry_payload)['entry'] == calendar_entry
+    month = bridge.call('blueprint_calendar_month', {'month': calendar['today'][:7]})
+    assert calendar_entry['id'] in [entry['id'] for day in month['days'] for entry in day['work_logs']]
     assert bridge.call('blueprint_backup_status', {})['last_backup']['id'] == old_backup
     request = Request(remote.url + '/api/files/' + item['id'], headers={'Authorization': remote._authorization()})
     with build_opener(_NoRedirect()).open(request, timeout=10) as response:
@@ -84,7 +103,7 @@ try:
     print(json.dumps({'container_build':True, 'non_root':True, 'fresh_initialization':True,
                       'complete_download_authenticated_restore':True, 'same_url_volume_restart':True,
                       'original_id_attachment_login_preserved':True, 'canonical_install_instructions':True,
-                      'native_tools':48}))
+                      'native_tools':52, 'calendar_attendance_worklog_and_retry_persisted':True}))
 except Exception:
     print(docker('logs', name))
     raise

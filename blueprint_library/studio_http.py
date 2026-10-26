@@ -13,6 +13,9 @@ from .store import LibraryError
 def handle(handler, method, path, query):
     if not path.startswith('/api/studio/'):
         return False
+    from .calendar_http import handle as calendar_route
+    if calendar_route(handler, method, path, query):
+        return True
     from .agents_http import handle as agent_route
     if agent_route(handler, method, path, query):
         return True

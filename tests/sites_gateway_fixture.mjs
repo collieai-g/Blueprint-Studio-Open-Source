@@ -40,7 +40,19 @@ assert.equal(info.deployment_mode, 'sites_native');
 assert.equal(info.maintenance.supported, true);
 const page = await request('/');
 const pageSha = createHash('sha256').update(Buffer.from(await page.arrayBuffer())).digest('hex');
-assert.equal((await mcp('tools/list', {})).tools.length, 48);
+assert.equal((await mcp('tools/list', {})).tools.length, 52);
+await tool('calendar_meta');
+const calendarArgs = { kind: 'todo', title: '跨入口月曆待辦', date: '2026-10-26', employee_id: '',
+  request_key: 'gateway-calendar-synthetic-1' };
+const calendarCreated = await tool('calendar_entry_create', calendarArgs);
+assert.equal((await tool('calendar_entry_create', calendarArgs)).entry.id, calendarCreated.entry.id);
+const calendarMonth = await tool('calendar_month', { month: '2026-10' });
+assert.equal(calendarMonth.days.flatMap(day => day.todos).filter(entry => entry.id === calendarCreated.entry.id).length, 1);
+const calendarSaved = await tool('calendar_entry_update', { id: calendarCreated.entry.id,
+  expected_version: calendarCreated.entry.version, done: true });
+assert.equal((await api('/api/studio/calendar/entries/' + calendarCreated.entry.id)).entry.version, calendarSaved.entry.version);
+assert.equal((await tool('calendar_month', { month: '2026-10' })).days
+  .flatMap(day => day.todos).find(entry => entry.id === calendarCreated.entry.id).done, true);
 const saved = await tool('save_bookmark', { title: '跨入口資料', url: 'https://example.com/saved' });
 assert.equal((await api('/api/items/' + saved.item.id)).item.title, '跨入口資料');
 const uploaded = await api('/api/files', 'POST', { name: 'retain.txt', content_base64: Buffer.from('original attachment').toString('base64') });
@@ -88,5 +100,6 @@ const bytes = Buffer.from(await response.arrayBuffer());
 await writeFile(config.archive, bytes, { flag: 'wx', mode: 0o600 });
 console.log(JSON.stringify({ item_id: saved.item.id, file_id: uploaded.item.id,
   agent_id: connected.id, agent_job_id: completed.id,
+  calendar_entry_id: calendarSaved.entry.id,
   workday_id: evidence.workday_id, page_sha256: pageSha,
   archive_sha256: createHash('sha256').update(bytes).digest('hex') }));

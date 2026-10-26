@@ -186,7 +186,7 @@ class OperationHTTPTests(unittest.TestCase):
             payload = request(); payload['changes_json'] = json.dumps(payload.pop('changes'))
             saved = bridge.call('blueprint_operation_write', payload)
             self.assertEqual(bridge.call('blueprint_operation_read', {'id': 'synthetic-source-release'}), saved)
-            self.assertEqual(len(bridge.tools()), 48)
+            self.assertEqual(len(bridge.tools()), 52)
             readonly = {item['name'] for item in Bridge(bridge.remote.url, read_only=True).tools()}
             self.assertIn('blueprint_backup_artifact', readonly)
             self.assertNotIn('blueprint_backup_private_copy', readonly)

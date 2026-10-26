@@ -126,7 +126,7 @@ def main():
 
                 page.locator('#studio-navigation [data-group=work]').click()
                 page.wait_for_selector('#studio-panel h1:text-is("項目")')
-                assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['項目','收件匣','待辦','工作紀錄']
+                assert page.locator('#studio-section-navigation .studio-section-link').all_text_contents()==['項目','收件匣','待辦','工作紀錄','日曆']
                 assert page.get_by_role('button',name='整理新季度網站',exact=True).is_visible()
                 page.locator('#studio-navigation [data-group=specialists]').click()
                 page.wait_for_selector('#skill-workspace[data-skills-ready=true]')

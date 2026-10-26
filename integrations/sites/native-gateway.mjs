@@ -10,7 +10,7 @@ const JSON_LIMIT = 512 * 1024;
 const FILE_LIMIT = Math.floor(20 * 1024 * 1024 * 4 / 3) + 128 * 1024;
 const ASSETS = new Set(['/', '/index.html', '/AI_CONNECT.md', '/app.js', '/workdays.js', '/workspace.js', '/presentation-sync.js', '/page-layout.js', '/page-layout.css', '/overview-cards.js',
   '/brand.svg', '/style.css', '/connection.js', '/update.js', '/connection-guide.json',
-  '/studio.js', '/studio.css', '/agents.js', '/agents.css', '/integrations.js', '/integrations.css', '/skills.js', '/skills.css', '/navigation.js', '/manifest.webmanifest', '/service-worker.js']);
+  '/studio.js', '/studio.css', '/agents.js', '/agents.css', '/integrations.js', '/integrations.css', '/calendar.js', '/calendar.css', '/skills.js', '/skills.css', '/navigation.js', '/manifest.webmanifest', '/service-worker.js']);
 const failure = (status, message) => { throw Object.assign(new Error(message), { status, safe: true }); };
 const jsonResponse = (value, status = 200) => new Response(JSON.stringify(value), {
   status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store',
@@ -85,7 +85,7 @@ function guardOrigin(request, origin) {
 }
 
 /** fetchImpl is injected only for tests; runtime destinations come from secrets. */
-export function createNativeGateway({ tools, maintenanceTools, fetchImpl = fetch }) {
+export function createNativeGateway({ tools, maintenanceTools, calendarTools = [], fetchImpl = fetch }) {
   return async function handle(request, env) {
     try {
       const url = new URL(request.url), site = httpsOrigin(env.BLUEPRINT_SITE_ORIGIN);
@@ -181,7 +181,7 @@ export function createNativeGateway({ tools, maintenanceTools, fetchImpl = fetch
         // Bound before passing to the shared parser; it must not buffer an unlimited body.
         const body = await limitedBody(request, JSON_LIMIT);
         const bounded = new Request(request.url, { method: 'POST', headers: request.headers, body });
-        const mcp = createMcpHandler({ tools: [...tools, ...maintenanceTools],
+        const mcp = createMcpHandler({ tools: [...tools, ...maintenanceTools, ...calendarTools],
           version: GATEWAY_VERSION, readOnly: account.read_only === true,
           authorize: () => {}, // Identity, account mapping and contract checked above for this request.
           dispatch: proxy });

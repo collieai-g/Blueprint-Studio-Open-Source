@@ -493,7 +493,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 self._headers(200, "text/markdown; charset=utf-8", len(data))
                 self.wfile.write(data)
                 return
-            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/presentation-sync.js", "/page-layout.js", "/page-layout.css", "/overview-cards.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/integrations.js", "/integrations.css", "/skills.js", "/skills.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/presentation-sync.js", "/page-layout.js", "/page-layout.css", "/overview-cards.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/integrations.js", "/integrations.css", "/calendar.js", "/calendar.css", "/skills.js", "/skills.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()

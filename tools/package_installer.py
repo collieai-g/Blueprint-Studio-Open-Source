@@ -31,6 +31,8 @@ REQUIRED = {'docs/INSTALL_UPDATE_FLOW.md', 'docs/LIFECYCLE_API.md', 'tools/lifec
             'templates/agent/agent.json', 'docs/OPERATING_MODEL.md',
             'blueprint_library/integrations.py', 'blueprint_library/integrations_http.py',
             'library_web/integrations.js', 'library_web/integrations.css',
+            'blueprint_library/calendar.py', 'blueprint_library/calendar_http.py', 'blueprint_library/calendar_sources.py',
+            'library_web/calendar.js', 'library_web/calendar.css', 'docs/COMPANY_CALENDAR.md', 'integrations/mcp/calendar-tools.json',
             'library_web/page-layout.js', 'library_web/page-layout.css', 'library_web/overview-cards.js', 'library_web/presentation-sync.js',
             'contracts/integration-v1/openapi.json', 'contracts/integration-v1/README.md',
             'contracts/integration-v1/SHA256SUMS',

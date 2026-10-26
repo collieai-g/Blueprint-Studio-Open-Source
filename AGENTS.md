@@ -12,6 +12,19 @@ progress out of public contributions; runtime data stays outside every source
 repository. docs/DEVELOPMENT_PLAN.md separates this documentation batch from
 future performance, diagnostics and local-development capabilities.
 
+V2.10 adds the company calendar under Work, with additive schema 8 and the
+blueprint-calendar/1 native contract. Read docs/COMPANY_CALENDAR.md before changing
+it. Employee profiles and employment types do not grant login permissions.
+Attendance and employee logs are subject scoped; administrators may manage them,
+members only their own. Clock actions target the authenticated linked employee,
+use server time and persistent retry keys, and corrections preserve audit history.
+Legacy deadlines retain their source IDs and ACL; never infer staff identity from
+free-text owners or workday creators. Keep company timezone explicit, query the
+complete date range, and preserve drafts during refresh and layout changes.
+Pure Sites requires its own authenticated persistent adapter before declaring
+company_calendar. The native MCP extension adds four calendar read/entry tools;
+clocking remains an explicit personal action.
+
 For product direction and interface design, read docs/HARNESS_ENGINEERING.md.
 Develop Blueprint as a company workbench that complements the active Codex
 environment: focus on materials, professional workflows, usable interfaces and
@@ -128,7 +141,7 @@ backend owns company data, attachments and backups. Never replace an existing D1
 Site with this gateway as an implicit migration. Keep per-user private account
 mapping, backend role checks, the authenticated API contract probe and no-redirect
 credential boundary. Native and gateway versions are independent. This path has
-48 tools and no D1/R2 company-data backup dependency; it still requires real host,
+52 tools and no D1/R2 company-data backup dependency; it still requires real host,
 platform publication, backup/restore and live client acceptance. Consult
 docs/AGENT_ROADMAP.md and docs/AGENT_CONTRACT.md for the shared Agent workbench.
 V2.6 adds pinned declarative Agent packages and persistent jobs handled by the
@@ -160,7 +173,7 @@ OS data lease, startup journal, rehearsal, previous rows/attachments/credentials
 and failed-data copies. Never initialize a nonempty directory or roll back code
 by silently lowering a data version. Runtime backup pauses/drains HTTP requests,
 not arbitrary SQLite writers; use one service and HTTP/MCP for active access.
-Offline restore only targets a new directory. Native has 48 MCP tools; Sites keeps
+Offline restore only targets a new directory. Native has 52 MCP tools; Sites keeps
 the 42-tool shared contract and needs its own proven backup/restore adapter. Do not
 promise automatic off-host copying, platform deployment or loaded chat tools from
 native maintenance status. Keep all private runtime files out of Git.

@@ -7,8 +7,9 @@ const chunks = []; for await (const chunk of process.stdin) chunks.push(chunk);
 const config = JSON.parse(Buffer.concat(chunks).toString());
 const { tools } = JSON.parse(await readFile(new URL('../integrations/mcp/tools.json', import.meta.url)));
 const { tools: maintenanceTools } = JSON.parse(await readFile(new URL('../integrations/mcp/maintenance-tools.json', import.meta.url)));
+const { tools: calendarTools } = JSON.parse(await readFile(new URL('../integrations/mcp/calendar-tools.json', import.meta.url)));
 const site = 'https://agent-workspace.example', backend = 'https://agent-backend.example';
-const gateway = createNativeGateway({ tools, maintenanceTools, fetchImpl: (url, options) => {
+const gateway = createNativeGateway({ tools, maintenanceTools, calendarTools, fetchImpl: (url, options) => {
   assert.equal(new URL(url).origin, backend);
   return fetch(config.backend + new URL(url).pathname + new URL(url).search, options);
 } });

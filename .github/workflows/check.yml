@@ -42,6 +42,7 @@ jobs:
       - run: node --check library_web/agents.js
       - run: node --check library_web/integrations.js
       - run: node --check library_web/skills.js
+      - run: node --check library_web/calendar.js
       - run: node --check library_web/navigation.js
       - name: Check real authenticated browser workflows
         run: |
@@ -51,6 +52,7 @@ jobs:
           python tests/check_agents_browser.py
           python tests/check_integrations_browser.py
           python tests/check_skills_browser.py
+          python tests/check_calendar_browser.py
           python tests/check_layout_browser.py
           python tests/check_personalization_browser.py
           python tests/check_presentation_browser.py

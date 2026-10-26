@@ -1,5 +1,7 @@
 # V2.4 公司 API 與平台適配
 
+新增的 [公司日曆](COMPANY_CALENDAR.md) 使用 `/api/studio/calendar/*`、`blueprint-calendar/1` 及原生 schema 8。介面需提供 `calendar.js`／`calendar.css`，能力宣告為 `company_calendar: true`。員工本人的權限由新 API 驗證，不放寬原有受限人事紀錄；純 Sites 須另行實作及驗證後台。
+
 原生實作：`blueprint_library/studio.py`、`studio_schema.py`、`studio_http.py`。公司介面使用 `navigation.js`、`studio.js`、`studio.css`；Skill 工作台另需一併提供 `skills.js`、`skills.css`。V2.6 Agent 介面使用 `agents.js`、`agents.css`。更新時連同 `index.html` 部署同一份來源的資產；舊 API 保留。
 
 **Sites MCP 轉接器不是公司資料後台。** `integrations/mcp/sites.mjs` 轉交以下請求，不建立資料表或登入。原 Site 須在原正式儲存實作相容 API，才可升級；不能開另一個 SQLite 檔案冒充原 Site。
