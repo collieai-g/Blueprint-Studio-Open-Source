@@ -23,6 +23,7 @@ def runtime_contract(*, managed):
         'agent_contract': 'blueprint-agent/1',
         'agent_handoff': 'connected_client',
         'integration_contract': 'blueprint-integration/1.0',
+        'calendar_contract': 'blueprint-calendar/1',
         'integration_authentication': 'scoped_bearer',
         'autonomous_agents': False,
     }

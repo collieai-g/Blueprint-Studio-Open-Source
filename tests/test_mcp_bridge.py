@@ -92,6 +92,53 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await self.call(client, 'get_presentation', {'key': 'overview'}))['documents']['overview']['data'], data)
         await self.session(readonly, read_only=True)
 
+    async def test_native_calendar_retry_version_and_same_id_readback(self):
+        saved_ids = []
+
+        async def work(client):
+            await self.call(client, 'calendar_meta', {})
+            args = {'kind': 'todo', 'title': '核對月曆工作', 'date': '2026-10-26',
+                    'employee_id': '', 'notes': '獨立 MCP 測試資料',
+                    'request_key': 'calendar-stdio-synthetic-1'}
+            created = await self.call(client, 'calendar_entry_create', args)
+            entry = created['entry']
+            saved_ids.append(entry['id'])
+            retry = await self.call(client, 'calendar_entry_create', args)
+            self.assertEqual(retry['entry']['id'], entry['id'])
+            self.assertTrue(retry['idempotent'])
+            month = await self.call(client, 'calendar_month', {'month': '2026-10'})
+            todos = [todo for day in month['days'] for todo in day['todos']]
+            reread = next(todo for todo in todos if todo['id'] == entry['id'])
+            self.assertEqual(reread['version'], entry['version'])
+            self.assertEqual(sum(todo['id'] == entry['id'] for todo in todos), 1)
+            update = {'id': entry['id'], 'expected_version': reread['version'],
+                      'date': '', 'done': True, 'notes': '已核對，保留同一筆資料'}
+            saved = (await self.call(client, 'calendar_entry_update', update))['entry']
+            self.assertEqual(saved['id'], entry['id'])
+            self.assertEqual(saved['version'], entry['version'] + 1)
+            stale = await client.call_tool('blueprint_calendar_entry_update', update)
+            self.assertTrue(stale.isError)
+            changed_retry = await client.call_tool('blueprint_calendar_entry_create', {**args, 'title': '不同工作'})
+            self.assertTrue(changed_retry.isError)
+            month = await self.call(client, 'calendar_month', {'month': '2026-10'})
+            reread = next(todo for todo in month['undated_todos'] if todo['id'] == entry['id'])
+            self.assertTrue(reread['done'])
+            self.assertEqual(reread['notes'], saved['notes'])
+            self.assertEqual(reread['version'], saved['version'])
+            for bad in [{**args, 'request_key': 'calendar-stdio-bad-1', 'minutes': 10},
+                        {**args, 'request_key': 'calendar-stdio-bad-2', 'date': '2026-02-30'}]:
+                self.assertTrue((await client.call_tool('blueprint_calendar_entry_create', bad)).isError)
+
+        await self.session(work)
+
+        async def readonly(client):
+            names = {tool.name for tool in (await client.list_tools()).tools}
+            self.assertIn('blueprint_calendar_month', names)
+            self.assertNotIn('blueprint_calendar_entry_create', names)
+            month = await self.call(client, 'calendar_month', {'month': '2026-10'})
+            self.assertIn(saved_ids[0], [todo['id'] for todo in month['undated_todos']])
+        await self.session(readonly, read_only=True)
+
     async def test_agent_job_through_independent_stdio_client(self):
         async def work(client):
             manifest = {'contract_version': 1, 'id': 'stdio-summary', 'name': 'MCP 摘要測試',

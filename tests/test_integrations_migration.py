@@ -66,12 +66,12 @@ class IntegrationMigrationTests(unittest.TestCase):
             self.assertIsNone(conn.execute("SELECT name FROM sqlite_master WHERE name='integration_partial'").fetchone())
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM agent_registrations').fetchone()[0], 0)
 
-    def test_older_code_refuses_schema7_instead_of_downgrading_data(self):
+    def test_older_code_refuses_newer_database_instead_of_downgrading_data(self):
         with patch('blueprint_library.store.SCHEMA_VERSION', 6):
             with self.assertRaises(LibraryError):
                 Store(self.directory)
         with sqlite3.connect(self.store.db_path) as conn:
-            self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], 7)
+            self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], SCHEMA_VERSION)
 
 
 if __name__ == '__main__':

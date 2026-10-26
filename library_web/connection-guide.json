@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "2.9.0",
+  "version": "2.10.0",
   "title": "藍圖工作台 AI 接駁與工作規則",
   "rules": [
     "每個新對話先讀 AI_CONNECT.md，檢查目前真正可用的畫面控制或工具。若已載入藍圖工具，呼叫 blueprint_workspace_info 核對實際 origin、公司、登入及版本，再讀 blueprint_connection_guide；已授權 HTTP 對應同一後台 /api/info 與 /connection-guide.json。設定由左側目前 AI 客戶端完成，不要求右側接駁精靈。可見網頁不等於可以控制，已安裝外掛不等於已載入。",
@@ -63,7 +63,7 @@
     },
     "old": {
       "title": "找不到新版工具／404",
-      "action": "核對正式網站、目前 MCP 程式與內置 AI_CONNECT.md／connection-guide.json 的版本，更新受影響服務；2.9.0 保持 schema 7，從 schema 6 或更早版本升級仍需遷移，先完成完整備份及遷移演練；目前有 42 個共通工具，原生／sites_native 另有 6 個擁有人維護工具。Sites Worker 或外掛定義改動時更新相應入口；相容原生後台修改不要求重發佈 Sites。GitHub 推送不代表工作台已部署。"
+      "action": "核對正式網站、目前 MCP 程式與內置 AI_CONNECT.md／connection-guide.json 的版本，更新受影響服務；2.10.0 新增 schema 8 的公司日曆，從 schema 7 或更早版本升級需遷移，先完成完整備份及遷移演練；目前有 42 個共通工具，原生／sites_native 另有 6 個擁有人維護工具及 4 個日曆工具，共 52 個。Sites Worker 或外掛定義改動時更新相應入口；相容原生後台修改不要求重發佈 Sites。GitHub 推送不代表工作台已部署。"
     },
     "wrong": {
       "title": "AI 寫入後，這個工作台看不到",

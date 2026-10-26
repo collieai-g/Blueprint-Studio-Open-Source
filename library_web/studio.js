@@ -220,6 +220,7 @@
     }
     hideLegacy();const panel=$('studio-panel');panel.replaceChildren(node('p','muted','正在讀取…'));
     if(route==='skills')return root.BlueprintSkills.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request,...layoutCallbacks(seq)});
+    if(route==='calendar')return root.BlueprintCalendar.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request,...layoutCallbacks(seq)});
     if(route==='external-work'||route.startsWith('external-work/'))return root.BlueprintIntegrations.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request,...layoutCallbacks(seq)});
     if(route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))return root.BlueprintAgents.mount({app,panel,state,route,navigate,isCurrent:()=>seq===request,...layoutCallbacks(seq)});
     if(route.startsWith('specialist/'))return specialistPage(route.split('/')[1],seq);
@@ -589,7 +590,7 @@
     const options=[['task','待辦'],['project','項目'],['inspiration','靈感'],['customer','客戶'],['topic','主題'],...(admin()?[['specialist','AI 專員']]:[])];
     options.forEach(([kind,label])=>$('studio-action-fields').append(button(label,()=>{closeDialog('studio-action-dialog');$('studio-action-submit').hidden=false;return kind==='inspiration'?addInspiration():kind==='specialist'?navigate('templates'):editRecord(kind);})));$('studio-action-dialog').addEventListener('close',()=>{$('studio-action-submit').hidden=false;},{once:true});
   }
-  const agentBusy=()=>!!pageLayout?.isBusy()||((route==='skills'&&root.BlueprintSkills?.isBusy())||((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy())||((route==='external-work'||route.startsWith('external-work/'))&&root.BlueprintIntegrations?.isBusy()));
+  const agentBusy=()=>!!pageLayout?.isBusy()||((route==='skills'&&root.BlueprintSkills?.isBusy())||(route==='calendar'&&root.BlueprintCalendar?.isBusy())||((route==='agents'||route.startsWith('agent/')||route.startsWith('agent-job/'))&&root.BlueprintAgents?.isBusy())||((route==='external-work'||route.startsWith('external-work/'))&&root.BlueprintIntegrations?.isBusy()));
   root.BlueprintStudio={init,refresh,navigate,legacyView,search,openRecord,openCommand,isReady:()=>initialized,
     presentation:()=>presentationSync,
     isLayoutBusy:()=>!!pageLayout?.isBusy(),

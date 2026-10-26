@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createNativeGateway } from '../integrations/sites/native-gateway.mjs';
 const { tools } = JSON.parse(await readFile(new URL('../integrations/mcp/tools.json', import.meta.url)));
 const { tools: maintenanceTools } = JSON.parse(await readFile(new URL('../integrations/mcp/maintenance-tools.json', import.meta.url)));
+const { tools: calendarTools } = JSON.parse(await readFile(new URL('../integrations/mcp/calendar-tools.json', import.meta.url)));
 const env = {
   BLUEPRINT_SITE_ORIGIN: 'https://desk.example', BLUEPRINT_BACKEND_ORIGIN: 'https://data.example',
   BLUEPRINT_SITE_ACCOUNTS: JSON.stringify({ alice: { username: 'owner', password: 'test-owner-secret-only' },
@@ -21,7 +22,7 @@ const rpc = (name, arguments_ = {}) => ({ jsonrpc: '2.0', id: 1, method: 'tools/
   params: { name: 'blueprint_' + name, arguments: arguments_ } });
 function fixture(respond = () => Response.json({ ok: true }), capabilities = contract) {
   const calls = [];
-  const gateway = createNativeGateway({ tools, maintenanceTools, fetchImpl: async (url, options) => {
+  const gateway = createNativeGateway({ tools, maintenanceTools, calendarTools, fetchImpl: async (url, options) => {
     calls.push({ url, ...options });
     return new URL(url).pathname === '/api/runtime' ? Response.json(capabilities) : respond(url, options);
   } });
@@ -101,11 +102,59 @@ test('read-only mapping blocks both browser writes and MCP maintenance calls', a
   assert.equal((await f.handle(req('/api/maintenance/backup', { user: 'reader', method: 'POST', body: {} }))).status, 403);
   const list = await (await f.handle(req('/mcp', { user: 'reader', method: 'POST', body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } }))).json();
   assert.ok(list.result.tools.every(tool => tool.annotations.readOnlyHint));
+  const names = new Set(list.result.tools.map(tool => tool.name));
+  assert.ok(names.has('blueprint_calendar_meta'));
+  assert.ok(names.has('blueprint_calendar_month'));
+  assert.ok(!names.has('blueprint_calendar_entry_create'));
+  assert.ok(!names.has('blueprint_calendar_entry_update'));
   const write = await (await f.handle(req('/mcp', { user: 'reader', method: 'POST', body: rpc('backup_create') }))).json();
   assert.equal(write.result.isError, true);
+  const calendarWrite = await (await f.handle(req('/mcp', { user: 'reader', method: 'POST',
+    body: rpc('calendar_entry_create', { kind: 'todo', title: '未授權事項', date: '', employee_id: '', request_key: 'denied-1' }) }))).json();
+  assert.equal(calendarWrite.result.isError, true);
   assert.ok(f.calls.every(c => c.method === 'GET'));
   const member = fixture(() => Response.json({ error: 'forbidden' }, { status: 403 }));
   assert.equal((await member.handle(req('/api/maintenance', { user: 'bob' }))).status, 403);
+});
+
+test('native calendar MCP preserves filters, entry IDs, versions and retry keys', async () => {
+  assert.equal(tools.length, 42);
+  assert.ok(tools.every(tool => !tool.name.startsWith('blueprint_calendar_')));
+  const f = fixture((url, options) => Response.json({ entry: { id: 'calendar-entry-1', version: 2 } }));
+  const list = await (await f.handle(req('/mcp', { method: 'POST', body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } }))).json();
+  assert.equal(list.result.tools.length, 52);
+  const names = list.result.tools.map(tool => tool.name);
+  assert.ok(names.includes('blueprint_calendar_month'));
+  assert.ok(names.every(name => !name.startsWith('blueprint_calendar_clock')));
+
+  await f.handle(req('/mcp', { method: 'POST', body: rpc('calendar_meta') }));
+  assert.equal(new URL(f.calls.at(-1).url).pathname, '/api/studio/calendar/meta');
+  const filters = { month: '2026-10', employee_id: 'employee-1', employment_type: 'part_time' };
+  await f.handle(req('/mcp', { method: 'POST', body: rpc('calendar_month', filters) }));
+  const month = new URL(f.calls.at(-1).url);
+  assert.equal(month.pathname, '/api/studio/calendar/month');
+  assert.deepEqual(Object.fromEntries(month.searchParams), filters);
+
+  const create = { kind: 'work_log', title: '核對資料', date: '2026-10-26', employee_id: 'employee-1',
+    notes: '合成測試', minutes: 25, request_key: 'native-calendar-synthetic-1' };
+  const saved = await (await f.handle(req('/mcp', { method: 'POST', body: rpc('calendar_entry_create', create) }))).json();
+  assert.equal(saved.result.isError, false);
+  assert.equal(saved.result.structuredContent.entry.id, 'calendar-entry-1');
+  assert.equal(new URL(f.calls.at(-1).url).pathname, '/api/studio/calendar/entries');
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(f.calls.at(-1).body)), create);
+  const update = { id: 'calendar-entry-1', expected_version: 2, notes: '核對完成' };
+  await f.handle(req('/mcp', { method: 'POST', body: rpc('calendar_entry_update', update) }));
+  assert.equal(new URL(f.calls.at(-1).url).pathname, '/api/studio/calendar/entries/calendar-entry-1');
+  assert.equal(f.calls.at(-1).method, 'PATCH');
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(f.calls.at(-1).body)), { expected_version: 2, notes: '核對完成' });
+
+  const writes = () => f.calls.filter(call => call.method !== 'GET').length;
+  const before = writes();
+  for (const args of [{ ...create, clock_in: '09:00' }, { ...create, request_key: '' }, { ...create, title: ' ' }]) {
+    const invalid = await (await f.handle(req('/mcp', { method: 'POST', body: rpc('calendar_entry_create', args) }))).json();
+    assert.equal(invalid.result.isError, true);
+  }
+  assert.equal(writes(), before);
 });
 
 test('original assets and attachment streams pass through; runtime facts stay separate', async () => {

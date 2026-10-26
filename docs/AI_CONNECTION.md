@@ -38,7 +38,7 @@ HTTP 對應入口是同一個已驗證後台的 `/api/info` 與 `/connection-gui
 
 只有獲明確測試授權後，AI 才用客戶端的密碼學隨機來源產生 16 bytes、編碼為 32 位小寫十六進位 `challenge`，配合真實 `client` 與使用者時區的 `date`，私人保存後呼叫真正的 `blueprint_verify_connection`。重試沿用相同參數。工具完成真實工作／待辦保存及更新後，還需用返回 ID 另行讀取工作與待辦核對。流程見 [CONNECT.md](CONNECT.md)；不得用右側或直接 API 偽造 MCP 驗收標記。
 
-共通工具為 42 個；原生及 Sites 原生接駁另有 6 個擁有人維護工具，共 48 個。畫面控制路徑不必先安裝 MCP；真正控制能力仍由目前客戶端提供。
+共通工具為 42 個；原生及 Sites 原生接駁另有 6 個擁有人維護工具和 4 個月曆工具，共 52 個。純 Sites 的共通工具清單不變。畫面控制路徑不必先安裝 MCP；真正控制能力仍由目前客戶端提供。
 
 ## 1. 原生後台：Codex、Claude Code、Gemini CLI 共用 MCP
 
@@ -97,9 +97,11 @@ Codex 的 `env_vars` 及 Claude／Gemini 的環境參照必須由啟動該客戶
 
 設定已存在就沿用。新增或更新後，按客戶端能力重新連接或開始新對話，直到能列出 `blueprint_workspace_info` 等工具。只想讀資料時，可在啟動參數加 `--read-only`；此模式同時隱藏並拒絕寫入工具。
 
+原生月曆另由 `integrations/mcp/calendar-tools.json` 定義四個工具：`blueprint_calendar_meta` 讀取設定與可見員工，`blueprint_calendar_month` 按月份及員工／聘用類型讀取，`blueprint_calendar_entry_create` 記錄工作或待辦，`blueprint_calendar_entry_update` 按版本修改。先讀取本次資料與權限，建立時為同一份內容沿用穩定 `request_key`；修改帶最新 `expected_version`。保存後再讀月份，在相同 ID 核對內容及版本。這些工具不提供打卡或員工管理；工時紀錄不能當成出勤證明。純 Sites 適配器須另行實作及驗證月曆 API，不能只加入工具定義便宣稱支援。
+
 ## 2. Sites：安裝、授權、載入是三個步驟
 
-若使用 [Sites 入口配原生後台](SITES_NATIVE_GATEWAY.md)，由平台登入的 `/mcp` 轉送到同一個原生 API，提供 48 個工具；每個使用者在伺服器秘密中對應自己的後台帳戶。資料與備份屬於原生後台，瀏覽器及 AI 不會取得對應帳密。後台合約、入口版本、目前對話載入及讀寫驗收分開核對。
+若使用 [Sites 入口配原生後台](SITES_NATIVE_GATEWAY.md)，由平台登入的 `/mcp` 轉送到同一個原生 API，提供 52 個工具；每個使用者在伺服器秘密中對應自己的後台帳戶。資料與備份屬於原生後台，瀏覽器及 AI 不會取得對應帳密。後台合約、入口版本、目前對話載入及讀寫驗收分開核對。
 
 Sites 使用平台登入及原網站的 `/mcp`，不能把原生 Basic 帳密橋接硬套到 Sites。
 

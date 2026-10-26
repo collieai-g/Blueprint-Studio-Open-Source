@@ -16,6 +16,7 @@ FILES = ['docs/INSTALL_UPDATE_FLOW.md', 'docs/LIFECYCLE_API.md', 'docs/MAINTENAN
          'library_web/navigation.js', 'library_web/studio.js', 'library_web/studio.css',
          'library_web/agents.js', 'library_web/agents.css', 'docs/AGENT_CONTRACT.md',
          'library_web/integrations.js', 'library_web/integrations.css', 'docs/INTEGRATION_GUIDE.md',
+         'library_web/calendar.js', 'library_web/calendar.css', 'docs/COMPANY_CALENDAR.md',
          'library_web/skills.js', 'library_web/skills.css', 'docs/LEFT_RIGHT_WORKFLOW.md',
          'docs/USER_GUIDE.md', 'artifacts/codex-blueprint-workflow.svg',
          'artifacts/codex-blueprint-workspace-redraw.png',
@@ -34,8 +35,8 @@ def main():
     output = Path(args.output).expanduser().absolute()
     paths = FILES + sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / 'assets/icons').glob('*.svg'))
     manifest = {'product': 'Blueprint Studio Open Source', 'version': __version__, 'database_schema': SCHEMA_VERSION,
-                'database_migration': 'Native schema 7 adds integration registry, records, commands, events and history. This UI package cannot migrate backend data; use the full native source with maintenance backup and rehearsal.',
-                'requires': 'V2.9 native managed backend for maintenance/2 coverage, operation and private-copy tools; legacy backup clients remain compatible. V2.8.1 native backend or authenticated Sites presentation adapter for account layout sync. V2.8 native backend for Integration Contract 1.0; existing Agent API remains blueprint-agent/1. UI-only upgrade is insufficient. Sites presentation reference adapter requires host integration; full Sites backend adaptation is not included.',
+                'database_migration': 'Native schema 8 adds company calendar employees, attendance, work logs, todos and audit history; schema 7 integration data is retained. This UI package cannot migrate backend data; use the full native source with maintenance backup and rehearsal.',
+                'requires': 'Calendar requires native schema 8 and blueprint-calendar/1; pure Sites needs its own compatible adapter. V2.9 native managed backend for maintenance/2 coverage, operation and private-copy tools; legacy backup clients remain compatible. V2.8.1 native backend or authenticated Sites presentation adapter for account layout sync. V2.8 native backend for Integration Contract 1.0; existing Agent API remains blueprint-agent/1. UI-only upgrade is insufficient. Sites presentation reference adapter requires host integration; full Sites backend adaptation is not included.',
                 'integration_contract': '1.0', 'integration_backend': 'native',
                 'ai_connection_entrypoint': 'AI_CONNECT.md', 'mcp_adapter': 'Integrate with the existing verified platform identity and API; see docs/AI_CONNECTION.md.',
                 'files': {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in paths}}

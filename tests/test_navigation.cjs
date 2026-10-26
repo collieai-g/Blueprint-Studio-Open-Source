@@ -13,10 +13,10 @@ test('the workspace has four stable primary entries with compact core navigation
   assert.equal(new Set(groups.map(group => group.route)).size, 4);
   for (const group of groups) {
     assert.equal(pages[group.route].group, group.id);
-    assert.ok(group.items.length <= (group.id === 'inspiration' ? 5 : 4));
+    assert.ok(group.items.length <= (['inspiration', 'work'].includes(group.id) ? 5 : 4));
   }
   const visible = new Set(groups.flatMap(group => group.items.map(item => item[0])));
-  for (const route of ['overview', 'projects', 'inbox', 'overview/todos', 'overview/workdays', 'skills', 'agents', 'command', 'documents', 'inspirations', 'topics', 'pinned', 'archived']) {
+  for (const route of ['overview', 'projects', 'inbox', 'overview/todos', 'overview/workdays', 'calendar', 'skills', 'agents', 'command', 'documents', 'inspirations', 'topics', 'pinned', 'archived']) {
     assert.ok(visible.has(route), `${route} remains reachable from a primary entry`);
   }
   for (const route of ['revenue', 'costs', 'team', 'customers', 'connections', 'specialists', 'specialist/specialist-website', 'inspirations/web']) {
