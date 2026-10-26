@@ -388,6 +388,15 @@ def main():
                 page.screenshot(path=str(output / 'calendar-company-desktop.png'), full_page=True)
                 for target in [page, member]:
                     target.set_viewport_size({'width': 390, 'height': 844})
+                    target.wait_for_function('''() => {
+                        const sidebar = document.getElementById('sidebar');
+                        const content = document.querySelector('.app-main').getBoundingClientRect();
+                        return !sidebar.classList.contains('open')
+                            && getComputedStyle(sidebar).visibility === 'hidden'
+                            && sidebar.getBoundingClientRect().right <= 0.5
+                            && Math.abs(content.left) <= 0.5
+                            && content.right <= innerWidth + 0.5;
+                    }''')
                     assert target.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Calendar must fit a 390px viewport'
                     assert target.locator('#calendar-day-agenda').is_visible()
                 page.screenshot(path=str(output / 'calendar-company-mobile.png'), full_page=True)
