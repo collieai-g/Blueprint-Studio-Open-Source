@@ -227,10 +227,14 @@ test('local baselines and restore evidence keep account data isolated',()=>{
   assert.ok(target.data['blueprint-page-layouts-v1'].includes('foreign-only'));
 });
 
-test('first handoff on a shared browser does not inherit another account geometry',()=>{
+test('first handoff on a shared browser does not inherit another account geometry',t=>{
+  const createdAt='2026-10-26T08:41:37.000Z';
+  t.mock.timers.enable({apis:['Date'],now:Date.parse(createdAt)});
   const alice=site+'|alice';
   const store=storage({'blueprint-workspace-v2':JSON.stringify({version:1,layoutVersion:4,visible:['heading','todos'],cards:{heading:{x:37,w:4},todos:{x:25,w:18}},texts:{heading:'Alice title'},scopes:{[alice]:{version:1,layoutVersion:4,visible:['heading','todos'],cards:{heading:{x:37,w:4}}}}})});
   const bob=handoff(site,{account:{username:'bob'}},store,'native'),value=JSON.parse(bob.preferences['blueprint-workspace-v2']);
+  assert.equal(bob.created_at,createdAt);
   assert.deepEqual(value.scopes[site+'|bob'],{texts:{}});
-  assert.ok(!JSON.stringify(bob).includes('37'));assert.ok(!JSON.stringify(bob).includes('Alice title'));
+  // A valid created_at can contain 37; inspect the exported preferences for leaks.
+  assert.ok(!JSON.stringify(bob.preferences).includes('37'));assert.ok(!JSON.stringify(bob.preferences).includes('Alice title'));
 });
