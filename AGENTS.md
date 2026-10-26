@@ -12,6 +12,12 @@ progress out of public contributions; runtime data stays outside every source
 repository. docs/DEVELOPMENT_PLAN.md separates this documentation batch from
 future performance, diagnostics and local-development capabilities.
 
+For product direction and interface design, read docs/HARNESS_ENGINEERING.md.
+Develop Blueprint as a company workbench that complements the active Codex
+environment: focus on materials, professional workflows, usable interfaces and
+persistent results. New harness automation and eval infrastructure are deferred
+to docs/HARNESS_VALIDATION_NEXT.md; existing required checks still apply.
+
 V2.9 uses docs/INSTALL_UPDATE_FLOW.md as the shared lifecycle definition. Owner-only
 operation records, backup coverage and client-copy attestations live in the private
 maintenance directory, outside company business coverage and Git. Retain legacy

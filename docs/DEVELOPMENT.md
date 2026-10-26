@@ -4,6 +4,8 @@
 
 [驗收規則](DEVELOPMENT_ACCEPTANCE.md) · [私隱規則](PRIVACY.md) · [分批計劃](DEVELOPMENT_PLAN.md)
 
+產品與介面提案先讀[專用工作台設計與開發指示](HARNESS_ENGINEERING.md)，以 Codex 與藍圖共同完成的具體工作定義材料、操作及成果。本版聚焦產品邏輯及服務形成；新增自動檢查、測試與 AI 行為評估 Harness 於[下一版候選](HARNESS_VALIDATION_NEXT.md)另行處理，個別改動仍沿用本頁既有規範。
+
 這份指南說明如何在本機修改 Blueprint 或獨立 Agent，再把可共用的修正交回正確的程式倉庫。先用合成資料重現問題，保留來源版本與測試結果，再提出可審閱的 Pull Request（PR，合併請求）。
 
 閱讀本頁、下載來源或建立 Git 分支都不會建立工作台。只有明確要安裝獨立測試工作台時，才按[本機安裝](INSTALL_LOCAL.md)及[原生生命週期](NATIVE_LIFECYCLE.md)另選服務、port、私人資料與備份位置；保留已有服務。更新原站則按[更新路線](UPDATE_ROUTE.md)，不要因開發測試而重跑初始化。
