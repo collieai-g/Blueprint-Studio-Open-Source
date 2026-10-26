@@ -4,6 +4,8 @@
 
 [驗收規則](DEVELOPMENT_ACCEPTANCE.md) · [私隱規則](PRIVACY.md) · [分批計劃](DEVELOPMENT_PLAN.md)
 
+設計左右協作、右側介面或不同 AI 接駁時，參考 [Harness engineering 設計](HARNESS_ENGINEERING.md)，先定義完整工作場景，再選受影響的合約及檢查。該設計分開標示現有能力與後續候選，不增加未實作的執行器或部署要求。
+
 這份指南說明如何在本機修改 Blueprint 或獨立 Agent，再把可共用的修正交回正確的程式倉庫。先用合成資料重現問題，保留來源版本與測試結果，再提出可審閱的 Pull Request（PR，合併請求）。
 
 閱讀本頁、下載來源或建立 Git 分支都不會建立工作台。只有明確要安裝獨立測試工作台時，才按[本機安裝](INSTALL_LOCAL.md)及[原生生命週期](NATIVE_LIFECYCLE.md)另選服務、port、私人資料與備份位置；保留已有服務。更新原站則按[更新路線](UPDATE_ROUTE.md)，不要因開發測試而重跑初始化。
