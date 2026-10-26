@@ -2,7 +2,7 @@
 
 [左右協作](LEFT_RIGHT_WORKFLOW.md) · [運作分工](OPERATING_MODEL.md) · [開發流程](DEVELOPMENT.md) · [驗收規則](DEVELOPMENT_ACCEPTANCE.md) · [公開來源中的研究依據](https://github.com/collieai-g/Blueprint-Studio-Open-Source/blob/main/research/harness-engineering.md)
 
-**狀態：留待下一版重新評估與實作。** 本頁保留自動檢查、測試、AI 行為評估與接續合約的工程研究；目前產品定位與開發優先次序以 [專用工作台設計與開發指示](HARNESS_ENGINEERING.md) 為準。下列批次與場景不是本版實作要求，既有必要檢查仍依原開發規範執行。
+**狀態：廣泛自動化與 AI 評估仍待後續評估。** 可選的[實測回饋 harness MVP](../tools/feedback_harness/README.md)先提供明確檢查、外置私人證據及 `blueprint-login-001` 合成案例；它不是下列全部場景、AI 評估或正式登入整合的完成證據。本頁保留更廣泛的工程研究；產品定位與開發優先次序以 [專用工作台設計與開發指示](HARNESS_ENGINEERING.md) 為準。下列批次與場景仍待逐項實作，既有必要檢查繼續適用。
 
 **藍圖的 Harness 要讓「使用者指揮、左側 AI 理解與執行、右側工作台提供材料及承接結果」成為可靠、可核對、可持續改善的工作方式。** 開發目標以一項完整公司工作衡量：人能指定材料和要求，AI 能根據當前能力處理，人能在右側查看真實結果、修正方向並繼續工作。
 

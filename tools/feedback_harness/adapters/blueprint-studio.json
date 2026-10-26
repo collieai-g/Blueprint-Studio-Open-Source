@@ -1,0 +1,72 @@
+{
+  "contract_version": 1,
+  "project_id": "blueprint-studio",
+  "source_repository": "https://github.com/collieai-g/Blueprint-Studio-Open-Source",
+  "source_tag": "v2.9.0",
+  "source_revision": "af60227225ee5bacc0d2ac99933f8a7f01da4d1d",
+  "browser_fixture": "cases/blueprint-login-001/browser_fixture.py",
+  "lifecycle": {
+    "kind": "blueprint-lifecycle-v1",
+    "entrypoint": "tools/lifecycle_plan.py",
+    "task": "source_release"
+  },
+  "checks": {
+    "regression": {
+      "argv": [
+        "$PYTHON",
+        "-X",
+        "utf8",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "AGENTS.md",
+        ".gitignore",
+        "README.md",
+        "harness.py",
+        "adapters/blueprint-studio.json",
+        "contracts/project.schema.json",
+        "contracts/case.schema.json",
+        "contracts/browser-evidence.schema.json",
+        "cases/blueprint-login-001/case.json",
+        "cases/blueprint-login-001/README.md",
+        "cases/blueprint-login-001/browser_fixture.py",
+        "cases/blueprint-login-001/browser-check.mjs",
+        "proposals/blueprint_native_login/__init__.py",
+        "proposals/blueprint_native_login/gateway.py",
+        "proposals/blueprint_native_login/UPSTREAM_HANDOFF.md",
+        "tests/__init__.py",
+        "tests/test_harness.py",
+        "tests/test_native_login_gateway.py"
+      ]
+    }
+  },
+  "required_attestations": [
+    "browser_form_regression"
+  ],
+  "bundle_files": [
+    "AGENTS.md",
+    ".gitignore",
+    "README.md",
+    "harness.py",
+    "adapters/blueprint-studio.json",
+    "contracts/project.schema.json",
+    "contracts/case.schema.json",
+    "contracts/browser-evidence.schema.json",
+    "cases/blueprint-login-001/case.json",
+    "cases/blueprint-login-001/README.md",
+    "cases/blueprint-login-001/browser_fixture.py",
+    "cases/blueprint-login-001/browser-check.mjs",
+    "proposals/blueprint_native_login/__init__.py",
+    "proposals/blueprint_native_login/gateway.py",
+    "proposals/blueprint_native_login/UPSTREAM_HANDOFF.md",
+    "tests/__init__.py",
+    "tests/test_harness.py",
+    "tests/test_native_login_gateway.py"
+  ]
+}

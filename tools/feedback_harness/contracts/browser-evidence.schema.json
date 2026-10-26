@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:shared-harness:browser-evidence:1",
+  "title": "外部瀏覽器客戶端驗收陳述",
+  "description": "供 runner 讀回的私人證據；不代表 runner 自己執行瀏覽器，也不是正式部署驗收。",
+  "type": "object",
+  "required": ["contract_version", "kind", "case_id", "input_tree", "client", "outcome", "checks", "fixture_source_sha256", "evidence_files"],
+  "properties": {
+    "contract_version": {"const": 1},
+    "kind": {"const": "browser_form_regression"},
+    "case_id": {"type": "string"},
+    "input_tree": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "client": {"type": "string", "minLength": 1},
+    "outcome": {"enum": ["passed", "failed"]},
+    "checks": {"type": "object", "required": ["broken_origin_blocked", "fixed_login_passed", "null_origin_rejected"], "properties": {"broken_origin_blocked": {"type": "boolean"}, "fixed_login_passed": {"type": "boolean"}, "null_origin_rejected": {"type": "boolean"}}, "additionalProperties": false},
+    "fixture_source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "evidence_files": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["path", "sha256"], "properties": {"path": {"type": "string", "description": "只可引用來源倉庫外的私人檔案。"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}, "additionalProperties": false}}
+  },
+  "additionalProperties": false
+}

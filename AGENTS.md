@@ -28,8 +28,11 @@ clocking remains an explicit personal action.
 For product direction and interface design, read docs/HARNESS_ENGINEERING.md.
 Develop Blueprint as a company workbench that complements the active Codex
 environment: focus on materials, professional workflows, usable interfaces and
-persistent results. New harness automation and eval infrastructure are deferred
-to docs/HARNESS_VALIDATION_NEXT.md; existing required checks still apply.
+persistent results. The opt-in source-feedback MVP is in tools/feedback_harness/;
+read its AGENTS.md and README.md when using it. Its synthetic login case and
+reference gateway do not change native authentication or deploy a service.
+Broader automation and AI eval infrastructure remain deferred to
+docs/HARNESS_VALIDATION_NEXT.md; existing required checks still apply.
 
 V2.9 uses docs/INSTALL_UPDATE_FLOW.md as the shared lifecycle definition. Owner-only
 operation records, backup coverage and client-copy attestations live in the private

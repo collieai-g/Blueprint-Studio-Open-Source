@@ -1,0 +1,35 @@
+{
+  "contract_version": 1,
+  "case_id": "blueprint-login-001",
+  "project_id": "blueprint-studio",
+  "title": "原生登入與內置瀏覽器表單相容性",
+  "source_revision": "af60227225ee5bacc0d2ac99933f8a7f01da4d1d",
+  "observations": [
+    {
+      "id": "basic-client-compatibility",
+      "classification": "client_compatibility_gap",
+      "status": "historically_observed",
+      "summary": "同一原生安裝可由 Chrome 登入；一次內置瀏覽器的 HTTP Basic 提示立即關閉並回報 ERR_INVALID_AUTH_CREDENTIALS。不能據此斷言所有版本均不支援 Basic。",
+      "private_evidence_required": true
+    },
+    {
+      "id": "form-null-origin",
+      "classification": "introduced_adapter_bug",
+      "status": "reproducible_with_synthetic_browser_fixture",
+      "summary": "新增登入表單若回覆 Referrer-Policy:no-referrer，瀏覽器可在導覽 POST 送出 Origin:null，被原有同源保護拒絕。",
+      "private_evidence_required": false
+    }
+  ],
+  "expected": [
+    "登入頁可維持顯示並提交同源表單",
+    "既有後台驗證相同帳號，不重設公司資料",
+    "登入頁使用 same-origin 政策；原版代理保留其政策",
+    "缺少、null 或外來來源仍被拒絕",
+    "Basic/API/MCP 原生入口及原版 UI 保持獨立相容"
+  ],
+  "required_checks": ["regression"],
+  "required_attestations": ["browser_form_regression"],
+  "public_status": "candidate_not_submitted",
+  "instance_status": "external_private_evidence_only",
+  "scope": "通用參考修正與合成回歸；不自動更新任何私人實例。"
+}
