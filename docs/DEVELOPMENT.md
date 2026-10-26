@@ -4,7 +4,7 @@
 
 [驗收規則](DEVELOPMENT_ACCEPTANCE.md) · [私隱規則](PRIVACY.md) · [分批計劃](DEVELOPMENT_PLAN.md)
 
-產品與介面提案先讀[專用工作台設計與開發指示](HARNESS_ENGINEERING.md)，以 Codex 與藍圖共同完成的具體工作定義材料、操作及成果。本版聚焦產品邏輯及服務形成；新增自動檢查、測試與 AI 行為評估 Harness 於[下一版候選](HARNESS_VALIDATION_NEXT.md)另行處理，個別改動仍沿用本頁既有規範。
+產品與介面提案先讀[專用工作台設計與開發指示](HARNESS_ENGINEERING.md)，以 Codex 與藍圖共同完成的具體工作定義材料、操作及成果。可選的[實測回饋 harness MVP](../tools/feedback_harness/README.md)已提供來源檢查、外置證據與登入合成案例；更廣泛的自動化及 AI 行為評估仍於[下一版候選](HARNESS_VALIDATION_NEXT.md)另行處理，個別改動沿用本頁既有規範。
 
 公司日常介面可從[增補與精簡方案](COMPANY_INTERFACE_PLAN.md)選擇下一個小範圍任務；資料收集、月曆與打卡仍是提案，先按實際來源與保存責任分批實作。
 
