@@ -75,7 +75,7 @@ def main():
                 page.get_by_text('瀏覽器排版接續檔', exact=True).click()
                 with page.expect_download() as download_event:
                     page.locator('#update-download').click()
-                backup = json.loads(Path(download_event.value.path()).read_text())
+                backup = json.loads(Path(download_event.value.path()).read_text(encoding='utf-8'))
                 assert backup['origin'] == origin
                 assert json.loads(backup['preferences']['blueprint-backend-display-v1'])['sort'] == 'title'
                 assert 'must-not-export' not in json.dumps(backup)

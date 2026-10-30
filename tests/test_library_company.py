@@ -1,5 +1,6 @@
 """Private company setup is versioned and survives upgrades and restarts."""
 
+from contextlib import closing
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import sqlite3
@@ -27,7 +28,7 @@ class CompanyProfileTests(unittest.TestCase):
         self.assertEqual(profile, {"name": "", "industry": "", "description": "", "goals": "", "version": 0,
                                    "created_at": None, "updated_at": None, "configured": False})
         self.assertEqual(self.store.export_metadata()["company_profile"], profile)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM company_profile").fetchone()[0], 0)
 
     def test_update_profile_persists_fields_versions_and_explicit_clearing(self):
@@ -96,7 +97,7 @@ class CompanyProfileTests(unittest.TestCase):
         self.assertEqual(sum(result == 409 for result in results), 1)
         saved = self.store.get_company_profile()
         self.assertEqual(saved["version"], 1)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM company_profile").fetchone()[0], 1)
 
     def test_v3_upgrade_preserves_all_company_library_and_workday_data(self):
@@ -108,7 +109,7 @@ class CompanyProfileTests(unittest.TestCase):
         report = self.store.get_workday(report["id"])
         auth = b'{"username":"private-owner","auth":"untouched"}\n'
         (self.data / "access.json").write_bytes(auth)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             conn.executescript("DROP TABLE company_profile; PRAGMA user_version=3;")
             previous = {table: conn.execute("SELECT * FROM " + table).fetchall() for table in ("collections", "items", "history", "workdays", "workday_entries")}
         for _ in range(2):
@@ -118,7 +119,7 @@ class CompanyProfileTests(unittest.TestCase):
             self.assertEqual(migrated.get_workday(report["id"]), report)
             self.assertEqual(migrated.get_file(item["id"])[0].read_bytes(), "公司研究原文".encode())
             self.assertEqual((self.data / "access.json").read_bytes(), auth)
-            with sqlite3.connect(migrated.db_path) as conn:
+            with closing(sqlite3.connect(migrated.db_path)) as conn, conn:
                 self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
                 for table, rows in previous.items():
                     self.assertEqual(conn.execute("SELECT * FROM " + table).fetchall(), rows)

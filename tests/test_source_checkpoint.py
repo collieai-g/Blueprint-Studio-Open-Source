@@ -3,6 +3,7 @@ import base64
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -63,8 +64,8 @@ class SourceCheckpointTests(unittest.TestCase):
         self.source = self.root / 'old-environment'; self.source.mkdir()
         self.out = self.root / 'private-export'; self.api = FakeGitHub()
         self.repo = 'example/private-workspace'; self.url = 'https://workspace.example'
-        (self.source / 'main.py').write_text('# original\n')
-        (self.source / 'deleted.js').write_text('// remove in candidate\n')
+        (self.source / 'main.py').write_text('# original\n', encoding='utf-8')
+        (self.source / 'deleted.js').write_text('// remove in candidate\n', encoding='utf-8')
         self.git('init', '-q'); self.git('config', 'user.email', 'test@example.invalid')
         self.git('config', 'user.name', 'Test'); self.git('add', '.'); self.git('commit', '-qm', 'baseline')
 
@@ -75,10 +76,10 @@ class SourceCheckpointTests(unittest.TestCase):
         return checkpoint.export_source(self.source, self.out, kwargs.pop('repo', self.repo), self.url, '2.4.2', **kwargs)
 
     def test_roundtrip_dirty_tree_deletions_binary_and_executable_in_new_environment(self):
-        (self.source / 'main.py').write_text('# candidate\n')
+        (self.source / 'main.py').write_text('# candidate\n', encoding='utf-8')
         (self.source / 'deleted.js').unlink()
         (self.source / 'image.png').write_bytes(b'\x89PNG\x00\xff')
-        script = self.source / 'run.sh'; script.write_text('#!/bin/sh\ntrue\n'); script.chmod(0o755)
+        script = self.source / 'run.sh'; script.write_text('#!/bin/sh\ntrue\n', encoding='utf-8'); script.chmod(0o755)
         local = self.export()
         self.assertEqual(local['status'], 'local_only')
         saved = checkpoint.save(self.out, 'blueprint-checkpoints/test', self.api)
@@ -92,10 +93,12 @@ class SourceCheckpointTests(unittest.TestCase):
         new = self.root / 'new-environment'
         result = checkpoint.fetch(self.repo, commit, new, self.url, api=self.api)
         recovered = Path(result['project'])
-        self.assertEqual((recovered / 'main.py').read_text(), '# candidate\n')
+        self.assertEqual((recovered / 'main.py').read_text(encoding='utf-8'), '# candidate\n')
         self.assertEqual((recovered / 'image.png').read_bytes(), b'\x89PNG\x00\xff')
         self.assertFalse((recovered / 'deleted.js').exists())
-        self.assertEqual((recovered / 'run.sh').stat().st_mode & 0o777, 0o755)
+        self.assertEqual((recovered / 'run.sh').read_bytes(), script.read_bytes())
+        if os.name != 'nt':
+            self.assertEqual((recovered / 'run.sh').stat().st_mode & 0o777, 0o755)
         self.assertFalse((recovered / '.git').exists())
         self.assertEqual(result['production_status'], 'not_verified')
 
@@ -118,7 +121,7 @@ class SourceCheckpointTests(unittest.TestCase):
 
     def test_platform_config_is_omitted_but_site_id_must_match_on_restore(self):
         d = self.source / '.openai'; d.mkdir()
-        (d / 'hosting.json').write_text(json.dumps({'project_id': 'original-site', 'token': 'test-only-placeholder'}))
+        (d / 'hosting.json').write_text(json.dumps({'project_id': 'original-site', 'token': 'test-only-placeholder'}), encoding='utf-8')
         self.export()
         with zipfile.ZipFile(self.out / 'source.zip') as archive:
             self.assertNotIn('.openai/hosting.json', archive.namelist())
@@ -144,7 +147,7 @@ class SourceCheckpointTests(unittest.TestCase):
         with self.assertRaises(ValueError): checkpoint.save(self.out, 'main', self.api)
         with self.assertRaises(ValueError): self.export()
         with self.assertRaises(ValueError): checkpoint.restore(self.out, self.source, self.repo, self.url)
-        self.assertEqual((self.source / 'main.py').read_text(), '# original\n')
+        self.assertEqual((self.source / 'main.py').read_text(encoding='utf-8'), '# original\n')
 
     def test_tampered_archive_wrong_origin_manifest_and_git_blob_are_rejected(self):
         exported = self.export()
@@ -164,17 +167,24 @@ class SourceCheckpointTests(unittest.TestCase):
     def test_traversal_symlink_duplicate_archive_and_nested_output_rejected(self):
         with self.assertRaises(ValueError):
             checkpoint.export_source(self.source, self.source / 'export', self.repo, self.url, '2.4.2')
-        (self.source / 'link').symlink_to(self.source / 'main.py')
-        with self.assertRaises(ValueError): self.export()
-        (self.source / 'link').unlink(); self.export()
+        with self.subTest(capability='symlink'):
+            try:
+                (self.source / 'link').symlink_to(self.source / 'main.py')
+            except OSError as exc:
+                if getattr(exc, 'winerror', None) == 1314:
+                    self.skipTest('Windows symlink privilege unavailable')
+                raise
+            with self.assertRaises(ValueError): self.export()
+        (self.source / 'link').unlink(missing_ok=True)
+        self.export()
         for name in ['../escape', '/absolute', 'a//b', 'a/./b', 'a\\b', '.git/config']:
             with self.subTest(name=name):
                 raw = io.BytesIO()
                 with zipfile.ZipFile(raw, 'w') as archive: archive.writestr(name, b'bad')
-                m = json.loads((self.out / 'checkpoint.json').read_text())
+                m = json.loads((self.out / 'checkpoint.json').read_text(encoding='utf-8'))
                 m['files'] = {name: {'sha256': checkpoint.digest(b'bad'), 'mode': 0o644}}
                 m['archive_sha256'] = checkpoint.digest(raw.getvalue())
-                (self.out / 'checkpoint.json').write_text(json.dumps(m))
+                (self.out / 'checkpoint.json').write_text(json.dumps(m), encoding='utf-8')
                 (self.out / 'source.zip').write_bytes(raw.getvalue())
                 with self.assertRaises(ValueError): checkpoint.restore(self.out, self.root / 'bad', self.repo, self.url)
                 self.assertFalse((self.root / 'bad').exists())

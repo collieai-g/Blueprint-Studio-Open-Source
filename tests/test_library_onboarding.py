@@ -16,7 +16,7 @@ class OnboardingTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="blueprint-setup-")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.output = self.root / "公司私人安裝"
         self.company = {"name": "  藍圖公司  ", "industry": "AI 工具", "description": "公司簡介", "goals": "做好文件及收藏"}
 
@@ -28,7 +28,7 @@ class OnboardingTests(unittest.TestCase):
 
     def test_default_cloud_plan_is_private_and_does_not_initialize_any_service(self):
         result = prepare_setup(self.output, self.company)
-        plan = json.loads((self.output / "setup.json").read_text())
+        plan = json.loads((self.output / "setup.json").read_text(encoding='utf-8'))
         self.assertEqual(plan["schema"], "blueprint-setup")
         self.assertEqual((plan["mode"], plan["provider"], plan["status"]), ("cloud", "render", "awaiting_cloud_deployment"))
         self.assertEqual(plan["version"], 1)
@@ -52,7 +52,7 @@ class OnboardingTests(unittest.TestCase):
             with self.subTest(provider=provider):
                 output = self.root / provider
                 result = prepare_setup(output, self.company, provider=provider, username="company-owner")
-                guide = Path(result["start_here"]).read_text()
+                guide = Path(result["start_here"]).read_text(encoding='utf-8')
                 self.assertIn("company/Dockerfile", guide)
                 self.assertIn("/data", guide)
                 self.assertIn("HTTPS", guide)
@@ -79,7 +79,7 @@ class OnboardingTests(unittest.TestCase):
         self.assertNotIn("provider", result)
         self.assertEqual(result["data_path"], str(output / "data"))
         self.assertFalse(Path(result["data_path"]).exists())
-        guide = Path(result["start_here"]).read_text()
+        guide = Path(result["start_here"]).read_text(encoding='utf-8')
         self.assertIn("library-init " + shlex.quote(result["data_path"]), guide)
         self.assertIn("--username " + shlex.quote("owner name"), guide)
         self.assertIn("--company-file " + shlex.quote(result["company_file"]), guide)
@@ -90,7 +90,7 @@ class OnboardingTests(unittest.TestCase):
     def test_env_values_are_quoted_without_secrets_or_newline_injection(self):
         company = {"name": "公司\n名字", "description": '一行 "說明"\nBLUEPRINT_ADMIN_PASSWORD=not-a-secret'}
         result = prepare_setup(self.output, company)
-        env = Path(result["env_file"]).read_text()
+        env = Path(result["env_file"]).read_text(encoding='utf-8')
         values = dict(line.split("=", 1) for line in env.splitlines() if line and not line.startswith("#"))
         self.assertEqual(values["BLUEPRINT_ADMIN_PASSWORD"], "")
         self.assertEqual(json.loads(values["BLUEPRINT_COMPANY_NAME"]), company["name"])
@@ -111,11 +111,11 @@ class OnboardingTests(unittest.TestCase):
 
     def test_preflight_preserves_custom_files_before_writing_any_company_input(self):
         self.output.mkdir()
-        (self.output / "START_HERE.md").write_text("我的自訂指引")
-        (self.output / "existing.txt").write_text("保留")
+        (self.output / "START_HERE.md").write_text("我的自訂指引", encoding='utf-8')
+        (self.output / "existing.txt").write_text("保留", encoding='utf-8')
         self.assert_error(lambda: prepare_setup(self.output, self.company), 409)
         self.assertEqual(sorted(path.name for path in self.output.iterdir()), ["START_HERE.md", "existing.txt"])
-        self.assertEqual((self.output / "START_HERE.md").read_text(), "我的自訂指引")
+        self.assertEqual((self.output / "START_HERE.md").read_text(encoding='utf-8'), "我的自訂指引")
 
     def test_invalid_company_mode_provider_and_username_do_not_create_output(self):
         invalid = [None, [], {}, {"name": ""}, {"name": "x" * 121}, {"name": "公司", "industry": "x" * 121},
@@ -135,7 +135,7 @@ class OnboardingTests(unittest.TestCase):
             for output in (source, source / "private", self.root):
                 self.assert_error(lambda: prepare_setup(output, self.company))
             inside = source / "company-profile.json"
-            inside.write_text(json.dumps({"name": "private"}))
+            inside.write_text(json.dumps({"name": "private"}), encoding='utf-8')
             self.assert_error(lambda: load_company_file(inside))
         self.assertFalse((source / "private").exists())
 
@@ -150,11 +150,11 @@ class OnboardingTests(unittest.TestCase):
         self.assert_error(lambda: prepare_setup(link / "nested", self.company))
         self.assertFalse((actual / "nested").exists())
         target = actual / "profile.json"
-        target.write_text(json.dumps({"name": "existing"}))
+        target.write_text(json.dumps({"name": "existing"}), encoding='utf-8')
         self.output.mkdir()
         (self.output / "company-profile.json").symlink_to(target)
         self.assert_error(lambda: prepare_setup(self.output, self.company))
-        self.assertEqual(json.loads(target.read_text()), {"name": "existing"})
+        self.assertEqual(json.loads(target.read_text(encoding='utf-8')), {"name": "existing"})
         self.assert_error(lambda: load_company_file(self.output / "company-profile.json"))
         self.assert_error(lambda: load_company_file(link / "profile.json"))
         dangling = self.root / "dangling"
@@ -163,10 +163,10 @@ class OnboardingTests(unittest.TestCase):
 
     def test_company_loader_validates_json_shape_size_and_types(self):
         path = self.root / "company.json"
-        path.write_text('\ufeff' + json.dumps({"name": " 公司 ", "goals": "目標"}))
+        path.write_text('\ufeff' + json.dumps({"name": " 公司 ", "goals": "目標"}), encoding='utf-8')
         self.assertEqual(load_company_file(path), {"name": "公司", "goals": "目標"})
         for value in ("not json", "[]", '{"name":"公司","expected_version":0}', '{"name":"公司","industry":null}', " " * (64 * 1024 + 1)):
-            path.write_text(value)
+            path.write_text(value, encoding='utf-8')
             self.assert_error(lambda: load_company_file(path))
         self.assert_error(lambda: load_company_file(self.root))
         self.assert_error(lambda: load_company_file(self.root / "missing.json"))

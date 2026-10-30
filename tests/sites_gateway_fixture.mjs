@@ -3,14 +3,36 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { request as httpRequest } from 'node:http';
 const chunks = []; for await (const chunk of process.stdin) chunks.push(chunk);
 const config = JSON.parse(Buffer.concat(chunks).toString());
 const site = 'https://gateway.example', backend = 'https://backend.example';
-const realFetch = globalThis.fetch;
+// Buffer only this loopback test transport. Undici can assert on an HTTP/1.0
+// close while an unconsumed denial body is paused. Every API still reaches the
+// real authenticated Python server; production gateway fetch is unchanged.
+const loopbackFetch = (url, options = {}) => new Promise((resolve, reject) => {
+  const outgoing = httpRequest(url, {method: options.method || 'GET',
+    headers: Object.fromEntries(new Headers(options.headers)), signal: options.signal}, incoming => {
+    const chunks = [];
+    incoming.on('data', chunk => chunks.push(chunk));
+    incoming.on('error', reject);
+    incoming.on('end', () => {
+      const status = incoming.statusCode;
+      const headers = new Headers();
+      for (const [name, value] of Object.entries(incoming.headers)) {
+        if (Array.isArray(value)) for (const entry of value) headers.append(name, entry);
+        else if (value !== undefined) headers.set(name, value);
+      }
+      resolve(new Response([204, 205, 304].includes(status) ? null : Buffer.concat(chunks), {status, headers}));
+    });
+  });
+  outgoing.on('error', reject);
+  outgoing.end(options.body);
+});
 // Production always requires HTTPS. Only this fixture maps the fixed test origin to loopback.
 globalThis.fetch = (url, options) => {
   assert.equal(new URL(url).origin, backend);
-  return realFetch(config.local_backend + new URL(url).pathname + new URL(url).search, options);
+  return loopbackFetch(config.local_backend + new URL(url).pathname + new URL(url).search, options);
 };
 const { default: worker } = await import(pathToFileURL(config.worker));
 const env = { BLUEPRINT_SITE_ORIGIN: site, BLUEPRINT_BACKEND_ORIGIN: backend,

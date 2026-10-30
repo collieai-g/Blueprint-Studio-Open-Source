@@ -184,6 +184,21 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(task['visibility'], 'admin')
         self.assert_status(403, self.member.get, task['id'])
 
+    def test_similar_inspiration_preserves_visibility_archive_and_self_exclusion(self):
+        item = self.store.create_item({'url': 'https://example.test/synthetic-reference'})
+        private_item = self.store.create_item({'url': 'https://example.test/synthetic-private-reference'})
+        base = self.create('inspiration', 'Synthetic alpha', item_id=item['id'], tags=['shared-reference'])
+        visible = self.create('inspiration', 'Synthetic beta', item_id=item['id'], tags=['shared-reference'])
+        private = self.owner.create({'kind': 'inspiration', 'title': 'Synthetic private',
+            'visibility': 'admin', 'data': {'item_id': private_item['id'], 'tags': ['shared-reference']}})['record']
+        archived = self.create('inspiration', 'Synthetic archived', item_id=item['id'], tags=['shared-reference'])
+        self.owner.update(archived['id'], {'expected_version': archived['version'], 'archived': True})
+        member = self.member.similar(base['id'])
+        self.assertEqual(member['method'], 'tags_and_text')
+        self.assertEqual([entry['record']['id'] for entry in member['matches']], [visible['id']])
+        self.assertEqual({entry['record']['id'] for entry in self.owner.similar(base['id'])['matches']},
+                         {visible['id'], private['id']})
+
     def test_preferences_cas_monthly_queue_and_export_no_password_material(self):
         self.owner.save_user({'username': 'staff', 'password': 'safe-staff-password', 'role': 'member'})
         self.member.save_preferences({'expected_version': 0, 'data': {'monthly_review': True, 'groups': ['work','company']}})

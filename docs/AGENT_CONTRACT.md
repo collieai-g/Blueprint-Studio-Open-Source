@@ -24,7 +24,7 @@
 
 登記時額外提供 `source: {repository,revision}`。`repository` 是 GitHub 倉庫 HTTPS 網址；`revision` 是開發者已核對的完整 40 位 commit SHA，不接受可移動的分支名作固定版本。登記資料不等於後台已向 GitHub 驗證來源，開發者須先確認 manifest 確實來自該 commit。
 
-同一個套件的新版本另行登記，不覆蓋已建立工作的快照。藍圖版本、套件版本、manifest 規格版本及登記記錄版本各自獨立。
+新實例可另行登記；更新既有實例使用下述同 ID 套件升級，不必另建 Agent。兩種操作都不覆蓋已建立工作的快照。藍圖版本、套件版本、manifest 規格版本及登記記錄版本各自獨立。
 
 ## HTTP 與 MCP 共用操作
 
@@ -35,7 +35,7 @@
 | `GET /api/studio/agents` | 可見 Agent 清單 `{agents,total,offset,limit}` |
 | `POST /api/studio/agents` | `{manifest,source,settings?}`，管理員登記套件 |
 | `GET /api/studio/agents/ID` | `{agent}`，包括固定套件來源、設定、連接狀態及版本 |
-| `PATCH /api/studio/agents/ID` | `{expected_version,settings?,enabled?}`；設定以完整物件替換並套用宣告預設 |
+| `PATCH /api/studio/agents/ID` | 一般設定使用 `{expected_version,settings?,enabled?}`，設定完整替換；套件升級使用 `{expected_version,manifest,source,upgrade_key,settings?}`，保留同 ID 並合併明確提供的設定 |
 | `POST /api/studio/agents/ID/actions` | `{expected_version,action:"connect"或"disconnect"}` |
 | `GET /api/studio/agent-jobs` | 可見工作清單 `{jobs,total,offset,limit}` |
 | `POST /api/studio/agent-jobs` | `{agent_id,operation_id,title,inputs,refs,source_key?}` |
@@ -50,6 +50,22 @@ MCP 使用 `blueprint_agent_register`、`blueprint_agent_update` 及 `blueprint_
 清單只回傳狀態、版本、名稱及有限長度的結果預覽，不包含完整 manifest、設定或工作輸入。完整內容使用單筆 GET／context 讀取，避免清單超出工具回應上限。
 
 所有修改都使用剛讀取的 `expected_version`；衝突回報 HTTP 409，客戶端應保留未保存內容並重新讀取。清單、上下文、結果及修改均需重新檢查來源權限，不能因建立工作時有權限就永久保留存取。
+
+## 既有 Agent 套件升級
+
+管理員先 GET 原 Agent，核對原身份與設定，再向相同 ID 的 PATCH 一次提供 `manifest`、`source` 和 `upgrade_key`。三個欄位須成組出現；`upgrade_key` 使用 1 至 100 個英文字母、數字、底線或短橫線，代表同一項升級意圖。首次套用以 `expected_version` 檢查衝突。
+
+- 新舊 `manifest.id` 與 `source.repository` 必須相同，revision 仍須完整固定 SHA。已保存過的相同套件／倉庫／commit 不能改寫 manifest，包含已升級離開的歷史來源；回復到已審核的舊 pin 亦受同一檢查。
+- 保留同一 Agent ID、建立時間、啟用與連接狀態，更新登記版本及套件索引。升級不可同時提供 `enabled`；需要更改啟用狀態時另用原設定操作。
+- 舊設定預設保留，升級的 `settings` 是明確覆寫的部分欄位。相容新增欄位可套用新版預設；新版必要欄位未有值時拒絕升級。移除已保存欄位、改變原欄位類型或無法保留的選項值回報 409，須先準備相容遷移，不能靜默重設。一般設定 PATCH 的完整替換語意保持不變。
+- 目標套件若已屬另一 Agent，拒絕覆蓋或合併。登記、歷史快照、套件索引與升級收據在同一 SQLite 交易保存；失敗整項回復，不修改公司紀錄、附件、工作或外部客服資料。
+- 升級收據使用既有 `agent_history` 的獨立 `agent_upgrade` 類別，schema 維持 8，隨原備份及還原保留。相同 Agent／key／標準化 manifest、source、明確設定覆寫，重試返回原成功的 Agent 快照，不再增加版本。CAS 版本不屬意圖指紋，允許讀回新版本後以原 key 重試；同 key 不同意圖回報 409。
+
+重試返回的是原操作結果；之後可能已有其他設定更新。因此每次保存或重試後，都要獨立 GET 同 ID，確認目前來源、manifest、設定及版本，不能把歷史收據當作目前狀態，也不能因未知結果重新登記另一個 Agent。
+
+MCP 沿用既有 `blueprint_agent_update`，成組提供 `manifest_json`、`source_json`、`upgrade_key`，可附 `settings_json`；仍使用同一登入、權限、版本檢查與 API，不增加工具數。舊宿主或其他平台 adapter 若未實作此擴充，必須保留能力缺項，不能以新增登記替代。
+
+這個入口更新的是經審閱的宣告套件。它不下載或執行 GitHub 程式、不替換客服 runtime／前端資產、不重啟服務，也不保存瀏覽器記憶體內的未送出草稿。實際服務或資產換版另沿已授權更新流程驗證資料保護、草稿恢復及同實例讀回。
 
 ## AI 工作交接
 

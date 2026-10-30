@@ -1405,7 +1405,7 @@
     {
       "name": "blueprint_agent_update",
       "title": "修改 Agent 設定",
-      "description": "Owner/admin: replace settings using settings_json and/or set enabled. Read the latest version first; resolve conflicts without overwriting changes. Existing jobs retain their pinned settings. This does not execute AI.",
+      "description": "Owner/admin: replace settings using settings_json and/or set enabled. To upgrade the same Agent ID, supply manifest_json, source_json and upgrade_key together with the latest expected_version; source requires the same GitHub repository and a reviewed full 40-character commit SHA. Optional upgrade settings_json merges with compatible retained settings; enabled cannot accompany an upgrade. Retry an uncertain upgrade with the same manifest, source, settings overrides and upgrade_key; expected_version may be refreshed. A retry returns the original saved snapshot, so independently call blueprint_agent_get for current state. Existing jobs retain their pinned manifest, source and settings. This neither downloads code nor deploys assets nor executes AI.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1424,6 +1424,19 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "manifest_json": {
+            "type": "string",
+            "maxLength": 120000
+          },
+          "source_json": {
+            "type": "string",
+            "maxLength": 12000
+          },
+          "upgrade_key": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$",
+            "maxLength": 100
           }
         },
         "required": [

@@ -6,6 +6,8 @@ upgrades code, recreates credentials or overwrites existing restore destinations
 """
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 from contextlib import closing
 import hashlib
 import json
@@ -20,8 +22,8 @@ SOURCE = Path(__file__).resolve().parents[1]
 
 
 def safe_path(value):
-    path = Path(value).expanduser().absolute()
-    if any(part.is_symlink() for part in (path, *path.parents)):
+    path = Path(value).expanduser()
+    if has_link(path):
         raise ValueError('路徑不能包含符號連結。')
     return path.resolve()
 
@@ -40,7 +42,7 @@ def digest(path):
 
 
 def database(path):
-    if not path.is_file() or path.is_symlink():
+    if not path.is_file() or has_link(path):
         raise ValueError('找不到已有的 library.sqlite3，未建立空資料庫。')
     conn = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)
     conn.row_factory = sqlite3.Row
@@ -51,9 +53,10 @@ def database(path):
 
 
 def scan(directory):
+    directory = safe_path(directory)
     files = {}
     for path in sorted(directory.rglob('*')):
-        if path.is_symlink():
+        if has_link(path):
             raise ValueError('資料目錄包含符號連結，未繼續備份。')
         if not path.is_file() and not path.is_dir():
             raise ValueError('資料目錄包含不支援的檔案類型。')
@@ -107,6 +110,7 @@ def coverage(data):
 
 
 def snapshot(data, output):
+    data, output = safe_path(data), safe_path(output)
     external(data); external(output)
     if output == data or data in output.parents or output in data.parents:
         raise ValueError('備份目錄不能與資料目錄互相包含。')
@@ -120,7 +124,7 @@ def snapshot(data, output):
         revision = conn.execute('PRAGMA data_version').fetchone()[0]
         output.mkdir(parents=True, mode=0o700)
         payload = output / 'data'; payload.mkdir(mode=0o700)
-        with sqlite3.connect(payload / 'library.sqlite3') as target:
+        with closing(sqlite3.connect(payload / 'library.sqlite3')) as target:
             conn.backup(target)
         for name, checksum in files.items():
             target = payload / name; target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)

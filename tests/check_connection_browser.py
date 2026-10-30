@@ -98,14 +98,14 @@ def main():
                 # private temporary progress, and resume those exact parameters.
                 arguments = {'challenge': secrets.token_hex(16), 'client': 'Blueprint MCP integration test', 'date': date.today().isoformat()}
                 progress = Path(temp) / 'client-acceptance.json'
-                progress.write_text(json.dumps({'origin': origin, 'company': 'Blueprint Studio', 'parameters': arguments}))
+                progress.write_text(json.dumps({'origin': origin, 'company': 'Blueprint Studio', 'parameters': arguments}), encoding='utf-8')
                 for change in [{'challenge': '../data'}, {'date': '2026-02-30'}, {'client': ' '}]:
                     mcp_call('blueprint_verify_connection', {**arguments, **change}, expect_error=True)
                 assert store.workday_stats()['workdays'] == 1
                 receipt = mcp_call('blueprint_verify_connection', arguments)
                 assert receipt['verified'] is True
                 assert '接駁中心' not in receipt['next_step']
-                resumed = mcp_call('blueprint_verify_connection', json.loads(progress.read_text())['parameters'])
+                resumed = mcp_call('blueprint_verify_connection', json.loads(progress.read_text(encoding='utf-8'))['parameters'])
                 assert resumed['workday_id'] == receipt['workday_id']
                 assert store.workday_stats()['workdays'] == 2
 

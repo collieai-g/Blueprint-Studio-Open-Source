@@ -3,10 +3,12 @@ from datetime import date
 from pathlib import Path
 import tempfile
 import unittest
+import uuid
 
 from blueprint_library.calendar_sources import aggregate
 from blueprint_library.store import LibraryError, Store
 from blueprint_library.studio import Studio
+from blueprint_library.workdays import _report, _report_text
 
 
 class CalendarSourcesTests(unittest.TestCase):
@@ -60,12 +62,38 @@ class CalendarSourcesTests(unittest.TestCase):
         self.assertEqual(self.events(start=date(2026, 10, 1), end=date(2026, 11, 1)), events)
 
     def test_full_range_has_no_first_page_limit(self):
-        task_ids, report_ids, todo_ids = set(), set(), set()
-        for index in range(115):
-            task_ids.add(self.record(title=f'完整範圍工作 {index}', due_date='2026-10-22')['id'])
-            report = self.report(f'full-range-{index}')
-            report_ids.add(report['id'])
-            todo_ids.add(report['entries'][0]['id'])
+        first_task = self.record(title='完整範圍工作 0', due_date='2026-10-22')
+        first_report = self.report('full-range-0')
+        task_ids = {first_task['id']}
+        report_ids = {first_report['id']}
+        todo_ids = {first_report['entries'][0]['id']}
+        # Exercise each public writer once, then seed the pagination dataset in
+        # one transaction through the same normalization/history helpers. Every
+        # report and todo still has its own identity and complete source pin.
+        with self.store._connection() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            template = dict(conn.execute('SELECT * FROM workdays WHERE id=?', (first_report['id'],)).fetchone())
+            columns = tuple(template)
+            for index in range(1, 115):
+                task = self.owner._make(conn, {'kind': 'task', 'title': f'完整範圍工作 {index}',
+                                             'data': {'due_date': '2026-10-22'}})
+                task_ids.add(task['id'])
+                key = f'full-range-{index}'
+                report, payload_hash = _report({'date': '2026-10-10', 'source': 'Synthetic test',
+                    'source_key': key, 'title': '合成工作紀錄 ' + key,
+                    'entries': [{'type': 'todo', 'title': '合成待辦 ' + key, 'due_date': '2026-10-20'}]})
+                context, search_text = _report_text(report)
+                row = {**template, **{name: report[name] for name in ('date', 'source', 'source_key', 'title', 'summary')},
+                       'id': uuid.uuid4().hex, 'payload_hash': payload_hash,
+                       'search_text': search_text, 'context_text': context}
+                conn.execute('INSERT INTO workdays (' + ','.join(columns) + ') VALUES ('
+                             + ','.join('?' for _ in columns) + ')', [row[name] for name in columns])
+                todo = self.store._entry_row(row['id'], 0, report['entries'][0], 'staff', row['created_at'], None)
+                self.store._insert_workday_entry(conn, todo)
+                self.store._workday_revision(conn, row['id'], 'create', 'staff', row['created_at'])
+                report_ids.add(row['id'])
+                todo_ids.add(todo['id'])
+            self.assertEqual(conn.execute('PRAGMA foreign_key_check').fetchall(), [])
         project = self.record('project', due_date='2026-10-22')
         events = self.events()
         self.assertEqual(len(events), 346)

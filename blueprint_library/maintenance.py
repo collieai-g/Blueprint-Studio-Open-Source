@@ -5,6 +5,8 @@ release; this module protects its existing data before the server accepts traffi
 """
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
@@ -124,7 +126,7 @@ def code_digest(source):
     for directory in ['blueprint_library', 'blueprint_folders', 'library_web', 'assets/icons']:
         files.extend(p for p in (source / directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix != '.pyc')
     for path in sorted(files):
-        if path.is_symlink():
+        if has_link(path):
             raise ValueError('正式程式不能包含符號連結。')
         digest.update(path.relative_to(source).as_posix().encode() + b'\0')
         digest.update(path.read_bytes())

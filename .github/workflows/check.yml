@@ -5,10 +5,45 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the accepted archives without rebuilding
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python -m pip install -r requirements-mcp.txt -r requirements-installer.txt
+      # Keep the Windows locale intact: CLI UTF-8 is a product responsibility.
+      - run: python -m unittest discover -s tests -v
+      - name: Check the portable reference harness (CI has no private binding)
+        working-directory: tools/feedback_harness
+        run: |
+          python -X utf8 -m unittest discover -s tests -v
+          node --check cases/blueprint-login-001/browser-check.mjs
+      - name: Check all Node tests with portable glob expansion
+        run: python -c "import pathlib, subprocess; subprocess.run(['node', '--test'] + sorted(str(p) for pattern in ('test_*.cjs', 'test_*.mjs') for p in pathlib.Path('tests').glob(pattern)), check=True)"
+      - name: Check every workspace JavaScript entry
+        run: python -c "import pathlib, subprocess; [subprocess.run(['node', '--check', str(p)], check=True) for p in sorted(pathlib.Path('library_web').glob('*.js'))]"
+      - run: python tools/build_web.py
+      - run: git diff --exit-code -- web/icons.js dist/index.html
+  integration:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,14 +53,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: python -m pip install -r requirements-mcp.txt
-      - run: python -m unittest discover -s tests -v
-      - name: Check opt-in feedback harness and synthetic login reference
-        working-directory: tools/feedback_harness
-        run: |
-          python -X utf8 -m unittest discover -s tests -v
-          node --check cases/blueprint-login-001/browser-check.mjs
-      - run: node --test tests/test_*.cjs tests/test_*.mjs
+      - run: python -m pip install -r requirements-mcp.txt -r requirements-installer.txt playwright
       - name: Check native container backup, restore and persistent restart
         run: |
           docker build -f company/Dockerfile -t blueprint-native-test .
@@ -35,23 +63,8 @@ jobs:
           python -m venv /tmp/blueprint-mcp-interop
           /tmp/blueprint-mcp-interop/bin/python -m pip install 'mcp==2.3.0'
           /tmp/blueprint-mcp-interop/bin/python tests/check_mcp_interop.py
-      - run: node --check library_web/app.js
-      - run: node --check library_web/workdays.js
-      - run: node --check library_web/workspace.js
-      - run: node --check library_web/page-layout.js
-      - run: node --check library_web/overview-cards.js
-      - run: node --check library_web/presentation-sync.js
-      - run: node --check library_web/connection.js
-      - run: node --check library_web/update.js
-      - run: node --check library_web/studio.js
-      - run: node --check library_web/agents.js
-      - run: node --check library_web/integrations.js
-      - run: node --check library_web/skills.js
-      - run: node --check library_web/calendar.js
-      - run: node --check library_web/navigation.js
       - name: Check real authenticated browser workflows
         run: |
-          python -m pip install playwright
           python -m playwright install --with-deps chromium
           python tests/check_studio_browser.py
           python tests/check_agents_browser.py
@@ -62,12 +75,47 @@ jobs:
           python tests/check_personalization_browser.py
           python tests/check_presentation_browser.py
           python tests/check_update_browser.py
+          python tests/check_installer_browser.py
           python tests/check_connection_browser.py
-      - run: python tools/build_web.py
-      - run: git diff --exit-code -- web/icons.js dist/index.html
+  artifacts:
+    needs: [check, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin the release identity
+        id: version
+        run: |
+          python - <<'PY'
+          import os, re
+          from blueprint_folders import __version__
+          if not re.fullmatch(r'\d+\.\d+\.\d+', __version__):
+              raise SystemExit('A stable source version is required.')
+          tag = 'v' + __version__
+          ref = os.environ['GITHUB_REF']
+          if ref.startswith('refs/tags/') and ref != 'refs/tags/' + tag:
+              raise SystemExit('Tag and source version differ.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write('tag=' + tag + '\n')
+          PY
+      - name: Build once and accept the delivered bytes
+        env:
+          BLUEPRINT_RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/accepted-release"
+          python tools/package_installer.py --output "$RUNNER_TEMP/accepted-release/blueprint-studio-$BLUEPRINT_RELEASE_TAG-installer.zip"
+          python tools/package_workbench.py --output "$RUNNER_TEMP/accepted-release/blueprint-studio-$BLUEPRINT_RELEASE_TAG-workbench.zip"
+          python tools/verify_release_artifacts.py --installer "$RUNNER_TEMP/accepted-release/blueprint-studio-$BLUEPRINT_RELEASE_TAG-installer.zip" --workbench "$RUNNER_TEMP/accepted-release/blueprint-studio-$BLUEPRINT_RELEASE_TAG-workbench.zip" --output "$RUNNER_TEMP/accepted-release/acceptance.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: accepted-release-${{ github.sha }}
+          path: ${{ runner.temp }}/accepted-release
+          if-no-files-found: error
   release:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    needs: check
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    needs: artifacts
     runs-on: ubuntu-latest
     concurrency:
       group: blueprint-release
@@ -79,49 +127,48 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Select the checked version and preserve existing releases
-        id: version
+      - uses: actions/download-artifact@v4
+        with:
+          name: accepted-release-${{ github.sha }}
+          path: ${{ runner.temp }}/accepted-release
+      - name: Recheck accepted hashes and publish without rebuilding
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           python - <<'PY'
-          import json, os, re, subprocess
+          import hashlib, json, os, pathlib, subprocess
           from blueprint_folders import __version__
-          if not re.fullmatch(r'\d+\.\d+\.\d+', __version__):
-              raise SystemExit('Release version must be a stable semantic version.')
           tag = 'v' + __version__
-          ref = os.environ['GITHUB_REF']
-          if ref.startswith('refs/tags/') and ref != 'refs/tags/' + tag:
-              raise SystemExit('Tag and source version differ.')
-          result = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/releases/tags/' + tag], capture_output=True, text=True)
-          if result.returncode and 'HTTP 404' not in result.stderr:
-              raise SystemExit('Cannot check existing release; refusing to create or overwrite one.')
-          exists = result.returncode == 0
-          if exists and json.loads(result.stdout).get('tag_name') != tag:
-              raise SystemExit('Unexpected release response.')
-          if not exists:
-              tagged = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/git/ref/tags/' + tag], capture_output=True, text=True)
-              if tagged.returncode and 'HTTP 404' not in tagged.stderr:
-                  raise SystemExit('Cannot check existing tag.')
-              if not tagged.returncode:
-                  resolved = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/commits/' + tag], capture_output=True, text=True)
-                  if resolved.returncode or json.loads(resolved.stdout).get('sha') != os.environ['GITHUB_SHA']:
-                      raise SystemExit('Existing tag points to a different commit; refusing to publish mismatched assets.')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('tag=' + tag + '\nneeded=' + str(not exists).lower() + '\n')
-          print('Existing release preserved.' if exists else 'Build and publish ' + tag + ' from the checked commit.')
+          directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'accepted-release'
+          receipt = json.loads((directory / 'acceptance.json').read_text())
+          if receipt.get('accepted') is not True or receipt['source_revision'] != os.environ['GITHUB_SHA'] or receipt['version'] != __version__:
+              raise SystemExit('Artifact acceptance does not match this source.')
+          paths = []
+          for record in receipt['artifacts']:
+              name = record['name']
+              if pathlib.PurePath(name).name != name or '/' in name or chr(92) in name:
+                  raise SystemExit('Invalid artifact name.')
+              path = directory / name
+              if path.stat().st_size != record['size'] or hashlib.sha256(path.read_bytes()).hexdigest() != record['sha256']:
+                  raise SystemExit('Accepted artifact changed during handoff.')
+              paths.append(str(path))
+          current = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/releases/tags/' + tag], capture_output=True, text=True)
+          if current.returncode == 0:
+              raise SystemExit('Release already exists; refusing to replace it.')
+          if 'HTTP 404' not in current.stderr:
+              raise SystemExit('Existing release state is unknown; refusing to publish.')
+          tagged = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/git/ref/tags/' + tag], capture_output=True, text=True)
+          if tagged.returncode and 'HTTP 404' not in tagged.stderr:
+              raise SystemExit('Existing tag state is unknown; refusing to publish.')
+          if tagged.returncode == 0:
+              resolved = subprocess.run(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/commits/' + tag], capture_output=True, text=True)
+              if resolved.returncode or json.loads(resolved.stdout).get('sha') != os.environ['GITHUB_SHA']:
+                  raise SystemExit('Existing tag points to another commit; refusing to publish mismatched assets.')
+          subprocess.run(['gh', 'release', 'create', tag, *paths, str(directory / 'acceptance.json'), '--target', os.environ['GITHUB_SHA'], '--title', 'Blueprint Studio Open Source ' + tag, '--notes-file', 'docs/RELEASE.md'], check=True)
+          download = directory / 'readback'
+          download.mkdir()
+          subprocess.run(['gh', 'release', 'download', tag, '--pattern', '*.zip', '--dir', str(download)], check=True)
+          for record in receipt['artifacts']:
+              if hashlib.sha256((download / record['name']).read_bytes()).hexdigest() != record['sha256']:
+                  raise SystemExit('Published artifact readback differs from acceptance.')
           PY
-      - name: Build complete AI installer and same-site update package
-        if: steps.version.outputs.needed == 'true'
-        env:
-          BLUEPRINT_RELEASE_TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          python tools/package_installer.py --output "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-installer.zip"
-          python tools/package_workbench.py --output "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-workbench.zip"
-      - name: Publish versioned downloads after checks pass
-        if: steps.version.outputs.needed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BLUEPRINT_RELEASE_TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          gh release create "$BLUEPRINT_RELEASE_TAG" "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-installer.zip" "$RUNNER_TEMP/blueprint-studio-$BLUEPRINT_RELEASE_TAG-workbench.zip" --target "$GITHUB_SHA" --title "Blueprint Studio Open Source $BLUEPRINT_RELEASE_TAG" --notes-file docs/RELEASE.md

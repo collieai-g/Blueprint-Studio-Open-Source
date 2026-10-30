@@ -79,7 +79,8 @@ def normalize_url(value: str) -> str:
 
     Credentials, ambiguous backslashes, whitespace and control characters are
     rejected. Hostnames use their ASCII IDNA form; explicit valid ports and URL
-    paths, queries and fragments are retained.
+    paths, queries and fragments are retained. Bracketed hosts must be valid
+    IPv6 literals, rather than DNS names or unsupported address forms.
     """
     if not isinstance(value, str):
         raise ValueError("網址必須係文字。")
@@ -98,7 +99,7 @@ def normalize_url(value: str) -> str:
         port = parts.port  # Access validates malformed and out-of-range ports.
         if not host or parts.netloc.endswith(":"):
             raise ValueError
-        if ":" in host:
+        if ":" in host or "[" in parts.netloc or "]" in parts.netloc:
             if "%" in host or not re.fullmatch(r"\[[^\]]+\](?::[0-9]+)?", parts.netloc):
                 raise ValueError
             host = "[" + ipaddress.IPv6Address(host).compressed + "]"

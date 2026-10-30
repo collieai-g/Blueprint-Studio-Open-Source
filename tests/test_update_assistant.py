@@ -23,7 +23,7 @@ class UpdateAssistantTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.project = self.root / 'source'; self.project.mkdir()
         self.job = self.root / 'private-job'
-        (self.project / 'blueprint.py').write_text('# Existing source\n')
+        (self.project / 'blueprint.py').write_bytes(b'# Existing source\n')
         self.git('init', '-q')
         self.git('config', 'user.name', 'Test')
         self.git('config', 'user.email', 'test@example.invalid')
@@ -37,8 +37,8 @@ class UpdateAssistantTests(unittest.TestCase):
         return update.prepare(self.project, self.job, 'https://work.example', **kwargs)
 
     def test_prepare_is_repeatable_without_overwriting_custom_source_or_baseline(self):
-        (self.project / 'blueprint.py').write_text('# My customization\n')
-        (self.project / 'my-ui.js').write_text('const custom = true;')
+        (self.project / 'blueprint.py').write_bytes(b'# My customization\n')
+        (self.project / 'my-ui.js').write_text('const custom = true;', encoding='utf-8')
         self.assertEqual(self.prepare()['status'], 'prepared')
         first = (self.job / 'before-source/source.bundle').read_bytes()
         self.assertEqual(self.prepare()['status'], 'resumed')
@@ -46,29 +46,29 @@ class UpdateAssistantTests(unittest.TestCase):
         with zipfile.ZipFile(self.job / 'before-source/working-tree.zip') as archive:
             self.assertEqual(archive.read('blueprint.py'), b'# My customization\n')
             self.assertIn('my-ui.js', archive.namelist())
-        self.assertEqual((self.project / 'blueprint.py').read_text(), '# My customization\n')
+        self.assertEqual((self.project / 'blueprint.py').read_text(encoding='utf-8'), '# My customization\n')
         self.assertFalse(list(self.job.rglob('*.sqlite3')))
         with self.assertRaises(ValueError): update.prepare(self.project, self.job, 'https://different.example')
 
     def test_sites_identity_and_browser_origin_must_match(self):
         (self.project / '.openai').mkdir()
-        (self.project / '.openai/hosting.json').write_text('{"project_id":"original-site"}')
+        (self.project / '.openai/hosting.json').write_text('{"project_id":"original-site"}', encoding='utf-8')
         self.assertEqual(self.prepare()['route'], 'sites')
         with self.assertRaises(ValueError): self.prepare(site_id='new-site')
         browser = self.root / 'browser.json'
         browser.write_text(json.dumps({'format': 'blueprint-update-handoff', 'format_version': 1,
-                                      'origin': 'https://another.example', 'preferences': {}}))
+                                      'origin': 'https://another.example', 'preferences': {}}), encoding='utf-8')
         with self.assertRaises(ValueError): update.prepare(self.project, self.root / 'other-job', 'https://work.example', handoff=browser)
 
     def test_gateway_handoff_keeps_native_backend_and_rejects_silent_rebinding(self):
         (self.project / '.openai').mkdir()
-        (self.project / '.openai/hosting.json').write_text('{"project_id":"original-site"}')
+        (self.project / '.openai/hosting.json').write_text('{"project_id":"original-site"}', encoding='utf-8')
         browser = self.root / 'browser.json'
         data = {'format': 'blueprint-update-handoff', 'format_version': 1,
                 'origin': 'https://work.example', 'preferences': {}, 'route': 'sites',
                 'deployment_mode': 'sites_native', 'backend_origin': 'https://data.example',
                 'gateway_version': '1.0.0', 'password': 'must-not-copy'}
-        browser.write_text(json.dumps(data))
+        browser.write_text(json.dumps(data), encoding='utf-8')
         self.prepare(handoff=browser)
         job = update.load_job(self.job)
         self.assertEqual(job['backend_origin'], data['backend_origin'])
@@ -78,15 +78,15 @@ class UpdateAssistantTests(unittest.TestCase):
         self.assertEqual(diagnosis['state'], 'not_verified')
         self.assertIn('不等待 Sites D1', diagnosis['message'])
         data['backend_origin'] = 'https://another.example'
-        browser.write_text(json.dumps(data))
+        browser.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaises(ValueError): self.prepare(handoff=browser)
         data['backend_origin'] = data['origin']
-        browser.write_text(json.dumps(data))
+        browser.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaises(ValueError): update.handoff_data(browser)
 
     def test_pack_and_unpack_keep_baseline_and_uncommitted_candidate_and_can_resume_again(self):
         self.prepare()
-        (self.project / 'blueprint.py').write_text('# Candidate, not deployed\n')
+        (self.project / 'blueprint.py').write_bytes(b'# Candidate, not deployed\n')
         package = self.root / 'resume.zip'
         result = update.pack(self.job, package)
         self.assertEqual(result['production_status'], 'not_verified')
@@ -119,10 +119,16 @@ class UpdateAssistantTests(unittest.TestCase):
     def test_symlinks_private_source_and_nested_output_are_rejected(self):
         with self.assertRaises(ValueError): update.prepare(self.project, self.project / 'job', 'https://work.example')
         link = self.project / 'outside'
-        link.symlink_to(self.root / 'target')
-        with self.assertRaises(ValueError): self.prepare()
-        link.unlink()
-        (self.project / 'access.json').write_text('{}')
+        with self.subTest(capability='symlink'):
+            try:
+                link.symlink_to(self.root / 'target')
+            except OSError as exc:
+                if getattr(exc, 'winerror', None) == 1314:
+                    self.skipTest('Windows symlink privilege unavailable')
+                raise
+            with self.assertRaises(ValueError): self.prepare()
+        link.unlink(missing_ok=True)
+        (self.project / 'access.json').write_text('{}', encoding='utf-8')
         with self.assertRaises(ValueError): update.prepare(self.project, self.root / 'another-job', 'https://work.example')
 
     def test_native_backup_preserves_real_attachment_credentials_and_rows(self):
@@ -165,9 +171,9 @@ class UpdateAssistantTests(unittest.TestCase):
     def test_check_never_persists_raw_tool_tokens(self):
         self.prepare()
         observations = self.root / 'observations.json'
-        observations.write_text(json.dumps({'site': {'token': 'never-copy-this'}, 'environment': {}, 'tools': []}))
+        observations.write_text(json.dumps({'site': {'token': 'never-copy-this'}, 'environment': {}, 'tools': []}), encoding='utf-8')
         update.check(self.job, observations)
-        self.assertNotIn('never-copy-this', (self.job / 'checks.json').read_text())
+        self.assertNotIn('never-copy-this', (self.job / 'checks.json').read_text(encoding='utf-8'))
 
 
 if __name__ == '__main__': unittest.main()

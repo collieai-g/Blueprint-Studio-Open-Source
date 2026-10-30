@@ -182,7 +182,7 @@ class MCPBridgeTests(unittest.IsolatedAsyncioTestCase):
             reread = (await self.call(client, 'get_item', {'id': item['id']}))['item']
             self.assertEqual(reread['collection_id'], collection['id'])
             filename, _, _ = self.store.get_file(item['id'])
-            self.assertEqual(filename.read_text(), '保留真正的中文內容。')
+            self.assertEqual(filename.read_text(encoding='utf-8'), '保留真正的中文內容。')
             listed = await self.call(client, 'list_items', {'pinned': True})
             self.assertEqual(listed['items'][0]['id'], link['id'])
         await self.session(work)

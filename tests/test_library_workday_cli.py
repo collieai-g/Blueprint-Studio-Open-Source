@@ -18,7 +18,7 @@ class WorkdayCLITests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="blueprint-workday-cli-")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.data = self.root / "公司資料"
         self.workspace = self.root / "藍圖工作室"
         self.workspace.mkdir()
@@ -36,7 +36,7 @@ class WorkdayCLITests(unittest.TestCase):
 
     def run_cli(self, *arguments, raw=None, expected=0):
         result = subprocess.run([sys.executable, str(CLI), *map(str, arguments)], cwd=self.root,
-                                input=raw, capture_output=True, text=True, timeout=20)
+                                input=raw, capture_output=True, text=True, encoding="utf-8", timeout=20)
         self.assertEqual(result.returncode, expected, result.stderr or result.stdout)
         channel = result.stdout if expected == 0 else result.stderr
         return json.loads(channel), result

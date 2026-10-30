@@ -6,6 +6,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+import uuid
 from unittest.mock import patch
 
 from blueprint_library import backup
@@ -193,14 +194,29 @@ class CalendarTests(unittest.TestCase):
         self.assertEqual(day['attendance'][0]['minutes'], 23 * 60)
 
     def test_month_reads_full_range_and_employee_filters_exclude_unassigned_company_items(self):
-        for index in range(105):
-            self.entry(title='Staff work ' + str(index))
+        # This case checks a >100-row query, not 105 independent commits.
+        # Keep a real API-created template and preserve subjects/history for
+        # every synthetic row seeded inside the same transaction.
+        first = self.entry(title='Staff work 0')
+        entry_ids = {first['id']}
+        with self.store._connection() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            template = dict(conn.execute('SELECT * FROM calendar_entries WHERE id=?', (first['id'],)).fetchone())
+            columns = tuple(template)
+            for index in range(1, 105):
+                record = {**template, 'id': uuid.uuid4().hex, 'title': 'Staff work ' + str(index)}
+                conn.execute('INSERT INTO calendar_entries (' + ','.join(columns) + ') VALUES ('
+                             + ','.join('?' for _ in columns) + ')', [record[key] for key in columns])
+                self.owner._history(conn, 'entry', self.owner._entry(conn, record['id']))
+                entry_ids.add(record['id'])
+            self.assertEqual(conn.execute('PRAGMA foreign_key_check').fetchall(), [])
         self.entry(employee_id=self.owner_employee['id'], title='Owner private work')
         company = self.entry('todo', employee_id='', title='Company todo')
         undated = self.entry('todo', employee_id='', title='Undated company todo', date='')
         Studio(self.store, self.owner_identity).create({'kind': 'task', 'title': 'Legacy company task', 'data': {'due_date': '2026-10-26'}})
         full = self.staff.month('2026-10')
         self.assertEqual(full['summary']['work_logs'], 105)
+        self.assertEqual({entry['id'] for day in full['days'] for entry in day['work_logs']}, entry_ids)
         self.assertEqual(len(full['days']), 31)
         self.assertIn(company['id'], {entry['id'] for day in full['days'] for entry in day['todos']})
         self.assertEqual(full['undated_todos'][0]['id'], undated['id'])

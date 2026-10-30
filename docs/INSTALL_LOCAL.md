@@ -45,8 +45,14 @@ python3 --version
 
 需要 Python 3.10 或以上。若未安裝，AI 按作業系統引導你使用
 [Python 官方下載](https://www.python.org/downloads/)或該系統的套件管理器，安裝後重新開啟終端機再驗證。
-若只有 `python` 指令而版本符合，之後統一改用 `python`。正常運行後台不需要額外 pip 或 npm 套件；
-Node.js 是開發檢查使用的工具，不是本機使用前提。
+若只有 `python` 指令而版本符合，之後統一改用 `python`。原生業務 API 以標準庫實作；
+公司月曆另需 IANA 時區資料，Windows 官方 Python 通常沒有附帶，不能省略這項環境準備。
+需要受管更新時，按[受管安裝器](MANAGED_INSTALLER.md)使用 `init`：首次 Windows x64
+安裝會在來源外的專用 Python 環境，自動準備包含時區資料和簽章驗證的固定依賴。
+若採用本頁的一般來源安裝路線，先在選定的獨立 Python 環境安裝 `tzdata==2026.6`，
+再確認 `python -c "from zoneinfo import ZoneInfo; ZoneInfo('Asia/Hong_Kong')"` 成功。
+不要把依賴或私人執行環境放進來源倉庫。Node.js 是開發檢查或獨立 Agent 的工具，
+不是只使用原生工作室的前提。
 
 有 Git 時，在你選擇的父目錄執行：
 

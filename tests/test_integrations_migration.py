@@ -1,4 +1,5 @@
 """Schema 7 adds service tables without replacing existing company state."""
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -21,7 +22,7 @@ class IntegrationMigrationTests(unittest.TestCase):
         self.store = Store(self.directory)
 
     def as_schema6(self):
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             tables = [row[0] for row in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'integration_%'")]
             for table in tables:
@@ -61,7 +62,7 @@ class IntegrationMigrationTests(unittest.TestCase):
         with patch('blueprint_library.integrations.initialize', interrupted):
             with self.assertRaises(RuntimeError):
                 Store(self.directory)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], 6)
             self.assertIsNone(conn.execute("SELECT name FROM sqlite_master WHERE name='integration_partial'").fetchone())
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM agent_registrations').fetchone()[0], 0)
@@ -70,7 +71,7 @@ class IntegrationMigrationTests(unittest.TestCase):
         with patch('blueprint_library.store.SCHEMA_VERSION', 6):
             with self.assertRaises(LibraryError):
                 Store(self.directory)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], SCHEMA_VERSION)
 
 

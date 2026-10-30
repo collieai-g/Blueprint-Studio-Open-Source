@@ -1,5 +1,6 @@
 """Local workday bindings preserve private workspace content and boundaries."""
 
+from contextlib import closing
 from datetime import date
 import json
 from pathlib import Path
@@ -21,7 +22,7 @@ class WorkdayIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="blueprint-workday-integration-")
         self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
+        self.base = Path(self.temporary.name).resolve()
         self.workspace = self.base / "私人 工作室 $(literal)"
         self.data = self.base / "私人 資料"
         self.tool = self.base / "工具 ' $(literal)"
@@ -198,7 +199,7 @@ class WorkdayIntegrationTests(unittest.TestCase):
 
     def test_future_database_schema_is_rejected_without_workspace_writes(self):
         from blueprint_library.store import SCHEMA_VERSION
-        with sqlite3.connect(self.data / "library.sqlite3") as conn:
+        with closing(sqlite3.connect(self.data / "library.sqlite3")) as conn, conn:
             conn.execute("PRAGMA user_version=" + str(SCHEMA_VERSION + 1))
         self.assert_error(500, self.connect)
         self.assertFalse(self.workspace.exists())

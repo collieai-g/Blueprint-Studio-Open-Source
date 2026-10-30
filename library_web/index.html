@@ -13,11 +13,13 @@
   <link rel="stylesheet" href="/integrations.css">
   <link rel="stylesheet" href="/calendar.css">
   <link rel="stylesheet" href="/page-layout.css">
+  <link rel="stylesheet" href="/installer.css">
   <script src="/workdays.js" defer></script>
   <script src="/workspace.js" defer></script>
   <script src="/presentation-sync.js" defer></script>
   <script src="/overview-cards.js" defer></script>
   <script src="/update.js" defer></script>
+  <script src="/installer.js" defer></script>
   <script src="/navigation.js" defer></script>
   <script src="/agents.js" defer></script>
   <script src="/skills.js" defer></script>
@@ -53,7 +55,7 @@
     </div>
     <div id="studio-sidebar-tools" hidden></div>
     <div id="studio-nav-scroll" class="studio-nav-scroll" hidden><nav id="studio-pins" aria-label="釘選"></nav><nav id="studio-navigation" class="main-nav" aria-label="工作台主列"></nav></div>
-    <div class="sidebar-bottom"><button id="settings-button" class="nav-item" type="button" title="設定" aria-label="設定"><span data-icon="settings" aria-hidden="true"></span><span>設定</span></button><p id="version">Blueprint Studio Backend</p></div>
+    <div class="sidebar-bottom"><button id="installer-entry" class="nav-item installer-entry" type="button" aria-controls="installer-dialog" hidden data-installer-ui><span class="installer-indicator" aria-hidden="true"></span><span id="installer-entry-label">更新已準備好</span></button><button id="settings-button" class="nav-item" type="button" title="設定" aria-label="設定"><span data-icon="settings" aria-hidden="true"></span><span>設定</span></button><p id="version">Blueprint Studio Backend</p></div>
   </aside>
 
   <div class="app-main">
@@ -194,6 +196,18 @@
   <dialog id="work-report-dialog" class="work-report-dialog" aria-labelledby="work-report-title"><div class="dialog-heading"><h2 id="work-report-title">每日工作紀錄</h2><button class="icon-button" type="button" data-close aria-label="關閉工作紀錄">×</button></div><p id="work-report-meta" class="muted"></p><p id="work-report-summary" class="work-report-summary"></p><div id="work-report-entries"></div><div class="dialog-actions spread"><button id="work-report-history" class="button secondary small" type="button" aria-expanded="false" aria-controls="work-report-history-list">版本紀錄</button><button id="work-report-edit" class="button primary small" type="button">修整紀錄</button></div><div id="work-report-history-list" class="work-history-list" hidden></div><p id="work-report-error" class="form-error" role="alert" hidden></p><button id="work-report-reload" class="button secondary small" type="button" hidden>重新讀取最新版本</button></dialog>
 
   <dialog id="company-profile-dialog" class="company-profile-dialog" aria-labelledby="company-profile-heading"><form id="company-profile-form"><div class="dialog-heading"><div><p class="eyebrow">YOUR COMPANY</p><h2 id="company-profile-heading">設定你公司的專屬後台</h2></div><button class="icon-button" type="button" data-close aria-label="關閉公司設定">×</button></div><p class="muted">先留下公司名稱，其他資料可以慢慢補充。</p><label class="field">公司名稱<input id="profile-name" required maxlength="120" autocomplete="organization" placeholder="你的公司或工作室名稱"></label><label class="field">行業 <span class="optional">選填</span><input id="profile-industry" maxlength="120" placeholder="例如：AI 服務、設計、教育"></label><label class="field">公司簡介 <span class="optional">選填</span><textarea id="profile-description" rows="3" maxlength="4000" placeholder="公司主要提供甚麼服務？"></textarea></label><label class="field">目前目標 <span class="optional">選填</span><textarea id="profile-goals" rows="3" maxlength="4000" placeholder="目前想完成或持續推進的事"></textarea></label><p id="company-profile-error" class="form-error" role="alert" hidden></p><button id="reload-company-profile" class="button secondary small" type="button" hidden>重新讀取最新資料</button><div class="dialog-actions spread"><button class="button secondary" type="button" data-close>稍後再填</button><button id="save-company-profile" class="button primary" type="submit">保存公司資料</button></div></form></dialog>
+  <dialog id="installer-dialog" class="installer-dialog" aria-labelledby="installer-heading" data-installer-ui>
+    <div class="dialog-heading"><h2 id="installer-heading">工作室更新</h2><button id="installer-close" class="icon-button" type="button" aria-label="關閉工作室更新">×</button></div>
+    <p id="installer-status" class="installer-status" role="status" aria-live="polite"></p>
+    <p id="installer-versions" class="muted"></p>
+    <ul id="installer-components" class="installer-components" hidden></ul>
+    <p id="installer-notes" class="installer-notes"></p>
+    <p id="installer-drafts" class="installer-drafts muted"></p>
+    <p id="installer-owner-note" class="muted" hidden>請由工作室擁有人套用更新。</p>
+    <p id="installer-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-actions"><button id="installer-check" class="button secondary" type="button">檢查更新</button><button id="installer-later" class="button quiet" type="button">稍後</button><button id="installer-reload" class="button secondary" type="button" hidden>重新載入工作室</button><button id="installer-apply" class="button primary" type="button" disabled>套用更新</button></div>
+  </dialog>
+
   <dialog id="update-dialog" class="update-dialog" aria-labelledby="update-heading">
     <div class="dialog-heading"><div><p class="eyebrow">KEEP YOUR WORK</p><h2 id="update-heading">更新工作台</h2></div><button class="icon-button" type="button" data-close aria-label="關閉更新助手">×</button></div>
     <p class="muted">把更新交給 AI，接續已有進度。</p>

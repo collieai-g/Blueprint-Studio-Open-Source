@@ -1,4 +1,5 @@
 """Synthetic state and interruption tests for maintenance contract v2."""
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -33,7 +34,8 @@ class CoverageTests(unittest.TestCase):
         }, actor='owner')
 
     def wait_backup(self, operation_id):
-        deadline = time.monotonic() + 4
+        # Snapshot plus isolated restore can exceed four seconds on Windows.
+        deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             request = self.runtime.request_backup(operation_id, 'a' * 64)
             if request['status'] in {'complete', 'unknown'}:
@@ -43,7 +45,7 @@ class CoverageTests(unittest.TestCase):
 
     def test_rows_auth_and_attachment_content_change_digest_without_count_changes(self):
         original = backup.coverage(self.data)
-        with sqlite3.connect(self.data / 'library.sqlite3') as conn:
+        with closing(sqlite3.connect(self.data / 'library.sqlite3')) as conn, conn:
             conn.execute('UPDATE items SET title=? WHERE id=?', ('changed title', self.item['id']))
         edited = backup.coverage(self.data)
         self.assertNotEqual(original['digest'], edited['digest'])
@@ -51,9 +53,9 @@ class CoverageTests(unittest.TestCase):
         blob.write_bytes(b'other content')
         attached = backup.coverage(self.data)
         self.assertNotEqual(edited['digest'], attached['digest'])
-        credentials = json.loads((self.data / 'access.json').read_text())
+        credentials = json.loads((self.data / 'access.json').read_text(encoding='utf-8'))
         credentials['rounds'] += 1
-        (self.data / 'access.json').write_text(json.dumps(credentials))
+        (self.data / 'access.json').write_text(json.dumps(credentials), encoding='utf-8')
         self.assertNotEqual(attached['digest'], backup.coverage(self.data)['digest'])
 
     def test_private_attestation_is_scoped_and_does_not_change_coverage(self):
@@ -69,7 +71,7 @@ class CoverageTests(unittest.TestCase):
         self.assertFalse(self.runtime.status(actor='another-owner')['protection']['reusable'])
         atomic_json(self.directory / 'operations.json', {'synthetic': 'receipt outside business data'})
         self.assertEqual(after['coverage'], self.runtime.status(actor='owner')['coverage'])
-        with sqlite3.connect(self.data / 'library.sqlite3') as conn:
+        with closing(sqlite3.connect(self.data / 'library.sqlite3')) as conn, conn:
             conn.execute('UPDATE items SET notes=? WHERE id=?', ('same number of rows', self.item['id']))
         self.assertFalse(self.runtime.status(actor='owner')['protection']['reusable'])
 
@@ -142,13 +144,13 @@ class CoverageTests(unittest.TestCase):
 
     def test_coverage_is_snapshot_stable_and_includes_presentation_preferences(self):
         before = backup.coverage(self.data)
-        with sqlite3.connect(self.data / 'library.sqlite3') as conn:
+        with closing(sqlite3.connect(self.data / 'library.sqlite3')) as conn, conn:
             conn.execute('INSERT INTO studio_preferences VALUES (?, ?, ?)',
                          ('owner', 1, json.dumps({'_presentation': {'version': 1, 'documents': {}}})))
         changed = backup.coverage(self.data)
         self.assertNotEqual(before['digest'], changed['digest'])
         self.assertEqual(changed, backup.coverage(self.data))
-        with sqlite3.connect(self.data / 'library.sqlite3') as conn:
+        with closing(sqlite3.connect(self.data / 'library.sqlite3')) as conn, conn:
             conn.execute('UPDATE studio_preferences SET data=? WHERE username=?',
                          (json.dumps({'_presentation': {'version': 1, 'documents': {'synthetic': 'change'}}}), 'owner'))
         self.assertNotEqual(changed['digest'], backup.coverage(self.data)['digest'])

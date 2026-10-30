@@ -72,7 +72,7 @@ class LibraryHTTPTests(unittest.TestCase):
             body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         if body is not None and content_type is not None:
             headers["Content-Type"] = content_type
-        connection = http.client.HTTPConnection(self.host, self.port, timeout=5)
+        connection = http.client.HTTPConnection(self.host, self.port, timeout=15)
         try:
             connection.request(method, path, body=body, headers=headers)
             response = connection.getresponse()

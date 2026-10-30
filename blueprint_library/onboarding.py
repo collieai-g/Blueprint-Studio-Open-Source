@@ -7,6 +7,8 @@ empty library, a remote account, or a pretend connected backend.
 
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 import json
 import os
 from pathlib import Path
@@ -42,7 +44,7 @@ def _safe_path(value, label: str) -> Path:
         current = Path(path.anchor)
         for component in path.parts[1:]:
             current = current / component
-            if current.is_symlink():
+            if has_link(current):
                 raise LibraryError(f"{label}不能包含符號連結。")
         return path.resolve()
     except (TypeError, ValueError, OSError, RuntimeError) as exc:
@@ -187,7 +189,7 @@ def _guide(plan: dict) -> bytes:
             )
             platform = (
                 "1. 登入自己的伺服器，確認 Docker、持久儲存及備份方案可用，先核對主機及磁碟費用。"
-                "將已選的公開正式版本或公司私人客製程式放到主機，核對來源 commit 並按實際 checkout 位置調整以下路徑。先在主機安全環境設定第 2 步"
+                "將已選的公開正式版本或公司私人客製程式放到主機，使用 company/Dockerfile，核對來源 commit 並按實際 checkout 位置調整以下路徑。先在主機安全環境設定第 2 步"
                 "的環境變數，再建置及啟動：\n\n"
                 + _code(build)
                 + "\n" + _code("docker volume create company-data")

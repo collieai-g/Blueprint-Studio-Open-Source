@@ -16,7 +16,7 @@ class InstallationCheckTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='blueprint-install-check-')
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.data = self.root / 'data'
         initialize_library(self.data, 'owner', 'synthetic-install-password')
         self.server = make_server(self.data, managed=True, backup_dir=self.root / 'backups')
@@ -45,7 +45,7 @@ class InstallationCheckTests(unittest.TestCase):
         self.assertEqual(first['verified_at'], repeated['verified_at'])
         self.assertTrue(self.server.maintenance.status(actor='owner')['protection']['reusable'])
         self.assertFalse(repeated['off_host_durable_copy_verified'])
-        progress = json.loads((self.output / 'installation-check.json').read_text())
+        progress = json.loads((self.output / 'installation-check.json').read_text(encoding='utf-8'))
         self.assertEqual(progress['stage'], 'complete')
         self.assertNotIn('password', json.dumps(progress))
 
@@ -53,7 +53,7 @@ class InstallationCheckTests(unittest.TestCase):
         with patch.object(helper, '_authenticated_restore', side_effect=ValueError('synthetic interruption')):
             with self.assertRaises(ValueError):
                 helper.verify_installation(self.url, self.output)
-        progress = json.loads((self.output / 'installation-check.json').read_text())
+        progress = json.loads((self.output / 'installation-check.json').read_text(encoding='utf-8'))
         self.assertTrue((self.output / 'backup.zip').is_file())
         # Download completed, but the process may have stopped before renaming.
         (self.output / 'backup.zip').rename(self.output / 'backup.partial-synthetic.zip')
@@ -76,7 +76,7 @@ class InstallationCheckTests(unittest.TestCase):
             repeated = helper.verify_installation(self.url, self.output)
         self.assertEqual(len(writes), 1)
         self.assertEqual(writes[0]['contract_version'], 2)
-        progress = json.loads((self.output / 'installation-check.json').read_text())
+        progress = json.loads((self.output / 'installation-check.json').read_text(encoding='utf-8'))
         self.assertEqual(writes[0]['operation_id'], progress['operation_id'])
         self.assertEqual(result['snapshot_id'], repeated['snapshot_id'])
         self.assertEqual(self.server.maintenance.read_backup_request(progress['operation_id'])['status'], 'complete')
@@ -141,6 +141,32 @@ class InstallationCheckTests(unittest.TestCase):
             with patch.object(helper, '_verify_legacy', return_value={'legacy': True}) as legacy:
                 self.assertEqual(helper.verify_installation(self.url, self.output), {'legacy': True})
                 legacy.assert_called_once_with(self.url, self.output)
+
+    def test_legacy_contract_downloads_and_authenticates_real_isolated_restore(self):
+        original = WorkdayRemote._request
+        def legacy_status(remote, method, path, payload=None, query=None):
+            result = original(remote, method, path, payload, query)
+            if method == 'GET' and path == '/api/maintenance':
+                result = {key: value for key, value in result.items()
+                          if key != 'maintenance_contract'}
+            return result
+        with patch.object(WorkdayRemote, '_request', new=legacy_status):
+            result = helper.verify_installation(self.url, self.output)
+        self.assertTrue(result['authenticated_restore'])
+        self.assertFalse(result['persistent_restart_verified'])
+        self.assertFalse(result['ai_connection_verified'])
+        self.assertTrue((self.output / 'backup.zip').is_file())
+        self.assertTrue((self.output / 'snapshot/data/access.json').is_file())
+        self.assertFalse((self.output / 'restore-check').exists())
+
+    def test_version_mismatch_stops_before_any_backup_or_private_directory(self):
+        fake = unittest.mock.Mock()
+        fake._request.return_value = {'version': '0.0.0'}
+        with patch.object(helper, 'WorkdayRemote', return_value=fake):
+            with self.assertRaisesRegex(ValueError, '相同版本'):
+                helper.verify_installation(self.url, self.output)
+        fake._request.assert_called_once_with('GET', '/api/info')
+        self.assertFalse(self.output.exists())
 
 
 if __name__ == '__main__': unittest.main()

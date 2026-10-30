@@ -1,0 +1,73 @@
+{
+  "format": "blueprint-runtime-lock/1",
+  "platform": "windows-cpython-amd64",
+  "python_versions": [
+    [
+      3,
+      10
+    ],
+    [
+      3,
+      11
+    ],
+    [
+      3,
+      12
+    ],
+    [
+      3,
+      13
+    ],
+    [
+      3,
+      14
+    ]
+  ],
+  "packages": [
+    {
+      "name": "cryptography",
+      "version": "50.0.2",
+      "sha256": [
+        "4e81d95e5bafc2d6e34e4bed780e53e4d5b9a2f928573428aa4d35fbec1eb0de",
+        "78198641e5be9521beea5aa782bb551a58068d10e6eb04c9c680c1b69f2e7d45",
+        "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+        "7b75de3c8b3be1cdb1052747c929440c3eea46c1bc2cb8a6e3a48388e9b7b452",
+        "c423ab384a46c4dff7217b2ea5ba2e11cffdeab6441acd04cf65a369caf0366c"
+      ]
+    },
+    {
+      "name": "cffi",
+      "version": "2.0.0",
+      "sha256": [
+        "19f705ada2530c1167abacb171925dd886168931e0a7b78f5bffcae5c6b5be75",
+        "203a48d1fb583fc7d78a4c6655692963b860a417c0528492a6bc21f1aaefab25",
+        "66f011380d0e49ed280c789fbd08ff0d40968ee7b665575489afa95c98196ab5",
+        "b18a3ed7d5b3bd8d9ef7a8cb226502c6bf8308df1525e1cc676c3680e7176739",
+        "b882b3df248017dba09d6b16defe9b5c407fe32fc7c65a9c69798e6175601be9",
+        "d68b6cef7827e8641e8ef16f4494edda8b36104d79773a334beaa1e3521430f6",
+        "da68248800ad6320861f129cd9c1bf96ca849a2771a59e0344e88681905916f5"
+      ]
+    },
+    {
+      "name": "pycparser",
+      "version": "2.23",
+      "sha256": [
+        "e5c6e8d3fbad53479cab09ac03729e0a9faf2bee3db8208a550daf5af81a5934"
+      ]
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.15.0",
+      "sha256": [
+        "f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"
+      ]
+    },
+    {
+      "name": "tzdata",
+      "version": "2026.6",
+      "sha256": [
+        "0a10eec6e13ef16b627fabed9a5f2ba61a62b1c67f327305f4e7e412a70b4aec"
+      ]
+    }
+  ]
+}

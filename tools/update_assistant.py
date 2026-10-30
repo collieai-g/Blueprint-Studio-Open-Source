@@ -22,6 +22,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from blueprint_folders.console import configure_utf8_streams
+from blueprint_folders.path_safety import has_link
 from blueprint_folders import __version__
 
 MAX_BYTES = 128 * 1024 * 1024
@@ -33,8 +35,8 @@ def now():
 
 
 def path(value):
-    result = Path(value).expanduser().absolute()
-    if any(p.is_symlink() for p in (result, *result.parents)):
+    result = Path(value).expanduser()
+    if has_link(result):
         raise ValueError('路徑不能包含符號連結。')
     return result.resolve()
 
@@ -221,12 +223,7 @@ def load_job(directory):
     return data
 
 
-def assess(job, observations):
-    """Report separate capabilities. No supplied observation can mark deployment complete."""
-    result = {'checked_at': now(), 'origin': job['origin'], 'target_version': job['target_version'],
-              'production_status': 'not_verified', 'checks': []}
-    def add(code, state, message):
-        result['checks'].append({'code': code, 'state': state, 'message': message})
+def _assess_network(job, observations, add):
     env = observations.get('environment') or {}
     if not isinstance(env, dict):
         raise ValueError('環境觀察格式不正確。')
@@ -248,6 +245,9 @@ def assess(job, observations):
             '目前環境不允許 ' + host + '。核對已發佈設定與目前環境；由平台套用設定，保持代理及 TLS。')
     else:
         add('network', 'unknown', '沒有完整的生效網域清單，不能推斷可連線。')
+
+
+def _assess_tools(observations, add):
     loaded = observations.get('tools', [])
     if not isinstance(loaded, list) or not all(isinstance(tool, str) for tool in loaded):
         raise ValueError('tools 必須是目前對話實際載入的工具名稱陣列。')
@@ -260,7 +260,10 @@ def assess(job, observations):
         add('ai_tools', 'outdated_or_partial', f'目前對話已載入 {count} 個藍圖工具，仍缺 {len(missing)} 個。核對正式後台版本與外掛定義；舊版可能需要先升級再刷新工具。')
     else:
         add('ai_tools', 'loaded', '目前對話已載入全部藍圖工具；仍需實際寫入、讀回及畫面確認。')
-    result['missing_tools'] = missing
+    return missing
+
+
+def _assess_site(job, observations, add):
     if job['route'] == 'sites':
         site = observations.get('site') or {}
         matches = site.get('id') == job['site_id'] and site.get('current_live_url', '').rstrip('/') == job['origin']
@@ -270,6 +273,17 @@ def assess(job, observations):
         add('publisher', 'reported_available' if publisher.get('available') is True else 'unknown',
             'AI 回報有可用發佈方式；正式儲存版本及部署仍待執行。' if publisher.get('available') is True else
             '先讀目前 Sites 技能，確認可用的來源推送、儲存版本及部署方式。缺少舊腳本不代表必須重建網站。')
+
+
+def assess(job, observations):
+    """Report separate capabilities. No supplied observation can mark deployment complete."""
+    result = {'checked_at': now(), 'origin': job['origin'], 'target_version': job['target_version'],
+              'production_status': 'not_verified', 'checks': []}
+    def add(code, state, message):
+        result['checks'].append({'code': code, 'state': state, 'message': message})
+    _assess_network(job, observations, add)
+    result['missing_tools'] = _assess_tools(observations, add)
+    _assess_site(job, observations, add)
     if job.get('deployment_mode') == 'sites_native':
         add('data_backend', 'not_verified', '這是 Sites 入口配原生後台：' + job['backend_origin'] +
             '。按 docs/SITES_NATIVE_GATEWAY.md 核對 /_blueprint/status、原生服務與持久磁碟；備份及更新在該後台執行，不等待 Sites D1／R2 快照。瀏覽器交接本身不證明綁定正確。')
@@ -380,6 +394,7 @@ def unpack(archive_path, output):
 
 
 def main(argv=None):
+    configure_utf8_streams()
     parser = argparse.ArgumentParser(description='減少重複操作：保存來源、檢查環境並接續同一工作台升級')
     commands = parser.add_subparsers(dest='command', required=True)
     start = commands.add_parser('prepare')

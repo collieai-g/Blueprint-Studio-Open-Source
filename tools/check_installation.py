@@ -17,6 +17,8 @@ import time
 from urllib.request import Request, build_opener
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from blueprint_folders.console import configure_utf8_streams
+from blueprint_folders.path_safety import has_link
 from blueprint_library import backup
 from blueprint_library.maintenance import atomic_json
 from blueprint_library.remote import WorkdayRemote, _NoRedirect
@@ -101,14 +103,14 @@ def _verify_legacy(url, output):
 def _download(remote, receipt, archive):
     """Read back a known file first; retain failed attempts without overwriting."""
     if archive.exists():
-        if (not archive.is_symlink() and archive.stat().st_size == receipt['size']
+        if (not has_link(archive) and archive.stat().st_size == receipt['size']
                 and backup.digest(archive) == receipt['sha256']):
             return
         archive.rename(archive.with_name('backup.invalid-' + uuid.uuid4().hex + '.zip'))
     # A previous process may have completed the bytes but stopped before the
     # final rename. Read the same private attempt before downloading it again.
     for candidate in sorted(archive.parent.glob('backup.partial-*.zip'))[:1000]:
-        if (not candidate.is_symlink() and candidate.is_file()
+        if (not has_link(candidate) and candidate.is_file()
                 and candidate.stat().st_size == receipt['size']
                 and backup.digest(candidate) == receipt['sha256']):
             candidate.rename(archive)
@@ -149,6 +151,124 @@ def _authenticated_restore(snapshot, output, info):
     shutil.rmtree(restored)
 
 
+def _load_acceptance_progress(output, remote, info, account, coverage):
+    progress_path = output / 'installation-check.json'
+    backup.safe_path(progress_path)
+    if output.exists():
+        if not progress_path.is_file():
+            raise ValueError('私人目錄缺少原驗收進度；不會覆寫已有內容。')
+        progress = json.loads(progress_path.read_text(encoding='utf-8'))
+        if (progress.get('format') != 'blueprint-installation-check/2' or progress.get('url') != remote.url
+                or progress.get('account') != account or progress.get('version') != info['version']):
+            raise ValueError('私人驗收目錄屬於另一個服務、登入身份或程式版本。')
+        if progress.get('coverage') != coverage:
+            raise ValueError('正式資料已改變；原驗收證據保留，請為新資料狀態使用新的私人驗收目錄。')
+        if (not re.fullmatch(r'installation-[0-9a-f]{32}', progress.get('operation_id', ''))
+                or not re.fullmatch('[0-9a-f]{64}', progress.get('plan_digest', ''))):
+            raise ValueError('私人驗收工作識別碼或計劃指紋無效。')
+    else:
+        output.mkdir(parents=True, mode=0o700)
+        plan = {'url': remote.url, 'account': account, 'version': info['version'],
+                'coverage': coverage, 'purpose': 'installation-acceptance-v2'}
+        progress = {'format': 'blueprint-installation-check/2', **plan,
+                    'operation_id': 'installation-' + uuid.uuid4().hex,
+                    'plan_digest': hashlib.sha256(json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+                    'stage': 'select_backup'}
+        atomic_json(progress_path, progress)
+    return progress_path, progress
+
+
+def _request_acceptance_backup(remote, progress, coverage):
+    try:
+        response = remote._request('GET', '/api/maintenance', query={'operation_id': progress['operation_id']})
+        request = response['backup_request']
+    except LibraryError as exc:
+        if exc.status != 404:
+            raise
+        try:
+            request = remote._request('POST', '/api/maintenance/backup', {
+                'contract_version': 2, 'operation_id': progress['operation_id'],
+                'plan_digest': progress['plan_digest']})
+        except LibraryError as write_error:
+            if write_error.status != 502:
+                raise
+            request = remote._request('GET', '/api/maintenance',
+                                      query={'operation_id': progress['operation_id']})['backup_request']
+    deadline = time.monotonic() + 600
+    while request.get('status') != 'complete':
+        if request.get('plan_digest') != progress['plan_digest']:
+            raise ValueError('原備份工作結果未知或計劃不符；先核對同 ID，不建立另一份備份。')
+        if request.get('status') == 'unknown':
+            # The worker may have saved a complete archive before losing
+            # its final journal write. Read that exact ID; never create a
+            # replacement merely because the request outcome is unknown.
+            known = remote._request('GET', '/api/maintenance/backups/' + request['backup_id'] + '/metadata')
+            if (known.get('platform_verified') and known.get('restore_verified')
+                    and known.get('coverage') == coverage):
+                request = {**request, 'status': 'complete'}
+                break
+            raise ValueError('原備份工作結果未知；同 ID 未有完整證據，不建立另一份備份。')
+        if time.monotonic() >= deadline:
+            raise ValueError('備份尚未完成；沿用此私人目錄及工作識別碼重試。')
+        time.sleep(1)
+        try:
+            request = remote._request('GET', '/api/maintenance',
+                                      query={'operation_id': progress['operation_id']})['backup_request']
+        except LibraryError as exc:
+            if exc.status != 502:
+                raise
+    if request.get('plan_digest') != progress['plan_digest']:
+        raise ValueError('原備份工作使用另一份計劃；先讀回原紀錄。')
+    return request
+
+
+def _select_acceptance_backup(remote, status, progress, coverage, save):
+    if not progress.get('backup_id'):
+        last = status.get('last_backup') or {}
+        protection = status.get('protection') or {}
+        if (progress['stage'] == 'select_backup' and last.get('platform_verified')
+                and last.get('restore_verified') and protection.get('current_coverage_matches')
+                and protection.get('retention_valid')):
+            progress['backup_id'] = last['id']; save('download')
+        else:
+            # Persist before a mutation. On retry, read this exact request before
+            # deciding whether the same idempotent request still needs submitting.
+            save('request_backup')
+            request = _request_acceptance_backup(remote, progress, coverage)
+            progress['backup_id'] = request['backup_id']; save('download')
+
+
+def _acceptance_receipt(remote, status, progress, coverage):
+    name = progress['backup_id']
+    if not re.fullmatch(r'\d{8}T\d{6}Z-[0-9a-f]{12}', name):
+        raise ValueError('備份識別碼無效。')
+    receipt = remote._request('GET', '/api/maintenance/backups/' + name + '/metadata')
+    if (receipt.get('id') != name or receipt.get('coverage') != coverage or not receipt.get('platform_verified')
+            or not receipt.get('restore_verified') or type(receipt.get('size')) is not int
+            or not re.fullmatch('[0-9a-f]{64}', receipt.get('sha256', ''))):
+        raise ValueError('所選備份未完整覆蓋目前資料，不能當作新的驗收。')
+    age = time.time() - receipt.get('created_at', 0)
+    if not 0 <= age < status.get('backup_interval_seconds', 0):
+        raise ValueError('原備份已超出保留政策；證據仍保留，請為新的保護週期使用新的私人驗收目錄。')
+    return name, receipt
+
+
+def _acceptance_snapshot(remote, receipt, output, coverage):
+    archive = output / 'backup.zip'
+    _download(remote, receipt, archive)
+    snapshot = output / 'snapshot'
+    if snapshot.exists():
+        try:
+            backup.check(snapshot)
+            if backup.coverage(snapshot / 'data')['digest'] != coverage['digest']:
+                raise ValueError('指紋不同。')
+        except (OSError, ValueError):
+            snapshot.rename(output / ('snapshot-invalid-' + uuid.uuid4().hex))
+    if not snapshot.exists():
+        backup.unpack(archive, snapshot, receipt['sha256'])
+    return archive, snapshot
+
+
 def verify_installation(url, output):
     """Resume native v2 acceptance; legacy hosts keep their original semantics."""
     output = backup.safe_path(output); backup.external(output)
@@ -167,109 +287,15 @@ def verify_installation(url, output):
     coverage = status.get('coverage')
     if not isinstance(coverage, dict) or not re.fullmatch('[0-9a-f]{64}', coverage.get('digest', '')):
         raise ValueError('正式後台未回報一致資料指紋。')
-    progress_path = output / 'installation-check.json'
-    backup.safe_path(progress_path)
-    if output.exists():
-        if not progress_path.is_file():
-            raise ValueError('私人目錄缺少原驗收進度；不會覆寫已有內容。')
-        progress = json.loads(progress_path.read_text())
-        if (progress.get('format') != 'blueprint-installation-check/2' or progress.get('url') != remote.url
-                or progress.get('account') != account or progress.get('version') != info['version']):
-            raise ValueError('私人驗收目錄屬於另一個服務、登入身份或程式版本。')
-        if progress.get('coverage') != coverage:
-            raise ValueError('正式資料已改變；原驗收證據保留，請為新資料狀態使用新的私人驗收目錄。')
-        if (not re.fullmatch(r'installation-[0-9a-f]{32}', progress.get('operation_id', ''))
-                or not re.fullmatch('[0-9a-f]{64}', progress.get('plan_digest', ''))):
-            raise ValueError('私人驗收工作識別碼或計劃指紋無效。')
-    else:
-        output.mkdir(parents=True, mode=0o700)
-        plan = {'url': remote.url, 'account': account, 'version': info['version'],
-                'coverage': coverage, 'purpose': 'installation-acceptance-v2'}
-        progress = {'format': 'blueprint-installation-check/2', **plan,
-                    'operation_id': 'installation-' + uuid.uuid4().hex,
-                    'plan_digest': hashlib.sha256(json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
-                    'stage': 'select_backup'}
-        atomic_json(progress_path, progress)
+    progress_path, progress = _load_acceptance_progress(output, remote, info, account, coverage)
     def save(stage):
         progress['stage'] = stage; atomic_json(progress_path, progress)
-    if not progress.get('backup_id'):
-        last = status.get('last_backup') or {}
-        protection = status.get('protection') or {}
-        if (progress['stage'] == 'select_backup' and last.get('platform_verified')
-                and last.get('restore_verified') and protection.get('current_coverage_matches')
-                and protection.get('retention_valid')):
-            progress['backup_id'] = last['id']; save('download')
-        else:
-            # Persist before a mutation. On retry, read this exact request before
-            # deciding whether the same idempotent request still needs submitting.
-            save('request_backup')
-            try:
-                response = remote._request('GET', '/api/maintenance', query={'operation_id': progress['operation_id']})
-                request = response['backup_request']
-            except LibraryError as exc:
-                if exc.status != 404:
-                    raise
-                try:
-                    request = remote._request('POST', '/api/maintenance/backup', {
-                        'contract_version': 2, 'operation_id': progress['operation_id'],
-                        'plan_digest': progress['plan_digest']})
-                except LibraryError as write_error:
-                    if write_error.status != 502:
-                        raise
-                    request = remote._request('GET', '/api/maintenance',
-                                              query={'operation_id': progress['operation_id']})['backup_request']
-            deadline = time.monotonic() + 600
-            while request.get('status') != 'complete':
-                if request.get('plan_digest') != progress['plan_digest']:
-                    raise ValueError('原備份工作結果未知或計劃不符；先核對同 ID，不建立另一份備份。')
-                if request.get('status') == 'unknown':
-                    # The worker may have saved a complete archive before losing
-                    # its final journal write. Read that exact ID; never create a
-                    # replacement merely because the request outcome is unknown.
-                    known = remote._request('GET', '/api/maintenance/backups/' + request['backup_id'] + '/metadata')
-                    if (known.get('platform_verified') and known.get('restore_verified')
-                            and known.get('coverage') == coverage):
-                        request = {**request, 'status': 'complete'}
-                        break
-                    raise ValueError('原備份工作結果未知；同 ID 未有完整證據，不建立另一份備份。')
-                if time.monotonic() >= deadline:
-                    raise ValueError('備份尚未完成；沿用此私人目錄及工作識別碼重試。')
-                time.sleep(1)
-                try:
-                    request = remote._request('GET', '/api/maintenance',
-                                              query={'operation_id': progress['operation_id']})['backup_request']
-                except LibraryError as exc:
-                    if exc.status != 502:
-                        raise
-            if request.get('plan_digest') != progress['plan_digest']:
-                raise ValueError('原備份工作使用另一份計劃；先讀回原紀錄。')
-            progress['backup_id'] = request['backup_id']; save('download')
-    name = progress['backup_id']
-    if not re.fullmatch(r'\d{8}T\d{6}Z-[0-9a-f]{12}', name):
-        raise ValueError('備份識別碼無效。')
-    receipt = remote._request('GET', '/api/maintenance/backups/' + name + '/metadata')
-    if (receipt.get('id') != name or receipt.get('coverage') != coverage or not receipt.get('platform_verified')
-            or not receipt.get('restore_verified') or type(receipt.get('size')) is not int
-            or not re.fullmatch('[0-9a-f]{64}', receipt.get('sha256', ''))):
-        raise ValueError('所選備份未完整覆蓋目前資料，不能當作新的驗收。')
-    age = time.time() - receipt.get('created_at', 0)
-    if not 0 <= age < status.get('backup_interval_seconds', 0):
-        raise ValueError('原備份已超出保留政策；證據仍保留，請為新的保護週期使用新的私人驗收目錄。')
-    archive = output / 'backup.zip'
-    _download(remote, receipt, archive)
-    snapshot = output / 'snapshot'
-    if snapshot.exists():
-        try:
-            backup.check(snapshot)
-            if backup.coverage(snapshot / 'data')['digest'] != coverage['digest']:
-                raise ValueError('指紋不同。')
-        except (OSError, ValueError):
-            snapshot.rename(output / ('snapshot-invalid-' + uuid.uuid4().hex))
-    if not snapshot.exists():
-        backup.unpack(archive, snapshot, receipt['sha256'])
+    _select_acceptance_backup(remote, status, progress, coverage, save)
+    name, receipt = _acceptance_receipt(remote, status, progress, coverage)
+    archive, snapshot = _acceptance_snapshot(remote, receipt, output, coverage)
     result_path = output / 'verification.json'
     backup.safe_path(result_path)
-    previous = json.loads(result_path.read_text()) if result_path.is_file() else None
+    previous = json.loads(result_path.read_text(encoding='utf-8')) if result_path.is_file() else None
     reusable = bool(previous and previous.get('url') == remote.url
                     and previous.get('version') == info['version'] and previous.get('coverage') == coverage
                     and previous.get('snapshot_id') == name and previous.get('sha256') == receipt['sha256']
@@ -296,6 +322,7 @@ def verify_installation(url, output):
     return {**result, 'reused_verification': reusable}
 
 def main():
+    configure_utf8_streams()
     parser = argparse.ArgumentParser(description='驗證正式工作台可備份、下載及還原；帳密只讀取安全環境設定')
     parser.add_argument('--url', required=True)
     parser.add_argument('--output', required=True)

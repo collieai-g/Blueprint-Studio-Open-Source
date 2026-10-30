@@ -125,13 +125,13 @@ class IntegrationContractTests(unittest.TestCase):
             self.assertTrue(path.resolve().is_relative_to(CONTRACT.resolve()))
             self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest, name)
             pinned[name] = digest
-        actual = {str(path.relative_to(CONTRACT)) for path in CONTRACT.rglob('*')
+        actual = {path.relative_to(CONTRACT).as_posix() for path in CONTRACT.rglob('*')
                   if path.is_file() and path.name != 'SHA256SUMS'}
         self.assertEqual(set(pinned), actual)
         self.assertEqual(list(pinned), sorted(pinned))
 
     def test_openapi_references_resolve_inside_pinned_contract(self):
-        document = json.loads((CONTRACT / 'openapi.json').read_text())
+        document = json.loads((CONTRACT / 'openapi.json').read_text(encoding='utf-8'))
         self.assertEqual(document['openapi'], '3.1.0')
         self.assertEqual(document['info']['version'], '1.0')
         prefix = '/api/integrations/v1/'
@@ -150,7 +150,7 @@ class IntegrationContractTests(unittest.TestCase):
                         target = CONTRACT / reference
                         self.assertTrue(target.resolve().is_relative_to(CONTRACT.resolve()))
                         self.assertTrue(target.is_file(), reference)
-                        json.loads(target.read_text())
+                        json.loads(target.read_text(encoding='utf-8'))
                 for child in value.values():
                     inspect(child)
             elif isinstance(value, list):

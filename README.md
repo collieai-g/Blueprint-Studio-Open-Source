@@ -205,7 +205,7 @@ Codex 及其他相容 AI 能做甚麼，取決於目前客戶端實際提供的�
 | 左右協作、Skill 與影片流程 | [協作流程](docs/LEFT_RIGHT_WORKFLOW.md) · [主要運作方式](docs/OPERATING_MODEL.md) |
 | 安裝與每日工作 | [開始使用](START_HERE.md) · [完整安裝](docs/INSTALL.md) · [每日工作](docs/DAILY_WORK.md) |
 | 更新、備份及回復 | [更新路線](docs/UPDATE_ROUTE.md) · [升級指南](docs/UPGRADE.md) |
-| 自行部署或開發 | [後台說明](docs/LIBRARY.md) · [平台適配](docs/STUDIO_API.md) · [Agent 路線](docs/AGENT_ROADMAP.md) · [文件夾工具](docs/USAGE.md) |
+| 自行部署或開發 | [開發預覽](docs/DEVELOPMENT.md#預覽目前藍圖來源) · [後台說明](docs/LIBRARY.md) · [平台適配](docs/STUDIO_API.md) · [Agent 路線](docs/AGENT_ROADMAP.md) · [文件夾工具](docs/USAGE.md) |
 | 版本與驗證 | [正式發行版](https://github.com/collieai-g/Blueprint-Studio-Open-Source/releases/latest) · [更新紀錄](CHANGELOG.md) · [驗證紀錄](VALIDATION.md) |
 
 **關於 Blueprint Studio** — 讓 AI 協助工作，讓公司的日常有序保存。[官方網站](https://blueprint-agent-studio.onrender.com/)介紹品牌及客製化服務。

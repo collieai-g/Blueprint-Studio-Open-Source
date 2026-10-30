@@ -1,4 +1,5 @@
 """Upgrade backups preserve real rows, credentials and immutable attachments."""
+from contextlib import closing
 import importlib.util
 import json
 from pathlib import Path
@@ -33,7 +34,7 @@ class UpgradeTests(unittest.TestCase):
         self.assertEqual(result['status'], 'original_data_preserved')
         self.assertGreater(result['rows'], 0)
         self.assertEqual((self.backup / 'data/access.json').read_bytes(), (self.data / 'access.json').read_bytes())
-        with sqlite3.connect(self.backup / 'data/library.sqlite3') as conn:
+        with closing(sqlite3.connect(self.backup / 'data/library.sqlite3')) as conn, conn:
             self.assertEqual(conn.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
 
     def test_missing_or_overlapping_paths_never_initialize_or_overwrite(self):
@@ -55,9 +56,9 @@ class UpgradeTests(unittest.TestCase):
     def test_untrusted_manifest_paths_are_rejected(self):
         upgrade.snapshot(self.data, self.backup)
         path = self.backup / 'manifest.json'
-        manifest = json.loads(path.read_text())
+        manifest = json.loads(path.read_text(encoding='utf-8'))
         manifest['files']['../outside'] = 'not-a-hash'
-        path.write_text(json.dumps(manifest))
+        path.write_text(json.dumps(manifest), encoding='utf-8')
         with self.assertRaises(ValueError): upgrade.verify(self.data, self.backup)
 
 

@@ -93,12 +93,21 @@ class LibraryClassificationTests(unittest.TestCase):
 
 
 class URLNormalizationTests(unittest.TestCase):
+    def test_ipv6_zone_ids_are_rejected_without_rejecting_normal_ipv6(self):
+        for value in ('https://[fe80::1%eth0]/', 'http://[fe80::1%25eth0]:8080/',
+                      'https://[::1%1]/', 'https://[2001:db8::1%25zone]/'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                normalize_url(value)
+        self.assertEqual(normalize_url('https://[2001:0db8::1]:443/a'), 'https://[2001:db8::1]:443/a')
+
     def test_valid_url_preserves_path_query_fragment_and_port(self):
         self.assertEqual(
             normalize_url("HTTPS://Example.ORG:8443/path?q=one%20two#part"),
             "https://example.org:8443/path?q=one%20two#part",
         )
         self.assertEqual(normalize_url("http://[::1]:8080/資料"), "http://[::1]:8080/資料")
+        self.assertEqual(normalize_url("http://127.0.0.1:8080/a"), "http://127.0.0.1:8080/a")
+        self.assertEqual(normalize_url("https://broken/"), "https://broken/")
         self.assertEqual(normalize_url("https://例子.公司/資料"), "https://xn--fsqu00a.xn--55qx5d/資料")
 
     def test_unsafe_and_malformed_urls_are_rejected(self):
@@ -110,6 +119,8 @@ class URLNormalizationTests(unittest.TestCase):
             "https://example.org/\u200bpath", "https://example.org/space here",
             "https://example.org\\@evil.example/", "https://example.org:bad/",
             "https://example.org:70000/", "https://example.org:/", "https://[broken]/",
+            "https://[example.org]/", "https://[127.0.0.1]/", "https://[v1.example]/",
+            "https://prefix[broken]/", "https://[broken]trailing/",
             "https://[::1]trailing/",
             "https://bad_host.example/", "https://a..example/", "https://%79outube.com/",
         ):

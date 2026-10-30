@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 from pathlib import Path
 
 from . import __version__
@@ -69,10 +71,51 @@ if __name__ == "__main__":
     raise SystemExit(main())
 '''
 
-_LAUNCHER_SOURCE = _LEGACY_LAUNCHER_SOURCE.replace(
+_PREVIOUS_LAUNCHER_SOURCE = _LEGACY_LAUNCHER_SOURCE.replace(
     "Blueprint Folder Agent private studio launcher.",
     "Blueprint Studio Backend private studio launcher.",
 ).replace('print("藍圖專員工作室："', 'print("藍圖工作室 Blueprint Studio："')
+
+
+# The private launcher must validate its binding before it knows the shared
+# checkout location, so its small bootstrap guard stays self-contained.
+_LAUNCHER_SOURCE = _PREVIOUS_LAUNCHER_SOURCE.replace(
+    "import json\n", "import json\nimport os\nimport stat\n", 1
+).replace(
+    "def main():\n",
+    "def _linked(path):\n"
+    "    path = Path(path).expanduser()\n"
+    "    for part in (path, *path.parents):\n"
+    "        try:\n"
+    "            info = part.lstat()\n"
+    "        except (FileNotFoundError, NotADirectoryError):\n"
+    "            continue\n"
+    "        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:\n"
+    "            return True\n"
+    "    return False\n\n\n"
+    "def main():\n"
+    "    for stream in (sys.stdin, sys.stdout, sys.stderr):\n"
+    "        if hasattr(stream, 'reconfigure'):\n"
+    "            stream.reconfigure(encoding='utf-8')\n", 1
+).replace(
+    "studio = Path(__file__).resolve().parent",
+    "studio = Path(__file__).absolute().parent"
+).replace(
+    "config_path.parent.is_symlink() or config_path.is_symlink()",
+    "_linked(config_path)"
+).replace(
+    "        tool_root = Path(tool_value).resolve()",
+    "        if _linked(tool_value):\n"
+    "            raise ValueError('工具路徑不能包含符號連結或重新解析點。')\n"
+    "        tool_root = Path(tool_value).resolve()"
+).replace(
+    "not tool_root.is_dir() or not entrypoint.is_file()",
+    "not tool_root.is_dir() or _linked(entrypoint) or not entrypoint.is_file()"
+).replace(
+    "return subprocess.call([sys.executable, str(entrypoint), *arguments], cwd=studio)",
+    "environment = dict(os.environ, PYTHONIOENCODING='utf-8')\n"
+    "        return subprocess.call([sys.executable, str(entrypoint), *arguments], cwd=studio, env=environment)"
+)
 
 
 def _tool_root() -> Path:
@@ -93,9 +136,9 @@ def link_workspace(path) -> dict:
     private = workspace / ".blueprint"
     config_path = private / "tool.json"
     launcher = workspace / LAUNCHER_NAME
-    if private.is_symlink() or (private.exists() and not private.is_dir()):
+    if has_link(private) or (private.exists() and not private.is_dir()):
         raise FolderError(".blueprint 必須係正常目錄，不能係檔案或符號連結。")
-    if config_path.is_symlink():
+    if has_link(config_path):
         raise FolderError("工具設定不能係符號連結。")
     try:
         config = _read_json(config_path) if config_path.exists() else {}
@@ -103,7 +146,7 @@ def link_workspace(path) -> dict:
         raise FolderError("現有 tool.json 並非有效文字，未有修改。") from exc
     if not isinstance(config, dict):
         raise FolderError("現有 tool.json 格式不正確，未有修改。")
-    if launcher.is_symlink():
+    if has_link(launcher):
         raise FolderError("工作室啟動器不能係符號連結。")
     write_launcher = not launcher.exists()
     if launcher.exists():
@@ -111,9 +154,9 @@ def link_workspace(path) -> dict:
             existing = launcher.read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
             raise FolderError("現有 blueprint-studio.py 不能讀取，未有覆寫。") from exc
-        if existing not in {_LAUNCHER_SOURCE, _LEGACY_LAUNCHER_SOURCE}:
+        if existing not in {_LAUNCHER_SOURCE, _PREVIOUS_LAUNCHER_SOURCE, _LEGACY_LAUNCHER_SOURCE}:
             raise FolderError("已有其他 blueprint-studio.py，請先重新命名；程式唔會覆寫。")
-        write_launcher = existing == _LEGACY_LAUNCHER_SOURCE
+        write_launcher = existing != _LAUNCHER_SOURCE
 
     init_studio(workspace)
     config = dict(config)

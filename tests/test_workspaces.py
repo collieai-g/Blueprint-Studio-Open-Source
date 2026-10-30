@@ -18,7 +18,7 @@ class WorkspaceTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="blueprint-binding-")
         self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
+        self.base = Path(self.temporary.name).resolve()
         self.tool = self.base / "共用 tool"
         self.tool.mkdir()
         self.workspace = self.base / "私人 藍圖專員工作室"

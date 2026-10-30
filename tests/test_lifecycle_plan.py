@@ -1,6 +1,7 @@
 """Risk routes and frozen-input receipt invalidation use synthetic source only."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -62,7 +63,7 @@ class LifecyclePlanTests(unittest.TestCase):
     def test_input_receipts_invalidate_content_deletion_modes_command_and_artifact(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / 'ui.js').write_text('old')
+            (root / 'ui.js').write_text('old', encoding='utf-8')
             before = lifecycle.inputs(root, ['ui.js'])
             commands = [['node', '--test', 'tests/ui.cjs']]
             artifacts = {'workbench.zip': 'a' * 64}
@@ -72,12 +73,13 @@ class LifecyclePlanTests(unittest.TestCase):
             self.assertFalse(lifecycle.reuse_check({**receipt, 'outcome': 'failed'}, before['input_tree'], commands, artifacts)['reusable'])
             self.assertFalse(lifecycle.reuse_check(receipt, before['input_tree'], [['node', 'different.cjs']], artifacts)['reusable'])
             self.assertFalse(lifecycle.reuse_check(receipt, before['input_tree'], commands, {'workbench.zip': 'b' * 64})['reusable'])
-            (root / 'ui.js').write_text('new')
+            (root / 'ui.js').write_text('new', encoding='utf-8')
             after = lifecycle.inputs(root, ['ui.js'])
             self.assertFalse(lifecycle.reuse_check(receipt, after['input_tree'], commands, artifacts)['reusable'])
             (root / 'ui.js').chmod(0o700)
             executable = lifecycle.inputs(root, ['ui.js'])
-            self.assertNotEqual(after['input_tree'], executable['input_tree'])
+            if os.name != 'nt':
+                self.assertNotEqual(after['input_tree'], executable['input_tree'])
             (root / 'ui.js').unlink()
             deleted = lifecycle.inputs(root, ['ui.js'])
             self.assertEqual(deleted['files']['ui.js'], {'deleted': True})
@@ -88,12 +90,18 @@ class LifecyclePlanTests(unittest.TestCase):
             root = Path(directory)
             for name in ['../private.json', '/etc/passwd', '.git/config', 'a\\b']:
                 with self.assertRaises(ValueError): lifecycle.inputs(root, [name])
-            (root / 'link').symlink_to('/etc/passwd')
-            with self.assertRaises(ValueError): lifecycle.inputs(root, ['link'])
+            with self.subTest(capability='symlink'):
+                try:
+                    (root / 'link').symlink_to('/etc/passwd')
+                except OSError as exc:
+                    if getattr(exc, 'winerror', None) == 1314:
+                        self.skipTest('Windows symlink privilege unavailable')
+                    raise
+                with self.assertRaises(ValueError): lifecycle.inputs(root, ['link'])
         with self.assertRaises(ValueError): lifecycle.validation_key('a' * 64, ['node tests/test.cjs'])
 
     def test_package_static_preflight_uses_existing_contract_and_pinned_source(self):
-        manifest = json.loads((Path(__file__).parents[1] / 'templates/agent/agent.json').read_text())
+        manifest = json.loads((Path(__file__).parents[1] / 'templates/agent/agent.json').read_text(encoding='utf-8'))
         source = {'repository': 'https://github.com/example/synthetic-agent', 'revision': 'd' * 40}
         value = lifecycle.package_preflight(manifest, source)
         self.assertTrue(value['compatible'])

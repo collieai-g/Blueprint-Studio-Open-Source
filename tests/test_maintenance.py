@@ -28,7 +28,7 @@ class MaintenanceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='blueprint-lifecycle-test-')
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.data = self.root / 'data'
         self.backups = self.root / 'backups'
         self.password = 'only-for-local-lifecycle-tests'
@@ -78,7 +78,7 @@ class MaintenanceTests(unittest.TestCase):
                 raise ValueError('failure after rehearsal')
         with self.assertRaises(ValueError):
             self.runtime('2.5.1','broken').prepare(migration)
-        state = json.loads((self.backups / 'installation.json').read_text())
+        state = json.loads((self.backups / 'installation.json').read_text(encoding='utf-8'))
         self.assertEqual(state['status'], 'recovered_choose_previous_release')
         self.assertTrue(Path(state['preserved_failed_data']).is_dir())
         self.assertEqual(Store(self.data).get_file(self.item['id'])[0].read_bytes(), b'attachment-before-update')
@@ -108,7 +108,7 @@ class MaintenanceTests(unittest.TestCase):
         saved = self.root / 'snapshot'
         backup.snapshot(self.data, saved)
         with self.assertRaises(ValueError): backup.restore(saved, self.data)
-        (saved / 'data/access.json').write_text('broken')
+        (saved / 'data/access.json').write_text('broken', encoding='utf-8')
         with self.assertRaises(ValueError): backup.restore(saved, self.root / 'restored')
         self.assertFalse((self.root / 'restored').exists())
 
@@ -117,8 +117,14 @@ class MaintenanceTests(unittest.TestCase):
         (saved / 'data/extra').write_text('unexpected')
         with self.assertRaises(ValueError): backup.check(saved)
         (saved / 'data/extra').unlink()
-        (saved / 'data/extra').symlink_to(self.data / 'access.json')
-        with self.assertRaises(ValueError): backup.check(saved)
+        with self.subTest(capability='symlink'):
+            try:
+                (saved / 'data/extra').symlink_to(self.data / 'access.json')
+            except OSError as exc:
+                if getattr(exc, 'winerror', None) == 1314:
+                    self.skipTest('Windows symlink privilege unavailable')
+                raise
+            with self.assertRaises(ValueError): backup.check(saved)
 
     def test_zip_import_rejects_traversal_and_duplicate_names(self):
         for index, names in enumerate([['../outside'], ['data/duplicate', 'data/duplicate']]):
