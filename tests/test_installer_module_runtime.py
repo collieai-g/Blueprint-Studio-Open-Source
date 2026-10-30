@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import base64
 from contextlib import closing
+import errno
 from http.cookiejar import CookieJar
 import json
 import os
 from pathlib import Path
+import queue
 import re
 import secrets
 import shutil
@@ -23,7 +25,9 @@ import sys
 import tempfile
 import threading
 import time
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 from urllib.request import HTTPCookieProcessor, ProxyHandler, Request, build_opener
 import zipfile
 
@@ -34,6 +38,7 @@ from blueprint_library.installer import (
     read_status, request_apply,
 )
 from blueprint_library.installer_components import configure_channel, register_module
+from blueprint_library.installer_modules import ModuleRuntime
 from blueprint_library.maintenance import DataLease
 from blueprint_library.store import Store
 
@@ -60,6 +65,130 @@ def _business_snapshot(data):
             if row[0] not in {'agent_registrations', 'agent_history'}]
         return {name: sorted(connection.execute('SELECT * FROM "' + name.replace('"', '""') + '"').fetchall(),
                              key=repr) for name in tables}
+
+
+class ModuleListenerProbeTests(unittest.TestCase):
+    """Real Node/socket guard checks, independent of the optional BlueSAI source."""
+
+    def test_live_listener_refused_and_owned_closed_address_can_restart(self):
+        node = os.environ.get('BLUEPRINT_NODE') or shutil.which('node')
+        if not node:
+            self.skipTest('The standalone listener guard requires Node on PATH or BLUEPRINT_NODE.')
+        node = str(Path(node).resolve())
+        work = Path(tempfile.mkdtemp(prefix='blueprint-module-listener-')).resolve()
+        process = None
+        script = """
+const http = require('node:http');
+let stopping = false;
+const server = http.createServer((request, response) => {
+  const payload = JSON.stringify({pid: process.pid});
+  response.writeHead(200, {'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload), 'Connection': 'close'});
+  response.end(payload);
+  if (request.url === '/shutdown') stop();
+});
+function stop() {
+  if (stopping) return;
+  stopping = true;
+  server.close(() => process.exit(0));
+}
+process.stdin.on('data', stop);
+server.listen(0, '127.0.0.1', () => {
+  console.log(JSON.stringify({port: server.address().port, pid: process.pid}));
+});
+"""
+        try:
+            environment = {k: v for k, v in os.environ.items() if k not in {'NODE_OPTIONS', 'NODE_PATH'}}
+            process = subprocess.Popen([node, '-e', script], cwd=work, env=environment,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, encoding='utf-8',
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            announced = queue.Queue()
+            reader = threading.Thread(target=lambda: announced.put(process.stdout.readline()), daemon=True)
+            reader.start()
+            ready = json.loads(announced.get(timeout=15))
+            reader.join(1)
+            self.assertEqual(ready['pid'], process.pid)
+            port = ready['port']
+
+            def exchange(path):
+                with socket.create_connection(('127.0.0.1', port), timeout=5) as client:
+                    client.sendall(('GET ' + path + ' HTTP/1.1\r\nHost: 127.0.0.1\r\n'
+                                    'Connection: close\r\n\r\n').encode('ascii'))
+                    chunks = []
+                    while True:
+                        chunk = client.recv(4096)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                response = b''.join(chunks)
+                self.assertTrue(response.startswith(b'HTTP/1.1 200 '), response)
+                return json.loads(response.split(b'\r\n\r\n', 1)[1])
+
+            program, data = work / 'program', work / 'data'
+            program.mkdir(); data.mkdir()
+            private = {'component_id': COMPONENT, 'expected_agent_id': 'synthetic-listener-agent',
+                       'host': '127.0.0.1', 'port': port, 'data_dir': str(data), 'initialize': True}
+            config_file = work / 'module.json'
+            config_file.write_text(json.dumps(private), encoding='utf-8')
+            claim = data.parent / ('.' + data.name + '.blueprint-installer.json')
+            claim.write_text(json.dumps({'root': str(program), 'installation_id': 'synthetic-listener',
+                'component_id': COMPONENT, 'initialization_started': False}), encoding='utf-8')
+            module = {'config_file': str(config_file), 'data_dir': str(data), 'port': port,
+                      'expected_agent_id': private['expected_agent_id'], 'node': node}
+            config = {'root': str(program), 'installation_id': 'synthetic-listener',
+                      'modules': {COMPONENT: module}, 'trusted_keys': {}}
+            supervisor = SimpleNamespace(root=program, config=config, _get=lambda: {'components': {}})
+            runtime = ModuleRuntime(supervisor, COMPONENT)
+            release = {'release_id': 'a' * 64, 'envelope': {}}
+            prepared = {'release_id': release['release_id'], 'path': str(work / 'prepared'),
+                        'manifest': {'entrypoint': 'synthetic.js'}}
+
+            class ReachedProcessStart(Exception):
+                pass
+
+            # Package verification is a successful precondition in this guard
+            # test; no fake service is started after the real socket check.
+            with patch('blueprint_library.installer_release.prepare_release', return_value=prepared), \
+                    patch('blueprint_library.installer_modules.subprocess.Popen',
+                          side_effect=ReachedProcessStart('Verified port probe reached launch.')) as launch:
+                with self.assertRaises(OSError):
+                    runtime.launch(release)
+                launch.assert_not_called()
+                self.assertFalse(json.loads(claim.read_text(encoding='utf-8'))['initialization_started'])
+                self.assertIsNone(process.poll())
+                self.assertEqual(exchange('/'), {'pid': process.pid})
+                # Read through EOF before closing the client: Node sends FIN
+                # first, leaving a real server-side TIME_WAIT on POSIX.
+                self.assertEqual(exchange('/shutdown'), {'pid': process.pid})
+                self.assertEqual(process.wait(timeout=15), 0)
+                if os.name != 'nt':
+                    legacy_errno = None
+                    with socket.socket() as legacy:
+                        try:
+                            legacy.bind(('127.0.0.1', port))
+                        except OSError as error:
+                            legacy_errno = error.errno
+                    if sys.platform == 'linux':
+                        self.assertEqual(legacy_errno, errno.EADDRINUSE,
+                            'The real Node shutdown must reproduce the original closed-address conflict.')
+                    print('Module POSIX probe after owned Node HTTP shutdown: '
+                          f'legacy bind errno={legacy_errno}.', flush=True)
+                with self.assertRaises(ReachedProcessStart):
+                    runtime.launch(release)
+                launch.assert_called_once()
+        finally:
+            if process is not None:
+                if process.poll() is None:
+                    try:
+                        process.stdin.write('stop\n'); process.stdin.flush()
+                    except BrokenPipeError:
+                        pass  # The owned child may already be completing shutdown.
+                    process.wait(timeout=15)
+                for stream in (process.stdin, process.stdout, process.stderr):
+                    stream.close()
+            if (process is None or process.poll() is not None) and os.environ.get('BLUEPRINT_TEST_KEEP_FIXTURES') != '1':
+                shutil.rmtree(work)
 
 
 class ManagedModuleRuntimeTests(unittest.TestCase):

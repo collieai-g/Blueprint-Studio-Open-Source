@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from http.client import HTTPException
 import json
 from pathlib import Path
 import time
@@ -142,10 +143,11 @@ class ComponentSupervisor(CoreSupervisor):
     def check(self):
         if not self.modules and not self.config.get('channel'):
             return super().check()
-        state = self._get()
-        if state['phase'] in ('applying', 'apply_requested', 'recovery_required'):
-            return _public(state)
-        self._update(phase='preparing', error=None)
+        with self._state_lock():
+            state = self._get_unlocked()
+            if state['phase'] in ('applying', 'apply_requested', 'recovery_required'):
+                return _public(state)
+            self._save_unlocked(state, phase='preparing', error=None)
         try:
             self._verify_installed()
             catalog = self._catalog()
@@ -173,7 +175,7 @@ class ComponentSupervisor(CoreSupervisor):
                              public_plan=public, check_requested=False, last_check=time.time())
         except InstallerBusyError as exc:
             self._update(phase='blocked', error=str(exc), prepared=None, check_requested=False, last_check=time.time())
-        except (ValueError, OSError, KeyError, TypeError):
+        except (ValueError, OSError, HTTPException, KeyError, TypeError):
             self._update(phase='prepare_failed', error='發行渠道、相依版本或套件準備未通過；現有服務保持使用。',
                          prepared=None, prepared_plan=None, check_requested=False, last_check=time.time())
         return read_status(self.root)

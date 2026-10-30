@@ -169,6 +169,16 @@ class UpdatePublicationTests(unittest.TestCase):
             with self.assertRaises(InstallerReleaseError):
                 verify_hosted('https://updates.example.invalid/channels/test.json',
                               self.keys, 'synthetic-studio', '0' * 64)
+        for archive_url in (self.archive.as_uri(), str(self.archive)):
+            with self.subTest(archive_url_kind='file URI' if archive_url.startswith('file:') else 'absolute path'):
+                self.manifest['archive']['url'] = archive_url
+                self.write_catalog()
+                with mock.patch('tools.prepare_update_publication.read_feed', return_value=self.source), \
+                        mock.patch('tools.prepare_update_publication.prepare_release') as prepare:
+                    with self.assertRaisesRegex(InstallerReleaseError, 'HTTPS'):
+                        verify_hosted('https://updates.example.invalid/channels/test.json',
+                            self.keys, 'synthetic-studio', catalog_id(self.source['catalog']))
+                    prepare.assert_not_called()
         with self.assertRaises(InstallerReleaseError):
             verify_hosted('http://updates.example.invalid/test.json', self.keys,
                           'synthetic-studio', catalog_id(self.source['catalog']))

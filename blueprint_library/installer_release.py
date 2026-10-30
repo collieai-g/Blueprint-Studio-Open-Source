@@ -10,6 +10,7 @@ from blueprint_folders.path_safety import has_link
 import ast
 import base64
 import hashlib
+from http.client import HTTPException
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -79,6 +80,8 @@ def _source(url):
     except ValueError as exc:
         raise InstallerReleaseError('套件來源不正確。') from exc
     if parsed.scheme == 'https' and parsed.hostname and parsed.username is None and parsed.password is None and not parsed.fragment:
+        if any(c.isspace() or ord(c) == 127 for c in url):
+            raise InstallerReleaseError('HTTPS 套件網址不能包含未編碼的空白或控制字元。')
         return ('https', url)
     if parsed.scheme == 'file' and parsed.netloc in {'', 'localhost'} and not parsed.query and not parsed.fragment:
         return ('file', _safe_path(url2pathname(parsed.path)))
@@ -253,7 +256,7 @@ class _RedirectPolicy(HTTPRedirectHandler):
         except ValueError as exc:
             raise InstallerReleaseError('套件重新導向網址不正確。') from exc
         self.count += 1
-        if (self.count > 3 or any(ord(c) < 32 for c in newurl) or parsed.scheme != 'https' or
+        if (self.count > 3 or any(ord(c) < 32 or c.isspace() or ord(c) == 127 for c in newurl) or parsed.scheme != 'https' or
                 parsed.username is not None or parsed.password is not None or
                 parsed.fragment or parsed.hostname not in self.hosts):
             raise InstallerReleaseError('套件重新導向不符合已簽章的 HTTPS 主機清單。')
@@ -267,16 +270,19 @@ class _RedirectPolicy(HTTPRedirectHandler):
 def _download(archive, destination):
     kind, source = _source(archive['url'])
     opener = build_opener(_RedirectPolicy(archive.get('redirect_hosts', [])))
-    stream = open(source, 'rb') if kind == 'file' else opener.open(source, timeout=30)
     count = 0
     digest = hashlib.sha256()
-    with stream, destination.open('xb') as output:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-            count += len(chunk)
-            if count > archive['size']:
-                raise InstallerReleaseError('下載套件超過宣告大小。')
-            digest.update(chunk)
-            output.write(chunk)
+    try:
+        stream = open(source, 'rb') if kind == 'file' else opener.open(source, timeout=30)
+        with stream, destination.open('xb') as output:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                count += len(chunk)
+                if count > archive['size']:
+                    raise InstallerReleaseError('下載套件超過宣告大小。')
+                digest.update(chunk)
+                output.write(chunk)
+    except HTTPException as exc:
+        raise InstallerReleaseError('套件 HTTP 下載未完成；現有版本保持不變。') from exc
     if count != archive['size'] or digest.hexdigest() != archive['sha256']:
         raise InstallerReleaseError('下載套件大小或雜湊不符。')
 

@@ -2,6 +2,7 @@
 import base64
 from copy import deepcopy
 import hashlib
+from http.client import BadStatusLine, HTTPException, IncompleteRead, InvalidURL, LineTooLong
 import json
 from pathlib import Path
 import stat
@@ -104,6 +105,31 @@ class ManagedReleaseTests(unittest.TestCase):
         with self.assertRaises(InstallerReleaseError):
             self.prepare()
         self.assertEqual(list((self.root / 'cache').iterdir()), [])
+        self.make_archive()
+        manifest = deepcopy(self.manifest)
+        manifest['archive']['url'] = 'https://synthetic.invalid/release.zip'
+        errors = [lambda: InvalidURL('synthetic malformed URL'),
+                  lambda: IncompleteRead(b'synthetic partial response', 2),
+                  lambda: BadStatusLine('synthetic malformed status'),
+                  lambda: LineTooLong('synthetic header'),
+                  lambda: HTTPException('synthetic transport failure')]
+        for stage in ('open', 'read'):
+            for error_factory in errors:
+                error = error_factory()
+                with self.subTest(stage=stage, error=type(error).__name__):
+                    opener = mock.MagicMock()
+                    if stage == 'open':
+                        opener.open.side_effect = error
+                    else:
+                        stream = mock.MagicMock()
+                        stream.__enter__.return_value = stream
+                        stream.read.side_effect = error
+                        opener.open.return_value = stream
+                    with mock.patch('blueprint_library.installer_release.build_opener', return_value=opener):
+                        with self.assertRaises(InstallerReleaseError) as caught:
+                            self.prepare(manifest)
+                    self.assertIs(caught.exception.__cause__, error)
+                    self.assertEqual(list((self.root / 'cache').iterdir()), [])
 
     def test_inventory_must_match_content_not_just_archive(self):
         self.manifest['files']['blueprint.py'] = '0' * 64
@@ -164,12 +190,22 @@ class ManagedReleaseTests(unittest.TestCase):
 
     def test_insecure_download_scheme_and_revoked_release_are_rejected(self):
         for url in ['http://example.invalid/release.zip', 'https://user:secret@example.invalid/a',
-                    'ftp://example.invalid/release.zip', 'relative.zip']:
+                    'ftp://example.invalid/release.zip', 'relative.zip',
+                    'https://example.invalid/bad path.zip', 'https://example.invalid/bad\x7fpath.zip',
+                    'https://example.invalid/bad\u00a0path.zip']:
             with self.subTest(url=url):
                 manifest = deepcopy(self.manifest)
                 manifest['archive']['url'] = url
                 with self.assertRaises(InstallerReleaseError):
                     self.prepare(manifest)
+        encoded = deepcopy(self.manifest)
+        encoded['archive']['url'] = 'https://example.invalid/encoded%20path.zip'
+        self.assertEqual(validate_release(encoded)['archive']['url'], encoded['archive']['url'])
+        local = self.root / 'local space.zip'
+        local.write_bytes(self.archive.read_bytes())
+        for url in (str(local), local.as_uri()):
+            with self.subTest(local_path_with_spaces=True):
+                self.assertEqual(self.prepare({**self.manifest, 'archive': {**self.manifest['archive'], 'url': url}})['version'], '2.10.0')
         with self.assertRaises(InstallerReleaseError):
             self.prepare({**self.manifest, 'revoked': True})
 
@@ -192,6 +228,9 @@ class ManagedReleaseTests(unittest.TestCase):
         policy = _RedirectPolicy(verified['archive']['redirect_hosts'])
         request = Request('https://github.com/org/project/releases/file.zip', headers={'Authorization': 'do-not-forward'})
         url = 'https://release-assets.githubusercontent.com/fixed-file.zip?token=short-lived'
+        encoded = 'https://release-assets.githubusercontent.com/encoded%20file.zip'
+        self.assertEqual(_RedirectPolicy(verified['archive']['redirect_hosts']).redirect_request(
+            request, None, 302, '', {}, encoded).full_url, encoded)
         for _ in range(3):
             redirected = policy.redirect_request(request, None, 302, '', {}, url)
             self.assertEqual(redirected.full_url, url)
@@ -204,7 +243,10 @@ class ManagedReleaseTests(unittest.TestCase):
         allowed = 'release-assets.githubusercontent.com'
         urls = ['https://unlisted.invalid/file.zip', 'http://' + allowed + '/file.zip',
                 'file:///private/secret', 'https://user:password@' + allowed + '/file.zip',
-                'https://' + allowed + '.evil.invalid/file.zip']
+                'https://' + allowed + '.evil.invalid/file.zip',
+                'https://' + allowed + '/bad path.zip',
+                'https://' + allowed + '/bad\x7fpath.zip',
+                'https://' + allowed + '/bad\u00a0path.zip']
         for url in urls:
             with self.subTest(url=url):
                 with self.assertRaises(InstallerReleaseError):

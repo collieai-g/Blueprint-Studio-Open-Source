@@ -214,6 +214,10 @@ class ModuleRuntime:
         if prepared['release_id'] != release['release_id']:
             raise ValueError('模組固定版本已改變。')
         with socket.socket() as probe:
+            if os.name != 'nt':
+                # Match Node's POSIX closed-address policy, without sharing a
+                # live listener. Windows must retain its exclusive bind check.
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             probe.bind(('127.0.0.1', self.module['port']))
         # A failed/unknown first boot must never silently initialize again.
         ownership['initialization_started'] = True

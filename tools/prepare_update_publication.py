@@ -120,6 +120,10 @@ def verify_hosted(feed_url, keys, installation_id, expected_catalog_id):
     checked = _catalog(read_feed(feed_url), keys, installation_id)
     if checked['catalog_id'] != expected_catalog_id:
         raise InstallerReleaseError('網上渠道不是已準備的同一份清單。')
+    for envelope in checked['releases']:
+        manifest = verify_release(envelope, keys)
+        if urlsplit(manifest['archive']['url']).scheme != 'https':
+            raise InstallerReleaseError('網上渠道的程式包必須使用 HTTPS 下載來源。')
     with tempfile.TemporaryDirectory(prefix='blueprint-hosted-update-check-') as temp:
         for envelope in checked['releases']:
             prepare_release(envelope, keys, Path(temp) / 'cache')

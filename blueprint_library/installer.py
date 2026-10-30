@@ -6,6 +6,7 @@ updates currently require an unchanged database schema and an offline checkpoint
 from __future__ import annotations
 
 from contextlib import contextmanager, closing
+from http.client import HTTPException
 import hashlib
 import json
 import os
@@ -210,8 +211,15 @@ def read_feed(source):
     """Only an explicitly configured local file or HTTPS feed; never UI input."""
     parts = urlsplit(str(source))
     if parts.scheme == 'https' and parts.hostname and not parts.username and not parts.password and not parts.fragment:
-        with build_opener(_NoRedirect).open(Request(str(source), headers={'Accept': 'application/json'}), timeout=30) as response:
-            payload = response.read(MAX_DOCUMENT + 1)
+        from .installer_release import _source
+        kind, address = _source(str(source))
+        if kind != 'https':
+            raise ValueError('更新目錄的 HTTPS 來源不正確。')
+        try:
+            with build_opener(_NoRedirect).open(Request(address, headers={'Accept': 'application/json'}), timeout=30) as response:
+                payload = response.read(MAX_DOCUMENT + 1)
+        except HTTPException as error:
+            raise ValueError('更新目錄的 HTTP 傳輸未完成或回應格式不正確。') from error
     elif parts.scheme == 'file' and parts.netloc in ('', 'localhost'):
         from urllib.request import url2pathname
         with backup.safe_path(url2pathname(unquote(parts.path))).open('rb') as source_file:
@@ -223,7 +231,10 @@ def read_feed(source):
         raise ValueError('更新目錄只接受 HTTPS 或明確設定的本機檔案。')
     if len(payload) > MAX_DOCUMENT:
         raise ValueError('更新目錄過大。')
-    value = json.loads(payload)
+    try:
+        value = json.loads(payload)
+    except RecursionError as error:
+        raise ValueError('更新目錄的 JSON 巢狀層數過深。') from error
     if not isinstance(value, dict):
         raise ValueError('更新目錄格式不正確。')
     return value
@@ -530,10 +541,11 @@ class CoreSupervisor:
         if not self.config.get('feed'):
             self._update(check_requested=False, last_check=time.time())
             return read_status(self.root)
-        state = self._get()
-        if state['phase'] in ('applying', 'apply_requested', 'recovery_required'):
-            return _public(state)
-        self._update(phase='preparing', error=None)
+        with self._state_lock():
+            state = self._get_unlocked()
+            if state['phase'] in ('applying', 'apply_requested', 'recovery_required'):
+                return _public(state)
+            self._save_unlocked(state, phase='preparing', error=None)
         try:
             self._verify_installed()
             document = read_feed(self.config['feed'])
@@ -559,7 +571,7 @@ class CoreSupervisor:
                 candidate['envelope'] = envelope
                 self._update(phase='ready', prepared=candidate, error=None,
                              check_requested=False, last_check=time.time())
-        except (ValueError, OSError, KeyError, TypeError) as exc:
+        except (ValueError, OSError, HTTPException, KeyError, TypeError) as exc:
             self._update(phase='prepare_failed', prepared=None, error=str(exc) if isinstance(exc, InstallerBusyError) else '未能完成更新準備；目前版本仍可使用。',
                          check_requested=False, last_check=time.time())
         return read_status(self.root)
