@@ -151,13 +151,33 @@ def main():
                 # Older backends retain local-only migration semantics. An account
                 # snapshot on a newer backend is authoritative over browser cache.
                 page.evaluate('() => BlueprintStudio.presentation().flush()')
-                page.route('**/api/studio/presentation*', lambda route: route.fulfill(
-                    status=404, content_type='application/json', body='{"error":"older backend"}'))
+                original_page = page
+                original_draft_key = page.evaluate('() => BlueprintStudio.presentation().storageKey')
+                original_draft = page.evaluate('(key) => localStorage.getItem(key)', original_draft_key)
                 # Exact legacy bytes survive reading, resizing and merely entering edit mode.
                 legacy = {'version': 1, 'layoutVersion': 3, 'mode': 'manual', 'pages': 3, 'columns': 43, 'cards': {'heading': {'x': 0, 'y': 0, 'w': 16, 'h': 3}, 'files': {'x': 2, 'y': 14, 'w': 12, 'h': 8, 'collapsed': True}, 'todos': {'x': 0, 'y': 96, 'w': 12, 'h': 20}, 'connection': {'x': 29, 'y': 6, 'w': 14, 'h': 5}}}
                 raw = json.dumps(legacy, ensure_ascii=False, indent=2)
-                page.evaluate('(v) => {localStorage.setItem(v.key,v.raw);localStorage.setItem(v.oldBackup,"keep-existing-backup");localStorage.removeItem(v.backup)}', {'key': KEY, 'raw': raw, 'oldBackup': BACKUP, 'backup': VISIBILITY_BACKUP})
-                page.reload(); ready(); assert saved() == raw; assert ids() == ['heading']
+                # A separate old-backend browser has no newer account/tab draft.
+                # Keep the original browser and its recoverable work untouched.
+                legacy_context = browser.new_context(viewport={'width': 1440, 'height': 1100},
+                    http_credentials={'username': 'layout-test', 'password': password})
+                seed = json.dumps({'key': KEY, 'raw': raw, 'oldBackup': BACKUP})
+                legacy_context.add_init_script('''(() => {
+                    if (location.origin === 'null') return;
+                    const value = ''' + seed + ''';
+                    if (localStorage.getItem(value.key) === null) {
+                        localStorage.setItem(value.key, value.raw);
+                        localStorage.setItem(value.oldBackup, 'keep-existing-backup');
+                    }
+                })();''')
+                page = legacy_context.new_page()
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.route('**/api/studio/presentation*', lambda route: route.fulfill(
+                    status=404, content_type='application/json', body='{"error":"older backend"}'))
+                page.goto('http://127.0.0.1:' + str(server.server_port))
+                ready(); assert saved() == raw; assert ids() == ['heading']
+                assert page.evaluate('() => BlueprintStudio.presentation().status().state') == 'unsupported'
+                assert page.evaluate('() => BlueprintStudio.presentation().get("overview") === undefined')
                 assert page.locator('#workspace-board').evaluate('n => n.clientHeight') == 72
                 page.set_viewport_size({'width': 390, 'height': 844}); page.wait_for_timeout(100); assert saved() == raw
                 page.set_viewport_size({'width': 1440, 'height': 1100}); page.wait_for_timeout(100)
@@ -170,6 +190,7 @@ def main():
                 assert migrated['cards']['files'] == {**legacy['cards']['files']}
                 assert migrated['cards']['todos'] == {**legacy['cards']['todos'], 'collapsed': False}
                 assert 'connection' not in migrated['cards'] and 'connection' not in migrated['visible']
+                assert original_page.evaluate('(key) => localStorage.getItem(key)', original_draft_key) == original_draft
                 assert not errors, errors
                 browser.close()
             assert store.stats()['files'] == 1

@@ -1,5 +1,63 @@
 # Blueprint Studio Open Source
 
+## Managed native installer
+
+The native managed installer is documented in `docs/MANAGED_INSTALLER.md` and
+planned in `docs/UPDATE_SYSTEM_DEVELOPMENT_PLAN.md`. Its background work checks
+release metadata and prepares signed immutable packages; it is not an autonomous
+business Agent. Each studio has independent program/data/backup/recovery paths.
+Use the existing data lease, backup and migration protections. Current automatic
+application is limited to the `native-core` adapter and unchanged database schema;
+do not claim BlueSAI runtime updates or platform adapters from metadata alone.
+Existing architecture may evolve for new requirements, including substantial
+changes. Explain the proposed change and its effects before implementation,
+update the affected contracts and checks, and preserve user work and permissions.
+
+## Shared Blue-loopback and Blue-update entry
+
+Use the installed `$blue-loopback` skill for reusable feedback and `$blue-update`
+for an authorized source-to-existing-workbench update, including a full UI
+redesign. Read the applicable SKILL.md and this repository's UPDATE_AI.txt.
+Both skills resolve the same private binding: `BLUE_ENGINEERING_BINDINGS` first,
+then `BLUE_LOOPBACK_BINDINGS`, otherwise `$CODEX_HOME/blue-loopback/bindings.json`
+(or `~/.codex/blue-loopback/bindings.json` when CODEX_HOME is unset). The binding
+selects the one active shared harness and source/target records; it grants no
+permission and is not deployment evidence. Its `profiles/blueprint-studio.json`
+is a thin source-contract index, not a runner adapter or deployment engine.
+This canonical checkout declares existing source regression in
+`feedback/harness.json` and `feedback/source-update-001/case.json`; execute them
+through the externally bound shared runner. Preserve the separate historical
+login-case project root and operation indexes rather than rewriting their paths.
+
+Development previews may explicitly opt into the managed candidate route in
+docs/DEVELOPMENT.md. Preserve the original preview marker, data, credentials,
+native backup identity and history. The separate managed-preview sidecar makes
+the same tools/dev_preview.py --resume entry follow its fixed signed package;
+it no longer hot-loads edited source. Verify the actual PID, package, dynamic URL
+and preview title. Missing sidecar with remaining ownership/program evidence
+must stop rather than fall back to floating source or initialize another preview.
+Only the packaged runtime's actual releases/<64hex> program container may be an
+ancestor of its code; data, backups and recovery retain strict source separation.
+
+`tools/feedback_harness/` remains a portable public reference. When a private
+binding selects an active shared runner, do not silently execute the packaged
+copy instead or maintain another instance-specific copy. If the skill/binding
+is unavailable, report that and follow the verified project lifecycle within the
+user's scope. Source-only requests and read-only plans do not deploy workbenches.
+
+For an approved full UI redesign, map old functions to the approved new controls
+and identify removed/changed behavior explicitly. Track actual `library_web/`
+source, generated/package assets, platform/Agent adapters and layout/data
+migrations separately. Preserve records, stable identities, permissions, valid
+connections and recoverable drafts/account preferences; do not freeze old button
+labels or geometry. Current UI descriptions below govern the existing version;
+an authorized replacement updates its design contracts and tests together.
+Account-scoped layout migration follows docs/PRESENTATION_SYNC.md and the private
+layout-continuation contract, never a blanket site-data reset. A private test
+workbench is an update target, not another public source or data synchronization
+source. The shared `update-check` only validates supplied plan shape and declared
+capabilities; existing lifecycle tools still perform and verify actual updates.
+
 For reusable source changes, read CONTRIBUTING.md, docs/DEVELOPMENT.md,
 docs/DEVELOPMENT_ACCEPTANCE.md and docs/PRIVACY.md. Follow the existing
 source_release route in docs/INSTALL_UPDATE_FLOW.md: identify the responsible
@@ -11,6 +69,19 @@ scope. Keep private sources, runtime data, settings, credentials, backups and
 progress out of public contributions; runtime data stays outside every source
 repository. docs/DEVELOPMENT_PLAN.md separates this documentation batch from
 future performance, diagnostics and local-development capabilities.
+
+The source-first development rules in docs/DEVELOPMENT.md and the reusable-case
+requirements in docs/DEVELOPMENT_ACCEPTANCE.md apply to Blueprint and independent
+Agents. Resolve the responsible maintenance source before editing; the test
+workbench consumes candidates and is not a third maintenance source. Reconcile
+existing reusable patches by reviewed diff, retaining private data and user work.
+Keep stable case IDs, synthetic reproduction and honest before/after evidence.
+For an authorized source-and-update task, AI completes the selected stages through
+the existing tools without asking again at each stage; source-only or rules-only
+tasks do not modify services, workbenches or private bindings. Missing development
+preview and automatic orchestration capabilities remain pending in
+docs/DEVELOPMENT_PLAN.md; package-upgrade support and platform acceptance are
+tracked there separately. Instructions and plan validation do not implement them.
 
 V2.10 adds the company calendar under Work, with additive schema 8 and the
 blueprint-calendar/1 native contract. Read docs/COMPANY_CALENDAR.md before changing
@@ -50,7 +121,8 @@ Read docs/PRESENTATION_SYNC.md before modifying it. Layout, display text and
 reference-only overview pins belong to the authenticated account, never a caller
 supplied username. Use per-document versions and atomic compare-and-set. Keep
 studio_preferences ordinary settings independent from the reserved _presentation
-state; schema remains 7. Visible clients may poll only presentation changes at
+state; presentation sync itself needs no further schema bump, and the current
+native database schema is 8. Visible clients may poll only presentation changes at
 about two-second intervals; this does not authorize polling company records.
 Defer remote application during layout edits or focused forms, preserve local
 drafts on offline errors and conflicts, and provide explicit conflict resolution.
@@ -79,7 +151,11 @@ users with registered integrations, and updates manually. Registration stays in
 the authenticated left-client API; do not restore a connection wizard. No live
 customer-service connection, message sending or private deployment is implied.
 
-Current UI uses exactly four primary entries: 總覽, 工作, AI, 資料. Keep core
+The current UI uses exactly four primary entries: 總覽, 工作, AI, 資料. The
+following layout, navigation and appearance rules describe this version; an
+approved replacement follows the function mapping and updated design contracts
+and tests above rather than being forced back to the old navigation or geometry.
+Keep core
 work and data pages in secondary navigation; retain existing records, deep links,
 server permissions and preference keys. Idle timers, focus, visibility changes and
 browser history restoration must not refresh company data or replace active views.
@@ -290,8 +366,18 @@ Do not add unrelated company features, simulated AI connections or OS icon hooks
 - Browser-only display settings and unsent drafts belong to that browser. Server-saved
   presentation preferences synchronize by authenticated account; retain local backups.
 - After editing web source, run `python tools/build_web.py`.
-- Verify with `python -m unittest discover -s tests -v` and
-  `node --test tests/test_packager.cjs`.
+- For code or test changes, the required checks and supported test environments
+  are defined in `.github/workflows/check.yml`; run the relevant source checks
+  through the bound shared runner and complete that CI gate before release.
+  This includes Python discovery, every Node test, Windows junction/encoding
+  coverage, contract bytes, browser, MCP and native-container acceptance.
+  Do not enable global UTF-8 merely to hide Windows CLI encoding failures.
+  Product archives use the exact reviewed policy in `tools/release_files.json`;
+  new tracked paths require an explicit classification. Follow
+  `docs/UPDATE_PUBLISHING.md` for build-once acceptance and unchanged promotion.
+- Rules-only or documentation-only changes use diff, link and capability-description
+  checks without starting services or rebuilding unchanged assets. This exception
+  does not waive required checks or CI for later code delivery.
 
 V2.4 authorizes the five-group navigation and persistent company workflows in docs/V2.4.md.
 Preserve the V2.3 visual style, grid and all old data. Additive schema 5 migration
@@ -349,6 +435,11 @@ records, IDs, attachments and credentials. Pin package repository and commit;
 registration never fetches or executes remote code. UI modules are declarative
 standard controls. Settings snapshots belong to each job. UI and MCP writes must
 share version checks and current reference permissions, including result reads.
+Existing registrations can use the same-ID PATCH package upgrade with paired
+manifest/source/upgrade_key. Preserve compatible settings and state, keep old jobs
+and historical source pins immutable, and store retry receipts atomically in the
+existing history. Replay returns the original result; GET must read current state.
+This metadata upgrade does not deploy assets/runtime or persist browser drafts.
 A UI button prepares work; the user starts it in the original AI conversation.
 Read context, start with its digest, save a real result or failure, then read back.
 Keep completed jobs immutable and never fabricate execution or connection evidence.

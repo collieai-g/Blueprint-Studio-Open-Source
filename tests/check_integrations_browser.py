@@ -23,7 +23,7 @@ def main():
     output = Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/blueprint-integration-browser')
     output.mkdir(parents=True, exist_ok=True)
     fixtures = ROOT / 'contracts' / 'integration-v1' / 'fixtures'
-    manifest = json.loads((fixtures / 'manifest.json').read_text())
+    manifest = json.loads((fixtures / 'manifest.json').read_text(encoding='utf-8'))
     with tempfile.TemporaryDirectory(prefix='blueprint-integration-browser-') as temp:
         data = Path(temp) / 'private'
         password = secrets.token_urlsafe(24)
@@ -44,7 +44,7 @@ def main():
             with urlopen(request, timeout=10) as response:
                 return json.load(response)
 
-        record_payload = json.loads((fixtures / 'record.json').read_text())
+        record_payload = json.loads((fixtures / 'record.json').read_text(encoding='utf-8'))
         record = external('POST', '/records', record_payload)['record']
         try:
             with sync_playwright() as playwright:
@@ -88,6 +88,11 @@ def main():
                 assert len(service.list_commands(integration_id=integration['id'])['commands']) == 1
                 page.get_by_role('button', name='保存指令', exact=True).click()
                 page.wait_for_selector('[data-command-state=pending]')
+                # The previous POST already succeeded before its deliberately
+                # failed readback. A pending card can therefore predate this
+                # retry's final list refresh. Finish that explicit save first.
+                page.wait_for_function('() => document.getElementById("notice").textContent === "指令已保存並讀回，請查看外部服務的後續回報。"')
+                assert page.locator('[data-command-state=pending]').count() == 1
                 page.unroute('**/api/integrations/v1/commands/*', fail_one_readback)
                 assert len(command_posts) == 2
                 assert command_posts[0]['idempotency_key'] == command_posts[1]['idempotency_key']

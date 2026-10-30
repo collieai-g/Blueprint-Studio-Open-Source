@@ -9,10 +9,12 @@ import webbrowser
 from pathlib import Path
 
 from . import __version__
+from .console import configure_utf8_streams
+from .path_safety import has_link
 from .core import CATEGORIES, FolderError, create_folder, init_studio, mark_folder, reindex, search_folders
 
 
-def main(argv=None) -> int:
+def _build_parser():
     parser = argparse.ArgumentParser(description="Blueprint Studio Backend｜你公司的專屬後台。")
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command")
@@ -98,105 +100,151 @@ def main(argv=None) -> int:
     package = commands.add_parser("pack", help="將專員文件夾封裝成 ZIP，帶回瀏覽器介面")
     package.add_argument("path")
     package.add_argument("--output", required=True)
+    return parser
+
+
+def _emit(result):
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _mcp(args):
+    from blueprint_library.mcp_server import run
+    return run(args)
+
+
+def _mcp_config(args):
+    from blueprint_library.mcp_server import client_config
+    print(client_config(args.client, args.url), end="")
+    return 0
+
+
+def _setup(args):
+    from blueprint_library.onboarding import prepare_setup
+    interactive = sys.stdin.isatty()
+    if not args.company_name:
+        if not interactive:
+            raise FolderError("請先提供 --company-name，或在互動終端機執行 setup。")
+        args.company_name = input("公司／創業名稱：").strip()
+        args.industry = input("行業（選填）：").strip()
+        args.description = input("公司簡介（選填）：").strip()
+        args.goals = input("目前目標（選填）：").strip()
+    mode = args.mode or ((input("使用模式 cloud / local [cloud]：").strip() or "cloud") if interactive else "cloud")
+    provider = args.provider or ((input("雲端 render / railway / server [render]：").strip() or "render") if interactive and mode == "cloud" else "render")
+    output = args.output or str(Path.cwd().parent / "Blueprint Studio Private")
+    result = prepare_setup(output, {"name": args.company_name, "industry": args.industry,
+        "description": args.description, "goals": args.goals}, mode, provider, args.username)
+    return _emit(result)
+
+
+def _workday(args):
+    from blueprint_library.commands import run_workday_command
+    return _emit(run_workday_command(args))
+
+
+def _library_init(args):
+    from blueprint_library.server import initialize_library
+    password = os.environ.get("BLUEPRINT_ADMIN_PASSWORD")
+    if password is None:
+        password = getpass.getpass("設定管理員密碼（最少 12 字元）：")
+        if password != getpass.getpass("再次輸入密碼："):
+            raise FolderError("兩次密碼不一致，未有初始化。")
+    profile = None
+    if args.company_file:
+        from blueprint_library.onboarding import load_company_file
+        profile = load_company_file(args.company_file)
+    return _emit(initialize_library(args.path, args.username, password, company_profile=profile))
+
+
+def _library(args):
+    from blueprint_library.server import serve_library
+    serve_library(args.data, host=args.host, port=args.port, open_browser=not args.no_open)
+    return 0
+
+
+def _gui(args):
+    page = Path(__file__).resolve().parents[1] / "dist" / "index.html"
+    if not page.exists():
+        raise FolderError("缺少瀏覽器版，請先執行 python tools/build_web.py。")
+    if not webbrowser.open(page.as_uri()):
+        print("請用瀏覽器開啟：" + str(page))
+    return 0
+
+
+def _serve(args):
+    from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+    from functools import partial
+    page = Path(__file__).resolve().parents[1] / "dist"
+    handler = partial(SimpleHTTPRequestHandler, directory=str(page))
+    server = ThreadingHTTPServer((args.host, args.port), handler)
+    url = f"http://{'127.0.0.1' if args.host == '0.0.0.0' else args.host}:{server.server_port}/"
+    print("Blueprint Studio Backend：" + url, flush=True)
+    if not args.no_open:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
+
+
+def _init(args):
+    return _emit(init_studio(args.path))
+
+
+def _link(args):
+    from .workspaces import link_workspace
+    return _emit(link_workspace(args.path))
+
+
+def _create(args):
+    return _emit(create_folder(args.path, args.name, args.description, args.category, args.tag))
+
+
+def _mark(args):
+    return _emit(mark_folder(args.path, args.description, args.category, args.tag))
+
+
+def _search(args):
+    return _emit(search_folders(args.root, args.query, args.category))
+
+
+def _reindex(args):
+    return _emit(reindex(args.root))
+
+
+def _inspect(args):
+    from .core import _path, _read_json
+    folder = _path(args.path)
+    if has_link(folder / ".blueprint"):
+        raise FolderError("身份檔目錄不能係符號連結。")
+    return _emit(_read_json(folder / ".blueprint" / "folder.json"))
+
+
+def _pack(args):
+    from .packages import pack_folder
+    return _emit(pack_folder(args.path, args.output))
+
+
+_HANDLERS = {
+    "mcp": _mcp, "mcp-config": _mcp_config, "setup": _setup,
+    "library-init": _library_init, "library": _library, "gui": _gui,
+    "serve": _serve, "init": _init, "link": _link, "create": _create,
+    "mark": _mark, "search": _search, "reindex": _reindex,
+    "inspect": _inspect, "pack": _pack,
+    **{name: _workday for name in ("workday-connect", "workday-save", "workday-list",
+        "workday-show", "workday-revise", "workday-history")},
+}
+
+
+def main(argv=None) -> int:
+    configure_utf8_streams()
+    parser = _build_parser()
     args = parser.parse_args(argv)
     try:
-        if args.command == "mcp":
-            from blueprint_library.mcp_server import run
-            return run(args)
-        if args.command == "mcp-config":
-            from blueprint_library.mcp_server import client_config
-            print(client_config(args.client, args.url), end="")
-            return 0
-        if args.command == "setup":
-            from blueprint_library.onboarding import prepare_setup
-            interactive = sys.stdin.isatty()
-            if not args.company_name:
-                if not interactive:
-                    raise FolderError("請先提供 --company-name，或在互動終端機執行 setup。")
-                args.company_name = input("公司／創業名稱：").strip()
-                args.industry = input("行業（選填）：").strip()
-                args.description = input("公司簡介（選填）：").strip()
-                args.goals = input("目前目標（選填）：").strip()
-            mode = args.mode or ((input("使用模式 cloud / local [cloud]：").strip() or "cloud") if interactive else "cloud")
-            provider = args.provider or ((input("雲端 render / railway / server [render]：").strip() or "render") if interactive and mode == "cloud" else "render")
-            output = args.output or str(Path.cwd().parent / "Blueprint Studio Private")
-            result = prepare_setup(output, {"name": args.company_name, "industry": args.industry,
-                "description": args.description, "goals": args.goals}, mode, provider, args.username)
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-            return 0
-        if args.command and args.command.startswith("workday-"):
-            from blueprint_library.commands import run_workday_command
-            result = run_workday_command(args)
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-            return 0
-        if args.command == "library-init":
-            from blueprint_library.server import initialize_library
-            password = os.environ.get("BLUEPRINT_ADMIN_PASSWORD")
-            if password is None:
-                password = getpass.getpass("設定管理員密碼（最少 12 字元）：")
-                if password != getpass.getpass("再次輸入密碼："):
-                    raise FolderError("兩次密碼不一致，未有初始化。")
-            profile = None
-            if args.company_file:
-                from blueprint_library.onboarding import load_company_file
-                profile = load_company_file(args.company_file)
-            result = initialize_library(args.path, args.username, password, company_profile=profile)
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-            return 0
-        if args.command == "library":
-            from blueprint_library.server import serve_library
-            serve_library(args.data, host=args.host, port=args.port, open_browser=not args.no_open)
-            return 0
-        if args.command in (None, "gui"):
-            page = Path(__file__).resolve().parents[1] / "dist" / "index.html"
-            if not page.exists():
-                raise FolderError("缺少瀏覽器版，請先執行 python tools/build_web.py。")
-            if not webbrowser.open(page.as_uri()):
-                print("請用瀏覽器開啟：" + str(page))
-            return 0
-        if args.command == "serve":
-            from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-            from functools import partial
-            page = Path(__file__).resolve().parents[1] / "dist"
-            handler = partial(SimpleHTTPRequestHandler, directory=str(page))
-            server = ThreadingHTTPServer((args.host, args.port), handler)
-            url = f"http://{'127.0.0.1' if args.host == '0.0.0.0' else args.host}:{server.server_port}/"
-            print("Blueprint Studio Backend：" + url, flush=True)
-            if not args.no_open:
-                webbrowser.open(url)
-            try:
-                server.serve_forever()
-            except KeyboardInterrupt:
-                pass
-            finally:
-                server.server_close()
-            return 0
-        if args.command == "init":
-            result = init_studio(args.path)
-        elif args.command == "link":
-            from .workspaces import link_workspace
-            result = link_workspace(args.path)
-        elif args.command == "create":
-            result = create_folder(args.path, args.name, args.description, args.category, args.tag)
-        elif args.command == "mark":
-            result = mark_folder(args.path, args.description, args.category, args.tag)
-        elif args.command == "search":
-            result = search_folders(args.root, args.query, args.category)
-        elif args.command == "reindex":
-            result = reindex(args.root)
-        elif args.command == "inspect":
-            from .core import _path, _read_json
-            folder = _path(args.path)
-            if (folder / ".blueprint").is_symlink():
-                raise FolderError("身份檔目錄不能係符號連結。")
-            result = _read_json(folder / ".blueprint" / "folder.json")
-        elif args.command == "pack":
-            from .packages import pack_folder
-            result = pack_folder(args.path, args.output)
-        else:
-            parser.error("未知指令")
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0
+        return _HANDLERS[args.command or "gui"](args)
     except (ValueError, OSError, EOFError) as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 2

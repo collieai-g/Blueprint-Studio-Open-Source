@@ -185,6 +185,26 @@ class Studio:
     def _fields(self, conn, kind, data, *, internal=False):
         if not isinstance(data, dict) or set(data) - set(SCHEMAS[kind]['fields']):
             raise LibraryError('內容包含不支援的欄位。')
+        validators = {
+            'text': self._field_text,
+            'textarea': self._field_text,
+            'email': self._field_text,
+            'color': self._field_text,
+            'date': self._field_text,
+            'url': self._field_text,
+            'reference': self._field_text,
+            'select': self._field_text,
+            'strings': self._field_list,
+            'choices': self._field_list,
+            'references': self._field_list,
+            'boolean': self._field_boolean,
+            'integer': self._field_integer,
+            'money': self._field_money,
+            'checklist': self._field_checklist,
+            'line_items': self._field_line_items,
+            'work_logs': self._field_work_logs,
+            'payments': self._field_payments,
+        }
         result = {}
         for key, spec in SCHEMAS[kind]['fields'].items():
             if key not in data:
@@ -193,80 +213,139 @@ class Studio:
                 elif spec.get('required'):
                     raise LibraryError('請填寫：' + spec['label'])
                 continue
-            value = data[key]
             if spec.get('readonly') and not internal:
                 raise LibraryError('這個欄位由工作流程更新：' + spec['label'])
-            typ = spec['type']
-            if typ in {'text', 'textarea', 'email', 'color', 'date', 'url', 'reference', 'select'}:
-                value = _text(value, 40000 if typ == 'textarea' else 4096 if typ == 'url' else 500, spec.get('required', False))
-                if typ == 'date': value = _day(value)
-                if typ == 'url': value = _url(value)
-                if typ == 'color' and not re.fullmatch(r'#[0-9a-fA-F]{6}', value): raise LibraryError('請選擇有效顏色。')
-                if typ == 'select' and value not in {o['value'] for o in spec['options']}: raise LibraryError('請選擇有效選項。')
-                if typ == 'reference' and value:
-                    self._reference(conn, {'kind': spec['kind'], 'id': value}, allow_integration=kind == 'specialist')
-                    if spec.get('category') and self._get(conn, value, check=False)['data'].get('category') != spec['category']:
-                        raise LibraryError('請選擇正確類型的接入。')
-            elif typ == 'boolean':
-                if not isinstance(value, bool): raise LibraryError('請使用是或否。')
-            elif typ == 'integer':
-                if type(value) is not int or not spec.get('min', 0) <= value <= spec.get('max', 10000): raise LibraryError('數字超出可用範圍。')
-            elif typ == 'money': value = _money(value)
-            elif typ in {'strings', 'choices', 'references'}:
-                if not isinstance(value, list) or len(value) > 100: raise LibraryError('清單最多 100 項。')
-                value = list(dict.fromkeys(_text(v, 200, True) for v in value))
-                if typ == 'choices' and set(value) - {o['value'] for o in spec['options']}: raise LibraryError('分類不正確。')
-                if typ == 'references':
-                    for v in value:
-                        self._reference(conn, {'kind': spec['kind'], 'id': v}, allow_integration=kind == 'specialist')
-                        if spec.get('category') and self._get(conn, v, check=False)['data'].get('category') != spec['category']:
-                            raise LibraryError('請選擇正確類型的接入。')
-            elif typ == 'checklist':
-                if not isinstance(value, list) or len(value) > 80: raise LibraryError('步驟最多 80 項。')
-                cleaned = []
-                for entry in value:
-                    if not isinstance(entry, dict) or set(entry) - {'title', 'done'} or type(entry.get('done', False)) is not bool: raise LibraryError('步驟格式不正確。')
-                    cleaned.append({'title': _text(entry.get('title'), 240, True), 'done': entry.get('done', False)})
-                value = cleaned
-            elif typ == 'line_items':
-                if not isinstance(value, list) or len(value) > 100: raise LibraryError('報價項目最多 100 項。')
-                cleaned = []
-                for entry in value:
-                    if not isinstance(entry, dict) or set(entry) != {'description', 'quantity', 'unit_price'}: raise LibraryError('報價項目格式不正確。')
-                    q = entry['quantity']
-                    if type(q) is not int or not 1 <= q <= 1000000: raise LibraryError('數量需要是正整數。')
-                    cleaned.append({'description': _text(entry['description'], 500, True), 'quantity': q, 'unit_price': _money(entry['unit_price'])})
-                value = cleaned
-            elif typ == 'work_logs':
-                if not isinstance(value, list) or len(value) > 366: raise LibraryError('工時紀錄最多 366 項。')
-                cleaned = []
-                for entry in value:
-                    if not isinstance(entry, dict) or set(entry) != {'date', 'minutes', 'notes'} or type(entry['minutes']) is not int or not 0 <= entry['minutes'] <= 1440: raise LibraryError('工時格式不正確。')
-                    cleaned.append({'date': _day(entry['date']), 'minutes': entry['minutes'], 'notes': _text(entry['notes'], 1000)})
-                value = cleaned
-            elif typ == 'payments':
-                if not internal or not isinstance(value, list): raise LibraryError('收款需要透過記錄收款功能。')
-            result[key] = value
-        if kind == 'cost' and result.get('integration_id'):
-            integration = self._get(conn, result['integration_id'])
-            if result.get('currency') != integration['data'].get('currency', 'HKD'): raise LibraryError('費用貨幣需要與所屬接入相同。')
-        if kind == 'integration' and result.get('secret_env') and not re.fullmatch(r'[A-Z][A-Z0-9_]{2,79}', result['secret_env']):
-            raise LibraryError('請填伺服器環境設定名稱，不要填入 API 金鑰。')
-        if kind == 'quote':
-            total = sum((Decimal(line['unit_price']) * line['quantity'] for line in result.get('lines', [])), Decimal(0))
-            result['amount'] = _money(str(total))
-        if kind == 'invoice' and Decimal(result.get('paid', '0')) > Decimal(result.get('amount', '0')):
-            raise LibraryError('已收金額不能超過發票金額。')
-        if kind == 'scenario' and result.get('result') != 'pending' and not (result.get('actual') and result.get('source')):
-            raise LibraryError('先記錄真實測試結果和來源，才可標記通過或未通過。')
-        if kind == 'inspiration':
-            if result.get('ai_summary') and not result.get('summary_source'):
-                raise LibraryError('AI 摘要需要記下真實來源。')
-            if result.get('screenshot_id'):
-                row = conn.execute('SELECT mime FROM items WHERE id=? AND kind=?', (result['screenshot_id'], 'file')).fetchone()
-                if not row or row['mime'] not in {'image/png','image/jpeg','image/webp'}: raise LibraryError('截圖需要 PNG、JPEG 或 WebP 檔案。')
-                result['capture_state'] = 'ready'
+            validator = validators.get(spec['type'])
+            result[key] = validator(conn, kind, spec, data[key], internal) if validator else data[key]
+        finalizer = {
+            'cost': self._fields_cost,
+            'integration': self._fields_integration,
+            'quote': self._fields_quote,
+            'invoice': self._fields_invoice,
+            'scenario': self._fields_scenario,
+            'inspiration': self._fields_inspiration,
+        }.get(kind)
+        if finalizer:
+            finalizer(conn, result)
         return result
+
+    def _field_text(self, conn, kind, spec, value, internal):
+        typ = spec['type']
+        value = _text(value, 40000 if typ == 'textarea' else 4096 if typ == 'url' else 500, spec.get('required', False))
+        if typ == 'date':
+            value = _day(value)
+        if typ == 'url':
+            value = _url(value)
+        if typ == 'color' and (not re.fullmatch('#[0-9a-fA-F]{6}', value)):
+            raise LibraryError('請選擇有效顏色。')
+        if typ == 'select' and value not in {o['value'] for o in spec['options']}:
+            raise LibraryError('請選擇有效選項。')
+        if typ == 'reference' and value:
+            self._reference(conn, {'kind': spec['kind'], 'id': value}, allow_integration=kind == 'specialist')
+            if spec.get('category') and self._get(conn, value, check=False)['data'].get('category') != spec['category']:
+                raise LibraryError('請選擇正確類型的接入。')
+        return value
+
+    def _field_boolean(self, conn, kind, spec, value, internal):
+        if not isinstance(value, bool):
+            raise LibraryError('請使用是或否。')
+        return value
+
+    def _field_integer(self, conn, kind, spec, value, internal):
+        if type(value) is not int or not spec.get('min', 0) <= value <= spec.get('max', 10000):
+            raise LibraryError('數字超出可用範圍。')
+        return value
+
+    def _field_money(self, conn, kind, spec, value, internal):
+        value = _money(value)
+        return value
+
+    def _field_list(self, conn, kind, spec, value, internal):
+        typ = spec['type']
+        if not isinstance(value, list) or len(value) > 100:
+            raise LibraryError('清單最多 100 項。')
+        value = list(dict.fromkeys((_text(v, 200, True) for v in value)))
+        if typ == 'choices' and set(value) - {o['value'] for o in spec['options']}:
+            raise LibraryError('分類不正確。')
+        if typ == 'references':
+            for v in value:
+                self._reference(conn, {'kind': spec['kind'], 'id': v}, allow_integration=kind == 'specialist')
+                if spec.get('category') and self._get(conn, v, check=False)['data'].get('category') != spec['category']:
+                    raise LibraryError('請選擇正確類型的接入。')
+        return value
+
+    def _field_checklist(self, conn, kind, spec, value, internal):
+        if not isinstance(value, list) or len(value) > 80:
+            raise LibraryError('步驟最多 80 項。')
+        cleaned = []
+        for entry in value:
+            if not isinstance(entry, dict) or set(entry) - {'title', 'done'} or type(entry.get('done', False)) is not bool:
+                raise LibraryError('步驟格式不正確。')
+            cleaned.append({'title': _text(entry.get('title'), 240, True), 'done': entry.get('done', False)})
+        value = cleaned
+        return value
+
+    def _field_line_items(self, conn, kind, spec, value, internal):
+        if not isinstance(value, list) or len(value) > 100:
+            raise LibraryError('報價項目最多 100 項。')
+        cleaned = []
+        for entry in value:
+            if not isinstance(entry, dict) or set(entry) != {'description', 'quantity', 'unit_price'}:
+                raise LibraryError('報價項目格式不正確。')
+            q = entry['quantity']
+            if type(q) is not int or not 1 <= q <= 1000000:
+                raise LibraryError('數量需要是正整數。')
+            cleaned.append({'description': _text(entry['description'], 500, True), 'quantity': q, 'unit_price': _money(entry['unit_price'])})
+        value = cleaned
+        return value
+
+    def _field_work_logs(self, conn, kind, spec, value, internal):
+        if not isinstance(value, list) or len(value) > 366:
+            raise LibraryError('工時紀錄最多 366 項。')
+        cleaned = []
+        for entry in value:
+            if not isinstance(entry, dict) or set(entry) != {'date', 'minutes', 'notes'} or type(entry['minutes']) is not int or (not 0 <= entry['minutes'] <= 1440):
+                raise LibraryError('工時格式不正確。')
+            cleaned.append({'date': _day(entry['date']), 'minutes': entry['minutes'], 'notes': _text(entry['notes'], 1000)})
+        value = cleaned
+        return value
+
+    def _field_payments(self, conn, kind, spec, value, internal):
+        if not internal or not isinstance(value, list):
+            raise LibraryError('收款需要透過記錄收款功能。')
+        return value
+
+    def _fields_cost(self, conn, result):
+        if result.get('integration_id'):
+            integration = self._get(conn, result['integration_id'])
+            if result.get('currency') != integration['data'].get('currency', 'HKD'):
+                raise LibraryError('費用貨幣需要與所屬接入相同。')
+
+    def _fields_integration(self, conn, result):
+        if result.get('secret_env') and (not re.fullmatch('[A-Z][A-Z0-9_]{2,79}', result['secret_env'])):
+            raise LibraryError('請填伺服器環境設定名稱，不要填入 API 金鑰。')
+
+    def _fields_quote(self, conn, result):
+        total = sum((Decimal(line['unit_price']) * line['quantity'] for line in result.get('lines', [])), Decimal(0))
+        result['amount'] = _money(str(total))
+
+    def _fields_invoice(self, conn, result):
+        if Decimal(result.get('paid', '0')) > Decimal(result.get('amount', '0')):
+            raise LibraryError('已收金額不能超過發票金額。')
+
+    def _fields_scenario(self, conn, result):
+        if result.get('result') != 'pending' and (not (result.get('actual') and result.get('source'))):
+            raise LibraryError('先記錄真實測試結果和來源，才可標記通過或未通過。')
+
+    def _fields_inspiration(self, conn, result):
+        if result.get('ai_summary') and (not result.get('summary_source')):
+            raise LibraryError('AI 摘要需要記下真實來源。')
+        if result.get('screenshot_id'):
+            row = conn.execute('SELECT mime FROM items WHERE id=? AND kind=?', (result['screenshot_id'], 'file')).fetchone()
+            if not row or row['mime'] not in {'image/png', 'image/jpeg', 'image/webp'}:
+                raise LibraryError('截圖需要 PNG、JPEG 或 WebP 檔案。')
+            result['capture_state'] = 'ready'
+
 
     def _make(self, conn, payload, internal=False):
         if not isinstance(payload, dict) or set(payload) - ({'kind','title','data','refs','visibility','source_key','id'} if internal else {'kind','title','data','refs','visibility','source_key'}):
@@ -375,44 +454,65 @@ class Studio:
             return self._get(conn, record_id)
 
     def update(self, record_id, payload):
-        if not isinstance(payload,dict) or set(payload)-{'expected_version','title','data','refs','archived'}:
+        if not isinstance(payload, dict) or set(payload) - {'expected_version', 'title', 'data', 'refs', 'archived'}:
             raise LibraryError('修改內容格式不正確。')
         with self.store._connection() as conn:
-            conn.execute('BEGIN IMMEDIATE'); old = self._get(conn, record_id); self._expected(old,payload.get('expected_version'))
-            if old['kind'] == 'specialist' and not self.admin:
-                raise LibraryError('請由管理員設定專員。', 403)
-            if old['kind'] == 'quote' and old['data'].get('state','draft') not in {'draft','declined'} and set(payload)-{'expected_version','archived'}:
-                raise LibraryError('已確認的報價不能直接改寫。請先退回草稿，或另建一份報價。', 409)
-            record = {**old, 'data':dict(old['data'])}
-            if 'title' in payload: record['title'] = _text(payload['title'],240,True)
+            conn.execute('BEGIN IMMEDIATE')
+            old = self._get(conn, record_id)
+            self._expected(old, payload.get('expected_version'))
+            self._check_update(old, payload)
+            record = {**old, 'data': dict(old['data'])}
+            if 'title' in payload:
+                record['title'] = _text(payload['title'], 240, True)
             if 'archived' in payload:
-                if type(payload['archived']) is not bool: raise LibraryError('封存需要是或否。')
+                if type(payload['archived']) is not bool:
+                    raise LibraryError('封存需要是或否。')
                 record['archived'] = payload['archived']
             if 'data' in payload:
-                if not isinstance(payload['data'],dict): raise LibraryError('內容格式不正確。')
-                for key in payload['data']:
-                    if key not in SCHEMAS[old['kind']]['fields'] or SCHEMAS[old['kind']]['fields'][key].get('readonly'):
-                        raise LibraryError('此欄位需要透過工作流程更新。')
-                record['data'] = self._fields(conn,old['kind'],{**old['data'],**payload['data']},internal=True)
+                self._update_content(conn, old, record, payload)
             if 'refs' in payload:
-                if not isinstance(payload['refs'],list) or len(payload['refs'])>100: raise LibraryError('關聯格式不正確。')
-                record['refs']=[]
-                for ref in payload['refs']:
-                    if self._reference(conn,ref)=='admin':record['visibility']='admin'
-                    if ref not in record['refs']:record['refs'].append(ref)
-            if old['kind']=='specialist' and old['data'].get('state')=='unconnected' and payload.get('data'):
-                record['data']['state']='configuring'
-            if old['kind']=='feedback':
-                record['data']['resolved_at'] = _now() if record['data'].get('state')=='resolved' and old['data'].get('state')!='resolved' else old['data'].get('resolved_at','') if record['data'].get('state')=='resolved' else ''
-            if old['kind']=='integration' and record['data'].get('enabled') and record['data'].get('budget_paused'):
-                raise LibraryError('已達本月上限。請先調整上限或等待下個月份。',409)
-            record = self._save(conn,old,record)
+                self._update_references(conn, record, payload['refs'])
+            self._update_state(old, record, payload)
+            record = self._save(conn, old, record)
             if record['kind'] == 'cost' and record['data'].get('integration_id'):
                 self._enforce_budget(conn, record['data']['integration_id'])
             if record['kind'] == 'integration':
                 self._enforce_budget(conn, record['id'])
                 record = self._get(conn, record['id'])
             return record
+
+    def _check_update(self, old, payload):
+        if old['kind'] == 'specialist' and (not self.admin):
+            raise LibraryError('請由管理員設定專員。', 403)
+        if old['kind'] == 'quote' and old['data'].get('state', 'draft') not in {'draft', 'declined'} and set(payload) - {'expected_version', 'archived'}:
+            raise LibraryError('已確認的報價不能直接改寫。請先退回草稿，或另建一份報價。', 409)
+
+    def _update_content(self, conn, old, record, payload):
+        if not isinstance(payload['data'], dict):
+            raise LibraryError('內容格式不正確。')
+        for key in payload['data']:
+            if key not in SCHEMAS[old['kind']]['fields'] or SCHEMAS[old['kind']]['fields'][key].get('readonly'):
+                raise LibraryError('此欄位需要透過工作流程更新。')
+        record['data'] = self._fields(conn, old['kind'], {**old['data'], **payload['data']}, internal=True)
+
+    def _update_references(self, conn, record, refs):
+        if not isinstance(refs, list) or len(refs) > 100:
+            raise LibraryError('關聯格式不正確。')
+        record['refs'] = []
+        for ref in refs:
+            if self._reference(conn, ref) == 'admin':
+                record['visibility'] = 'admin'
+            if ref not in record['refs']:
+                record['refs'].append(ref)
+
+    def _update_state(self, old, record, payload):
+        if old['kind'] == 'specialist' and old['data'].get('state') == 'unconnected' and payload.get('data'):
+            record['data']['state'] = 'configuring'
+        if old['kind'] == 'feedback':
+            record['data']['resolved_at'] = _now() if record['data'].get('state') == 'resolved' and old['data'].get('state') != 'resolved' else old['data'].get('resolved_at', '') if record['data'].get('state') == 'resolved' else ''
+        if old['kind'] == 'integration' and record['data'].get('enabled') and record['data'].get('budget_paused'):
+            raise LibraryError('已達本月上限。請先調整上限或等待下個月份。', 409)
+
 
     def history(self, record_id):
         with self.store._connection() as conn:
@@ -515,94 +615,176 @@ class Studio:
         return {'version':current['version']+1,'data':merged}
 
     def action(self, record_id, payload):
-        if not isinstance(payload,dict) or set(payload)-{'expected_version','action','arguments'}:raise LibraryError('動作格式不正確。')
-        action=payload.get('action');args=payload.get('arguments',{})
-        if not isinstance(args,dict):raise LibraryError('動作內容格式不正確。')
+        if not isinstance(payload, dict) or set(payload) - {'expected_version', 'action', 'arguments'}:
+            raise LibraryError('動作格式不正確。')
+        action = payload.get('action')
+        args = payload.get('arguments', {})
+        if not isinstance(args, dict):
+            raise LibraryError('動作內容格式不正確。')
         with self.store._connection() as conn:
-            conn.execute('BEGIN IMMEDIATE');record=self._get(conn,record_id);self._expected(record,payload.get('expected_version'))
-            kind=record['kind'];new={**record,'data':dict(record['data'])};created=[]
-            ref={'kind':kind,'id':record_id}
-            if action=='to_task' and kind in {'inbox','inspiration','report','feedback'}:
-                existing=conn.execute('SELECT id FROM studio_records WHERE source_key=?',('task-from:'+record_id,)).fetchone()
-                task=self._get(conn,existing['id']) if existing else self._make(conn,{'kind':'task','title':record['title'],'data':{'content':record['data'].get('content',record['data'].get('note','')),'done':False},'refs':[ref],'visibility':record['visibility'],'source_key':'task-from:'+record_id},internal=True)
-                created.append(task)
-            elif action=='ask_ai':
-                instruction=_text(args.get('instruction','請整理這項內容，提供下一步建議。'),40000,True)
-                command=self._make(conn,{'kind':'command','title':'處理：'+record['title'],'data':{'instruction':instruction,'state':'awaiting_ai',**({'topic_id':record_id} if kind=='topic' else {})},'refs':[ref],'visibility':record['visibility']},internal=True)
-                created.extend([command,self._command_inbox(conn,command)])
-                if kind=='inbox':new['data']['state']='pending'
-            elif action=='create_quote' and kind=='lead':
-                key='quote-from:'+record_id;existing=conn.execute('SELECT id FROM studio_records WHERE source_key=?',(key,)).fetchone()
-                quote=self._get(conn,existing['id']) if existing else self._make(conn,{'kind':'quote','title':record['title']+' · 報價','data':{**{k:v for k,v in record['data'].items() if k in SCHEMAS['quote']['fields'] and k not in {'state'}},'state':'draft','lines':[],'currency':'HKD'},'refs':[ref],'source_key':key},internal=True)
-                created.append(quote)
-            elif action=='quote_state' and kind=='quote':
-                state=args.get('state');allowed={'draft':{'pending'},'pending':{'approved','draft','declined'},'approved':{'sent','draft'},'sent':{'signed','declined'},'signed':set(),'declined':{'draft'}}
-                if state not in allowed.get(record['data'].get('state','draft'),set()):raise LibraryError('請按報價流程更新狀態。',409)
-                if state in {'approved','sent','signed'} and not self.admin:raise LibraryError('請由老闆或管理員確認報價。',403)
-                if state in {'sent','signed'} and args.get('confirmed') is not True:raise LibraryError('請先確認你已自行完成發送或簽署。')
-                if state=='signed':new['data']['signed_date']=_day(args.get('date',date.today().isoformat()))
-                new['data']['state']=state
-            elif action=='create_invoice' and kind=='quote':
-                if not self.admin:raise LibraryError('你的帳戶不能建立發票。',403)
-                if record['data'].get('state')!='signed':raise LibraryError('請先記錄已簽署的報價或合約。',409)
-                data=record['data'];customer=self._make(conn,{'kind':'customer','title':data.get('company') or record['title'],'data':{k:v for k,v in data.items() if k in SCHEMAS['customer']['fields']},'refs':[ref],'source_key':'customer-from:'+record_id},internal=True)
-                invoice=self._make(conn,{'kind':'invoice','title':record['title']+' · 發票','data':{'customer_id':customer['id'],'company':data.get('company',''),'contact':data.get('contact',''),'amount':data.get('amount','0.00'),'currency':data.get('currency','HKD'),'paid':'0.00','issued':date.today().isoformat(),'due_date':_day(args.get('due_date','')),'payments':[]},'refs':[ref,{'kind':'customer','id':customer['id']}],'source_key':'invoice-from:'+record_id},internal=True)
-                new['data']['state']='invoiced';created.extend([customer,invoice])
-                for lead_ref in record['refs']:
-                    if lead_ref['kind']=='lead':
-                        lead=self._get(conn,lead_ref['id']);self._save(conn,lead,{**lead,'data':{**lead['data'],'state':'converted'}})
-            elif action=='record_payment' and kind=='invoice':
-                amount=Decimal(_money(args.get('amount')))
-                if amount<=0 or amount+Decimal(record['data'].get('paid','0'))>Decimal(record['data'].get('amount','0')):raise LibraryError('收款金額需要大於零，且不能超過未收金額。')
-                payment={'date':_day(args.get('date',date.today().isoformat())),'amount':str(amount.quantize(Decimal('.01'))),'note':_text(args.get('note',''),1000),'actor':self.actor}
-                new['data']['paid']=_money(str(Decimal(record['data'].get('paid','0'))+amount));new['data']['payments']=[*record['data'].get('payments',[]),payment]
-            elif action=='specialist_state' and kind=='specialist':
-                if not self.admin:raise LibraryError('請由管理員設定專員。',403)
-                if args.get('state') not in {'configuring','paused','unconnected'}:raise LibraryError('本版專員是未接入的設定空間，不能標示為正在對外運行。',409)
-                new['data']['state']=args['state']
-            elif action=='plan_command' and kind=='command':
-                if record['data'].get('state')=='completed':raise LibraryError('此指令已完成。請建立新的指令。',409)
-                checked=self._fields(conn,'command',{**record['data'],'tasks':args.get('tasks',[])},internal=True)
-                new['data']={**checked,'state':'planned'}
-            elif action=='complete_command' and kind=='command':
-                if record['data'].get('state') in {'completed','needs_confirmation'}:raise LibraryError('此指令已有結果，未重複建立。',409)
-                result=_text(args.get('result',''),40000,True);source=_text(args.get('source',''),120,True)
-                external=args.get('external_action',False)
-                if type(external) is not bool:raise LibraryError('請說明是否需要對外操作。')
-                report=self._make(conn,{'kind':'report','title':record['title'],'data':{'content':result,'source':source},'refs':[ref,*record['refs']],'visibility':record['visibility'],'source_key':'result:'+record_id},internal=True)
-                created.append(report);new['data'].update(result=result,state='needs_confirmation' if external else 'completed')
-                inbox_row=conn.execute('SELECT id FROM studio_records WHERE source_key=?',('command-inbox:'+record_id,)).fetchone()
-                if inbox_row:
-                    inbox=self._get(conn,inbox_row['id']);self._save(conn,inbox,{**inbox,'data':{**inbox['data'],'state':'decision' if external else 'processed','content':result},'refs':[ref,{'kind':'report','id':report['id']}]})
-            elif action=='approve_draft' and kind=='command':
-                if not self.admin or args.get('confirmed') is not True:raise LibraryError('請由老闆或管理員確認草稿。',403)
-                if record['data'].get('state')!='needs_confirmation':raise LibraryError('此指令沒有待確認的草稿。',409)
-                new['data']['state']='completed'
-                row=conn.execute('SELECT id FROM studio_records WHERE source_key=?',('command-inbox:'+record_id,)).fetchone()
-                if row:
-                    inbox=self._get(conn,row['id']);self._save(conn,inbox,{**inbox,'data':{**inbox['data'],'state':'processed','content':inbox['data'].get('content','')+'\n\n草稿已確認。尚未對外發送或付款。'}})
-            elif action=='record_usage' and kind=='integration':
-                if not self.admin:raise LibraryError('需要管理員權限。',403)
-                usage_key=_text(args.get('source_key',''),200,True)
-                existing=conn.execute('SELECT id FROM studio_records WHERE source_key=?',('usage:'+record_id+':'+usage_key,)).fetchone()
-                if existing:return {'record':record,'created':[self._get(conn,existing['id'])]}
-                cost=self._make(conn,{'kind':'cost','title':record['title']+' · 用量','data':{'amount':_money(args.get('amount')),'currency':record['data'].get('currency','HKD'),'date':_day(args.get('date',date.today().isoformat())),'integration_id':record_id,'specialist_id':args.get('specialist_id',''),'category':'model' if record['data'].get('category')=='model' else 'plugin','source':_text(args.get('source',''),500,True)},'source_key':'usage:'+record_id+':'+usage_key},internal=True)
-                created.append(cost)
-                total=self._usage(conn,record_id,date.today().strftime('%Y-%m'))
-                if Decimal(record['data'].get('monthly_limit','0'))>0 and total>=Decimal(record['data']['monthly_limit']):
-                    new['data'].update(enabled=False,budget_paused=True)
-                    created.append(self._make(conn,{'kind':'inbox','title':record['title']+' 已達用量上限','data':{'source':'用量管理','state':'decision','content':'這個接入已在工作台暫停。請檢查外部服務自己的帳單及用量限制。'},'visibility':'admin','refs':[ref]},internal=True))
-                    for row in conn.execute("SELECT * FROM studio_records WHERE kind='specialist' AND archived=0").fetchall():
-                        specialist=_record(row)
-                        if record_id in [specialist['data'].get(k) for k in ['model_id','fallback_id','channel_id']]+specialist['data'].get('skill_ids',[]):
-                            self._save(conn,specialist,{**specialist,'data':{**specialist['data'],'state':'attention','attention':'所用接入已達工作台設定的上限。'}})
-            elif action=='resume_budget' and kind=='integration':
-                total=self._usage(conn,record_id,date.today().strftime('%Y-%m'));limit=Decimal(record['data'].get('monthly_limit','0'))
-                if limit>0 and total>=limit:raise LibraryError('目前用量仍達到上限。請先增加上限。',409)
-                new['data'].update(enabled=True,budget_paused=False)
-            else:raise LibraryError('這項內容不支援此動作。')
-            if new!=record:record=self._save(conn,record,new)
-            return {'record':record,'created':created,'external_action_executed':False}
+            conn.execute('BEGIN IMMEDIATE')
+            record = self._get(conn, record_id)
+            self._expected(record, payload.get('expected_version'))
+            handlers = {
+                'to_task': (('feedback', 'inbox', 'inspiration', 'report'), self._action_to_task),
+                'ask_ai': (None, self._action_ask_ai),
+                'create_quote': (('lead',), self._action_create_quote),
+                'quote_state': (('quote',), self._action_quote_state),
+                'create_invoice': (('quote',), self._action_create_invoice),
+                'record_payment': (('invoice',), self._action_record_payment),
+                'specialist_state': (('specialist',), self._action_specialist_state),
+                'plan_command': (('command',), self._action_plan_command),
+                'complete_command': (('command',), self._action_complete_command),
+                'approve_draft': (('command',), self._action_approve_draft),
+                'record_usage': (('integration',), self._action_record_usage),
+                'resume_budget': (('integration',), self._action_resume_budget),
+            }
+            selected = handlers.get(action) if isinstance(action, str) else None
+            if selected is None or (selected[0] is not None and record['kind'] not in selected[0]):
+                raise LibraryError('這項內容不支援此動作。')
+            new = {**record, 'data': dict(record['data'])}
+            created = []
+            result = selected[1](conn, record, args, new, created)
+            if result is not None:
+                return result
+            if new != record:
+                record = self._save(conn, record, new)
+            return {'record': record, 'created': created, 'external_action_executed': False}
+
+    def _action_to_task(self, conn, record, args, new, created):
+        record_id = record['id']
+        ref = {'kind': record['kind'], 'id': record['id']}
+        existing = conn.execute('SELECT id FROM studio_records WHERE source_key=?', ('task-from:' + record_id,)).fetchone()
+        task = self._get(conn, existing['id']) if existing else self._make(conn, {'kind': 'task', 'title': record['title'], 'data': {'content': record['data'].get('content', record['data'].get('note', '')), 'done': False}, 'refs': [ref], 'visibility': record['visibility'], 'source_key': 'task-from:' + record_id}, internal=True)
+        created.append(task)
+
+    def _action_ask_ai(self, conn, record, args, new, created):
+        record_id = record['id']
+        kind = record['kind']
+        ref = {'kind': record['kind'], 'id': record['id']}
+        instruction = _text(args.get('instruction', '請整理這項內容，提供下一步建議。'), 40000, True)
+        command = self._make(conn, {'kind': 'command', 'title': '處理：' + record['title'], 'data': {'instruction': instruction, 'state': 'awaiting_ai', **({'topic_id': record_id} if kind == 'topic' else {})}, 'refs': [ref], 'visibility': record['visibility']}, internal=True)
+        created.extend([command, self._command_inbox(conn, command)])
+        if kind == 'inbox':
+            new['data']['state'] = 'pending'
+
+    def _action_create_quote(self, conn, record, args, new, created):
+        record_id = record['id']
+        ref = {'kind': record['kind'], 'id': record['id']}
+        key = 'quote-from:' + record_id
+        existing = conn.execute('SELECT id FROM studio_records WHERE source_key=?', (key,)).fetchone()
+        quote = self._get(conn, existing['id']) if existing else self._make(conn, {'kind': 'quote', 'title': record['title'] + ' · 報價', 'data': {**{k: v for k, v in record['data'].items() if k in SCHEMAS['quote']['fields'] and k not in {'state'}}, 'state': 'draft', 'lines': [], 'currency': 'HKD'}, 'refs': [ref], 'source_key': key}, internal=True)
+        created.append(quote)
+
+    def _action_quote_state(self, conn, record, args, new, created):
+        state = args.get('state')
+        allowed = {'draft': {'pending'}, 'pending': {'approved', 'draft', 'declined'}, 'approved': {'sent', 'draft'}, 'sent': {'signed', 'declined'}, 'signed': set(), 'declined': {'draft'}}
+        if state not in allowed.get(record['data'].get('state', 'draft'), set()):
+            raise LibraryError('請按報價流程更新狀態。', 409)
+        if state in {'approved', 'sent', 'signed'} and (not self.admin):
+            raise LibraryError('請由老闆或管理員確認報價。', 403)
+        if state in {'sent', 'signed'} and args.get('confirmed') is not True:
+            raise LibraryError('請先確認你已自行完成發送或簽署。')
+        if state == 'signed':
+            new['data']['signed_date'] = _day(args.get('date', date.today().isoformat()))
+        new['data']['state'] = state
+
+    def _action_create_invoice(self, conn, record, args, new, created):
+        record_id = record['id']
+        ref = {'kind': record['kind'], 'id': record['id']}
+        if not self.admin:
+            raise LibraryError('你的帳戶不能建立發票。', 403)
+        if record['data'].get('state') != 'signed':
+            raise LibraryError('請先記錄已簽署的報價或合約。', 409)
+        data = record['data']
+        customer = self._make(conn, {'kind': 'customer', 'title': data.get('company') or record['title'], 'data': {k: v for k, v in data.items() if k in SCHEMAS['customer']['fields']}, 'refs': [ref], 'source_key': 'customer-from:' + record_id}, internal=True)
+        invoice = self._make(conn, {'kind': 'invoice', 'title': record['title'] + ' · 發票', 'data': {'customer_id': customer['id'], 'company': data.get('company', ''), 'contact': data.get('contact', ''), 'amount': data.get('amount', '0.00'), 'currency': data.get('currency', 'HKD'), 'paid': '0.00', 'issued': date.today().isoformat(), 'due_date': _day(args.get('due_date', '')), 'payments': []}, 'refs': [ref, {'kind': 'customer', 'id': customer['id']}], 'source_key': 'invoice-from:' + record_id}, internal=True)
+        new['data']['state'] = 'invoiced'
+        created.extend([customer, invoice])
+        for lead_ref in record['refs']:
+            if lead_ref['kind'] == 'lead':
+                lead = self._get(conn, lead_ref['id'])
+                self._save(conn, lead, {**lead, 'data': {**lead['data'], 'state': 'converted'}})
+
+    def _action_record_payment(self, conn, record, args, new, created):
+        amount = Decimal(_money(args.get('amount')))
+        if amount <= 0 or amount + Decimal(record['data'].get('paid', '0')) > Decimal(record['data'].get('amount', '0')):
+            raise LibraryError('收款金額需要大於零，且不能超過未收金額。')
+        payment = {'date': _day(args.get('date', date.today().isoformat())), 'amount': str(amount.quantize(Decimal('.01'))), 'note': _text(args.get('note', ''), 1000), 'actor': self.actor}
+        new['data']['paid'] = _money(str(Decimal(record['data'].get('paid', '0')) + amount))
+        new['data']['payments'] = [*record['data'].get('payments', []), payment]
+
+    def _action_specialist_state(self, conn, record, args, new, created):
+        if not self.admin:
+            raise LibraryError('請由管理員設定專員。', 403)
+        if args.get('state') not in {'configuring', 'paused', 'unconnected'}:
+            raise LibraryError('本版專員是未接入的設定空間，不能標示為正在對外運行。', 409)
+        new['data']['state'] = args['state']
+
+    def _action_plan_command(self, conn, record, args, new, created):
+        if record['data'].get('state') == 'completed':
+            raise LibraryError('此指令已完成。請建立新的指令。', 409)
+        checked = self._fields(conn, 'command', {**record['data'], 'tasks': args.get('tasks', [])}, internal=True)
+        new['data'] = {**checked, 'state': 'planned'}
+
+    def _action_complete_command(self, conn, record, args, new, created):
+        record_id = record['id']
+        ref = {'kind': record['kind'], 'id': record['id']}
+        if record['data'].get('state') in {'completed', 'needs_confirmation'}:
+            raise LibraryError('此指令已有結果，未重複建立。', 409)
+        result = _text(args.get('result', ''), 40000, True)
+        source = _text(args.get('source', ''), 120, True)
+        external = args.get('external_action', False)
+        if type(external) is not bool:
+            raise LibraryError('請說明是否需要對外操作。')
+        report = self._make(conn, {'kind': 'report', 'title': record['title'], 'data': {'content': result, 'source': source}, 'refs': [ref, *record['refs']], 'visibility': record['visibility'], 'source_key': 'result:' + record_id}, internal=True)
+        created.append(report)
+        new['data'].update(result=result, state='needs_confirmation' if external else 'completed')
+        inbox_row = conn.execute('SELECT id FROM studio_records WHERE source_key=?', ('command-inbox:' + record_id,)).fetchone()
+        if inbox_row:
+            inbox = self._get(conn, inbox_row['id'])
+            self._save(conn, inbox, {**inbox, 'data': {**inbox['data'], 'state': 'decision' if external else 'processed', 'content': result}, 'refs': [ref, {'kind': 'report', 'id': report['id']}]})
+
+    def _action_approve_draft(self, conn, record, args, new, created):
+        record_id = record['id']
+        if not self.admin or args.get('confirmed') is not True:
+            raise LibraryError('請由老闆或管理員確認草稿。', 403)
+        if record['data'].get('state') != 'needs_confirmation':
+            raise LibraryError('此指令沒有待確認的草稿。', 409)
+        new['data']['state'] = 'completed'
+        row = conn.execute('SELECT id FROM studio_records WHERE source_key=?', ('command-inbox:' + record_id,)).fetchone()
+        if row:
+            inbox = self._get(conn, row['id'])
+            self._save(conn, inbox, {**inbox, 'data': {**inbox['data'], 'state': 'processed', 'content': inbox['data'].get('content', '') + '\n\n草稿已確認。尚未對外發送或付款。'}})
+
+    def _action_record_usage(self, conn, record, args, new, created):
+        record_id = record['id']
+        ref = {'kind': record['kind'], 'id': record['id']}
+        if not self.admin:
+            raise LibraryError('需要管理員權限。', 403)
+        usage_key = _text(args.get('source_key', ''), 200, True)
+        existing = conn.execute('SELECT id FROM studio_records WHERE source_key=?', ('usage:' + record_id + ':' + usage_key,)).fetchone()
+        if existing:
+            return {'record': record, 'created': [self._get(conn, existing['id'])]}
+        cost = self._make(conn, {'kind': 'cost', 'title': record['title'] + ' · 用量', 'data': {'amount': _money(args.get('amount')), 'currency': record['data'].get('currency', 'HKD'), 'date': _day(args.get('date', date.today().isoformat())), 'integration_id': record_id, 'specialist_id': args.get('specialist_id', ''), 'category': 'model' if record['data'].get('category') == 'model' else 'plugin', 'source': _text(args.get('source', ''), 500, True)}, 'source_key': 'usage:' + record_id + ':' + usage_key}, internal=True)
+        created.append(cost)
+        total = self._usage(conn, record_id, date.today().strftime('%Y-%m'))
+        if Decimal(record['data'].get('monthly_limit', '0')) > 0 and total >= Decimal(record['data']['monthly_limit']):
+            new['data'].update(enabled=False, budget_paused=True)
+            created.append(self._make(conn, {'kind': 'inbox', 'title': record['title'] + ' 已達用量上限', 'data': {'source': '用量管理', 'state': 'decision', 'content': '這個接入已在工作台暫停。請檢查外部服務自己的帳單及用量限制。'}, 'visibility': 'admin', 'refs': [ref]}, internal=True))
+            for row in conn.execute("SELECT * FROM studio_records WHERE kind='specialist' AND archived=0").fetchall():
+                specialist = _record(row)
+                if record_id in [specialist['data'].get(k) for k in ['model_id', 'fallback_id', 'channel_id']] + specialist['data'].get('skill_ids', []):
+                    self._save(conn, specialist, {**specialist, 'data': {**specialist['data'], 'state': 'attention', 'attention': '所用接入已達工作台設定的上限。'}})
+
+    def _action_resume_budget(self, conn, record, args, new, created):
+        record_id = record['id']
+        total = self._usage(conn, record_id, date.today().strftime('%Y-%m'))
+        limit = Decimal(record['data'].get('monthly_limit', '0'))
+        if limit > 0 and total >= limit:
+            raise LibraryError('目前用量仍達到上限。請先增加上限。', 409)
+        new['data'].update(enabled=True, budget_paused=False)
+
 
     def _enforce_budget(self, conn, integration_id):
         record = self._get(conn, integration_id)
@@ -680,34 +862,74 @@ class Studio:
                 if score:ranked.append({'record':other,'score':round(score,3)})
         return {'method':'tags_and_text','note':'按標籤與文字比較，並非 AI 語意分析。','matches':sorted(ranked,key=lambda r:r['score'],reverse=True)[:12]}
 
-    def summary(self,month=None):
-        month=month or date.today().strftime('%Y-%m')
-        if not re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])',month):raise LibraryError('月份需要使用 YYYY-MM。')
-        today=date.today().isoformat();metrics={};totals={};reminders=[]
+    def summary(self, month=None):
+        month = month or date.today().strftime('%Y-%m')
+        if not re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])', month):
+            raise LibraryError('月份需要使用 YYYY-MM。')
+        today = date.today().isoformat()
         with self.store._connection() as conn:
-            rows=[_record(row) for row in conn.execute("SELECT * FROM studio_records WHERE (archived=0 OR kind IN ('cost','invoice'))"+(" AND visibility='team'" if not self.admin else ''))]
-            for r in rows:
-                d=r['data']
-                if r['kind']=='specialist':metrics[r['id']]={'id':r['id'],'title':r['title'],'state':d.get('state','unconnected'),'conversations':0,'automatic':0,'human':0,'errors':0,'automatic_ratio':None}
-            for r in rows:
-                d=r['data'];kind=r['kind']
-                if kind=='conversation' and not d.get('test_only',True) and d.get('occurred_at')==today and d.get('specialist_id') in metrics:
-                    m=metrics[d['specialist_id']];m['conversations']+=1
-                    m[{'automatic':'automatic','human':'human','error':'errors'}[d.get('outcome','human')]]+=1
-                if kind=='feedback' and d.get('state')!='resolved':reminders.append({'kind':kind,'id':r['id'],'title':r['title'],'reason':'反饋待跟進'})
-                if kind=='quote' and d.get('expires') and d['expires']<=today and d.get('state') not in {'signed','invoiced','declined'}:reminders.append({'kind':kind,'id':r['id'],'title':r['title'],'reason':'報價已到期'})
-                if self.admin and kind in {'invoice','cost'}:
-                    currency=d.get('currency','HKD');total=totals.setdefault(currency,{'invoiced':Decimal(0),'received':Decimal(0),'outstanding':Decimal(0),'cost':Decimal(0)})
-                    if kind=='invoice':
-                        if d.get('issued','').startswith(month):total['invoiced']+=Decimal(d.get('amount','0'))
-                        total['outstanding']+=Decimal(d.get('amount','0'))-Decimal(d.get('paid','0'))
-                        total['received']+=sum((Decimal(p['amount']) for p in d.get('payments',[]) if p['date'].startswith(month)),Decimal(0))
-                    elif d.get('date','').startswith(month):total['cost']+=Decimal(d.get('amount','0'))
-            for m in metrics.values():
-                if m['conversations']:m['automatic_ratio']=round(m['automatic']/m['conversations']*100,1)
-            counts={'inbox':sum(r['kind']=='inbox' and r['data'].get('state') in {'pending','decision'} for r in rows),'feedback':sum(r['kind']=='feedback' and r['data'].get('state')!='resolved' for r in rows),'quotes':sum(r['kind']=='quote' and r['data'].get('state')=='pending' for r in rows)}
-            return {'date':today,'month':month,'counts':counts,'specialists':list(metrics.values()),'reminders':reminders[:50],
-                    'finance':{currency:{key:format(amount,'.2f') for key,amount in total.items()} for currency,total in totals.items()} if self.admin else None}
+            rows = [_record(row) for row in conn.execute("SELECT * FROM studio_records WHERE (archived=0 OR kind IN ('cost','invoice'))" + (" AND visibility='team'" if not self.admin else ''))]
+            return {'date': today, 'month': month, 'counts': self._summary_counts(rows),
+                    'specialists': self._summary_metrics(rows, today),
+                    'reminders': self._summary_reminders(rows, today),
+                    'finance': self._summary_finance(rows, month)}
+
+    @staticmethod
+    def _summary_counts(rows):
+        counts = {'inbox': sum((r['kind'] == 'inbox' and r['data'].get('state') in {'pending', 'decision'} for r in rows)), 'feedback': sum((r['kind'] == 'feedback' and r['data'].get('state') != 'resolved' for r in rows)), 'quotes': sum((r['kind'] == 'quote' and r['data'].get('state') == 'pending' for r in rows))}
+        return counts
+
+    @staticmethod
+    def _summary_metrics(rows, today):
+        metrics = {}
+        for r in rows:
+            d = r['data']
+            if r['kind'] == 'specialist':
+                metrics[r['id']] = {'id': r['id'], 'title': r['title'], 'state': d.get('state', 'unconnected'), 'conversations': 0, 'automatic': 0, 'human': 0, 'errors': 0, 'automatic_ratio': None}
+        for r in rows:
+            d = r['data']
+            kind = r['kind']
+            if kind == 'conversation' and (not d.get('test_only', True)) and (d.get('occurred_at') == today) and (d.get('specialist_id') in metrics):
+                m = metrics[d['specialist_id']]
+                m['conversations'] += 1
+                m[{'automatic': 'automatic', 'human': 'human', 'error': 'errors'}[d.get('outcome', 'human')]] += 1
+        for m in metrics.values():
+            if m['conversations']:
+                m['automatic_ratio'] = round(m['automatic'] / m['conversations'] * 100, 1)
+        return list(metrics.values())
+
+    @staticmethod
+    def _summary_reminders(rows, today):
+        reminders = []
+        for r in rows:
+            d = r['data']
+            kind = r['kind']
+            if kind == 'feedback' and d.get('state') != 'resolved':
+                reminders.append({'kind': kind, 'id': r['id'], 'title': r['title'], 'reason': '反饋待跟進'})
+            if kind == 'quote' and d.get('expires') and (d['expires'] <= today) and (d.get('state') not in {'signed', 'invoiced', 'declined'}):
+                reminders.append({'kind': kind, 'id': r['id'], 'title': r['title'], 'reason': '報價已到期'})
+        return reminders[:50]
+
+    def _summary_finance(self, rows, month):
+        if not self.admin:
+            return None
+        totals = {}
+        for r in rows:
+            d = r['data']
+            kind = r['kind']
+            if self.admin and kind in {'invoice', 'cost'}:
+                currency = d.get('currency', 'HKD')
+                total = totals.setdefault(currency, {'invoiced': Decimal(0), 'received': Decimal(0), 'outstanding': Decimal(0), 'cost': Decimal(0)})
+                if kind == 'invoice':
+                    if d.get('issued', '').startswith(month):
+                        total['invoiced'] += Decimal(d.get('amount', '0'))
+                    total['outstanding'] += Decimal(d.get('amount', '0')) - Decimal(d.get('paid', '0'))
+                    total['received'] += sum((Decimal(p['amount']) for p in d.get('payments', []) if p['date'].startswith(month)), Decimal(0))
+                elif d.get('date', '').startswith(month):
+                    total['cost'] += Decimal(d.get('amount', '0'))
+        return {currency: {key: format(amount, '.2f') for key, amount in total.items()}
+                for currency, total in totals.items()}
+
 
     def financial_report(self,month):
         if not self.admin:raise LibraryError('你的帳戶沒有財務權限。',403)

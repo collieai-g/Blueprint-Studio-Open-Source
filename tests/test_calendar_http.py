@@ -5,6 +5,8 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
+from zoneinfo import ZoneInfoNotFoundError
 from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -16,6 +18,12 @@ from blueprint_library.studio import Studio
 
 
 class CalendarHTTPTests(unittest.TestCase):
+    def test_missing_timezone_runtime_is_503_instead_of_an_internal_error(self):
+        with patch('blueprint_library.calendar.ZoneInfo', side_effect=ZoneInfoNotFoundError('missing database')):
+            status, result = self.request('GET', '/meta')
+        self.assertEqual(status, 503)
+        self.assertIn('時區資料', result['error'])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='blueprint-calendar-http-')
         self.addCleanup(self.temp.cleanup)

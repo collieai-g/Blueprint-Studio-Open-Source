@@ -93,6 +93,13 @@ class LibraryClassificationTests(unittest.TestCase):
 
 
 class URLNormalizationTests(unittest.TestCase):
+    def test_ipv6_zone_ids_are_rejected_without_rejecting_normal_ipv6(self):
+        for value in ('https://[fe80::1%eth0]/', 'http://[fe80::1%25eth0]:8080/',
+                      'https://[::1%1]/', 'https://[2001:db8::1%25zone]/'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                normalize_url(value)
+        self.assertEqual(normalize_url('https://[2001:0db8::1]:443/a'), 'https://[2001:db8::1]:443/a')
+
     def test_valid_url_preserves_path_query_fragment_and_port(self):
         self.assertEqual(
             normalize_url("HTTPS://Example.ORG:8443/path?q=one%20two#part"),

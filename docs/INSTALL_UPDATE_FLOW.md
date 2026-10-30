@@ -4,6 +4,8 @@
 
 開源來源修改的重現、元件分流及 PR 步驟見[開發指南](DEVELOPMENT.md)；相關[驗收](DEVELOPMENT_ACCEPTANCE.md)與[私隱規則](PRIVACY.md)沿用本頁的 `source_release` 任務，不另建安裝流程。
 
+原生工作室可接入[受管安裝器](MANAGED_INSTALLER.md)，由固定套件、背景準備及擁有人套用處理相同 schema 的核心更新。它沿用資料保護；尚未接入、需要遷移或缺平台 adapter 時按原路線處理，不能把背景準備完成當成已部署。
+
 ## 先按任務減少工作
 
 | 任務 | 必須完成 | 不需要執行 |

@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from datetime import date
 import json
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .store import LibraryError
 from .studio_schema import SCHEMAS
 from .workdays import _date
+from .time_utils import timezone_info
 
 
 def _range_day(value, label):
@@ -45,10 +45,7 @@ def aggregate(studio, conn, start_date: str | date, end_date: str | date,
         raise LibraryError('結束日期必須在開始日期之後。')
     if not isinstance(timezone, str) or not timezone:
         raise LibraryError('請提供有效的 IANA 時區。')
-    try:
-        ZoneInfo(timezone)
-    except (ValueError, ZoneInfoNotFoundError):
-        raise LibraryError('請提供有效的 IANA 時區。') from None
+    timezone_info(timezone, invalid_message='請提供有效的 IANA 時區。')
 
     events = []
     records = conn.execute("""

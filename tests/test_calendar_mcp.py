@@ -18,8 +18,8 @@ CALENDAR_NAMES = {
 
 class CalendarCatalogTests(unittest.TestCase):
     def test_calendar_is_native_only_and_never_exposes_attendance_writes(self):
-        shared = json.loads((ROOT / 'integrations/mcp/tools.json').read_text())['tools']
-        calendar = json.loads((ROOT / 'integrations/mcp/calendar-tools.json').read_text())['tools']
+        shared = json.loads((ROOT / 'integrations/mcp/tools.json').read_text(encoding='utf-8'))['tools']
+        calendar = json.loads((ROOT / 'integrations/mcp/calendar-tools.json').read_text(encoding='utf-8'))['tools']
         native = catalog()
         self.assertEqual(len(shared), 42)
         self.assertTrue(CALENDAR_NAMES.isdisjoint(tool['name'] for tool in shared))

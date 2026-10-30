@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 import json
@@ -131,7 +133,7 @@ def _safe_path(value, label) -> Path:
         current = Path(path.anchor)
         for component in path.parts[1:]:
             current = current / component
-            if current.is_symlink():
+            if has_link(current):
                 raise LibraryError(f"{label}不能包含符號連結。")
         return path.resolve()
     except (TypeError, ValueError, OSError, RuntimeError) as exc:
@@ -387,7 +389,10 @@ def connect_workday(workspace, data_dir=None, tool_root=None, *, url=None,
         private.mkdir(exist_ok=True, mode=0o700)
         _write_bytes(guide_path, guide)
         _write_bytes(agents_path, agents)
-        _write_bytes(config_path, encoded)
+        # Keep the owner's formatting and line endings when the effective
+        # binding has not changed; reconnect is a readback, not a rewrite.
+        if config != updated:
+            _write_bytes(config_path, encoded)
     except OSError as exc:
         raise LibraryError("未能寫入工作室的每日工作連結，請檢查路徑及權限。", 500) from exc
     result = {"workspace_path": str(workspace), "guide_path": str(guide_path), "config_path": str(config_path)}

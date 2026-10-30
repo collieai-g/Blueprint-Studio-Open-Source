@@ -1,5 +1,6 @@
 """Refining a saved workday preserves completed work and recoverable history."""
 
+from contextlib import closing
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import json
@@ -310,7 +311,7 @@ class WorkdayRevisionTests(unittest.TestCase):
         (self.data / "access.json").write_bytes(auth)
         # Rebuild the actual old table rather than merely lowering user_version:
         # schema 3 had entry versions but no workday version or revision table.
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             conn.row_factory = sqlite3.Row
             old_report = dict(conn.execute("SELECT * FROM workdays WHERE id=?", (report["id"],)).fetchone())
             old_report.pop("version")
@@ -337,7 +338,7 @@ class WorkdayRevisionTests(unittest.TestCase):
             self.assertEqual(migrated.get_file(file_item["id"])[0].read_bytes(), "公司私人原文".encode())
             self.assertEqual((self.data / "access.json").read_bytes(), auth)
             self.assertFalse(migrated.get_company_profile()["configured"])
-            with sqlite3.connect(migrated.db_path) as conn:
+            with closing(sqlite3.connect(migrated.db_path)) as conn, conn:
                 self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
                 for table, rows in previous.items():
                     self.assertEqual(conn.execute("SELECT * FROM " + table).fetchall(), rows)

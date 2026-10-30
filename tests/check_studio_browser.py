@@ -74,7 +74,10 @@ def main():
                 # The footer has one settings entry. Secondary actions keep their
                 # own destinations without leaving overlapping modal dialogs.
                 footer=page.locator('.sidebar-bottom')
-                assert footer.locator('button, a, [role=button]').evaluate_all('(nodes) => nodes.map(node => node.id)')==['settings-button']
+                # This ordinary host has no managed installer. Its hidden update
+                # entry is tested separately on a supported managed fixture.
+                assert footer.locator('button:visible, a:visible, [role=button]:visible').evaluate_all('(nodes) => nodes.map(node => node.id)')==['settings-button']
+                assert footer.locator('#installer-entry').is_hidden()
                 assert footer.locator('#settings-button').inner_text().strip()=='設定'
                 assert footer.locator('#version').is_visible()
                 assert footer.locator('#version').inner_text().strip()

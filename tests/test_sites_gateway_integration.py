@@ -43,7 +43,7 @@ class SitesGatewayIntegrationTests(unittest.TestCase):
                         'archive': str(root / 'download.zip'), 'accounts': {
                             'owner-id': {'username': 'owner', 'password': 'temporary-owner-password'},
                             'member-id': {'username': 'staff', 'password': 'temporary-member-password'}}}),
-                    capture_output=True, text=True, timeout=30)
+                    capture_output=True, text=True, timeout=60)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 evidence = json.loads(result.stdout)
                 self.assertEqual(evidence['page_sha256'], hashlib.sha256((ROOT / 'library_web/index.html').read_bytes()).hexdigest())

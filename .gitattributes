@@ -1,2 +1,5 @@
 # Maintainer research is not part of the installable product source archive.
 /research/ export-ignore
+
+# Contract digests pin canonical LF bytes on every checkout.
+/contracts/integration-v1/** text eol=lf

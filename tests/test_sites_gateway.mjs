@@ -67,6 +67,16 @@ test('browser and MCP choose the same mapped account without forwarding caller c
   assert.equal(f.calls.length, before);
 });
 
+test('Sites identity cannot claim authority to update a native host', async () => {
+  const f = fixture();
+  assert.equal((await f.handle(req('/api/installer', {user: null}))).status, 401);
+  const status = await f.handle(req('/api/installer'));
+  assert.equal(status.status, 200);
+  assert.deepEqual(await status.json(), {supported: false, reason: 'native_installer_adapter_required'});
+  assert.equal((await f.handle(req('/api/installer/apply', {method: 'POST', body: {}}))).status, 503);
+  assert.equal(f.calls.length, 0);
+});
+
 test('unsupported backend or missing maintenance blocks mutations before they happen', async () => {
   for (const changes of [{ api_contract: 'unknown/2' }, { storage: 'sites' }, { maintenance_available: false }]) {
     const f = fixture(undefined, { ...contract, ...changes });
@@ -162,7 +172,7 @@ test('original assets and attachment streams pass through; runtime facts stay se
   const f = fixture(url => new URL(url).pathname === '/api/info'
     ? Response.json({ company_name: 'Test', version: '9.1.0', connection_mode: 'native', maintenance: { supported: true } })
     : new Response(bytes, { headers: { 'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment', 'Set-Cookie': 'never=forward', 'Content-Security-Policy': "default-src 'self'" } }));
-  for (const path of ['/app.js', '/AI_CONNECT.md', '/skills.js', '/skills.css', '/api/files/test-file', '/api/maintenance/backups/test']) {
+  for (const path of ['/app.js', '/AI_CONNECT.md', '/skills.js', '/skills.css', '/installer.js', '/installer.css', '/api/files/test-file', '/api/maintenance/backups/test']) {
     const response = await f.handle(req(path));
     assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
     assert.equal(response.headers.get('Set-Cookie'), null);

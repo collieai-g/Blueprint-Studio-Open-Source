@@ -1,0 +1,1357 @@
+{
+  "version": 1,
+  "files": {
+    ".dockerignore": [
+      "installer"
+    ],
+    ".env.example": [
+      "installer"
+    ],
+    ".gitattributes": [
+      "installer"
+    ],
+    ".github/ISSUE_TEMPLATE/bug_report.yml": [
+      "installer"
+    ],
+    ".github/ISSUE_TEMPLATE/config.yml": [
+      "installer"
+    ],
+    ".github/ISSUE_TEMPLATE/feature_request.yml": [
+      "installer"
+    ],
+    ".github/pull_request_template.md": [
+      "installer"
+    ],
+    ".github/workflows/check.yml": [
+      "installer"
+    ],
+    ".github/workflows/pages.yml": [
+      "installer"
+    ],
+    ".gitignore": [
+      "installer"
+    ],
+    "AGENTS.md": [
+      "installer",
+      "managed-core"
+    ],
+    "AI_CONNECT.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "CHANGELOG.md": [
+      "installer"
+    ],
+    "CONTRIBUTING.md": [
+      "installer"
+    ],
+    "INSTALL_AI.txt": [
+      "installer",
+      "managed-core"
+    ],
+    "LICENSE": [
+      "installer",
+      "managed-core"
+    ],
+    "README.en.md": [
+      "installer"
+    ],
+    "README.md": [
+      "installer",
+      "managed-core"
+    ],
+    "START_HERE.md": [
+      "installer",
+      "managed-core"
+    ],
+    "UPDATE_AI.txt": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "VALIDATION.md": [
+      "installer"
+    ],
+    "artifacts/backend-company.png": [
+      "installer"
+    ],
+    "artifacts/backend-desktop.png": [
+      "installer"
+    ],
+    "artifacts/backend-mobile.png": [
+      "installer"
+    ],
+    "artifacts/backend-v2-desktop.png": [
+      "installer"
+    ],
+    "artifacts/backend-v2-mobile.png": [
+      "installer"
+    ],
+    "artifacts/backend-workday.png": [
+      "installer"
+    ],
+    "artifacts/codex-blueprint-workflow.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "artifacts/codex-blueprint-workspace-redraw.png": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "artifacts/connection-v2.2-desktop.png": [
+      "installer"
+    ],
+    "artifacts/connection-v2.2-mobile.png": [
+      "installer"
+    ],
+    "artifacts/desktop.png": [
+      "installer"
+    ],
+    "artifacts/layout-v2.3-desktop.png": [
+      "installer"
+    ],
+    "artifacts/layout-v2.3-mobile.png": [
+      "installer"
+    ],
+    "artifacts/mobile.png": [
+      "installer"
+    ],
+    "artifacts/studio-v2.4-mobile.png": [
+      "installer"
+    ],
+    "artifacts/studio-v2.4-projects.png": [
+      "installer"
+    ],
+    "assets/brand/mark-ink.svg": [
+      "installer"
+    ],
+    "assets/brand/mark-light.svg": [
+      "installer"
+    ],
+    "assets/icons/automation-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/automation.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/automation.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "assets/icons/calendar-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/calendar.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/calendar.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "assets/icons/chat-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/chat.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/chat.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "assets/icons/contact-sheet.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/document-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/document.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/document.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "assets/icons/finance-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/finance.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/finance.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "assets/icons/general-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/general.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/general.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "assets/icons/research-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/research.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/research.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "assets/icons/web-256.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/web.png": [
+      "installer",
+      "managed-core"
+    ],
+    "assets/icons/web.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "blueprint.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/__init__.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/__main__.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/cli.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/console.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/core.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/native_icons.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/packages.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/path_safety.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_folders/workspaces.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/__init__.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/agents.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/agents_http.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/backup.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/calendar.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/calendar_http.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/calendar_sources.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/classify.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/commands.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/company.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/connection.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/context.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_backup.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_bootstrap.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_catalog.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_components.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_http.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_modules.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_preview.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/installer_release.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/integration.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/integrations.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/integrations_http.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/lifecycle.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/maintenance.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/mcp_server.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/onboarding.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/operations.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/presentation.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/remote.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/runtime.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/server.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/store.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/studio.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/studio_http.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/studio_schema.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/time_utils.py": [
+      "installer",
+      "managed-core"
+    ],
+    "blueprint_library/workdays.py": [
+      "installer",
+      "managed-core"
+    ],
+    "company/Dockerfile": [
+      "installer"
+    ],
+    "company/entrypoint.py": [
+      "installer"
+    ],
+    "compose.yaml": [
+      "installer"
+    ],
+    "contracts/integration-v1/README.md": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/SHA256SUMS": [
+      "installer"
+    ],
+    "contracts/integration-v1/fixtures/command-results.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/fixtures/command.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/fixtures/errors.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/fixtures/invalid-requests.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/fixtures/knowledge.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/fixtures/manifest.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/fixtures/record.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/openapi.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/schemas/command-result.schema.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/schemas/command-write.schema.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/schemas/error.schema.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/schemas/knowledge-payload.schema.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/schemas/manifest.schema.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/schemas/record-write.schema.json": [
+      "installer",
+      "managed-core"
+    ],
+    "contracts/integration-v1/schemas/registry-update.schema.json": [
+      "installer",
+      "managed-core"
+    ],
+    "dist/index.html": [
+      "installer"
+    ],
+    "docs/AGENT_CONTRACT.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/AGENT_ROADMAP.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/AI_CONNECTION.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/AI_WORKSPACE.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/AUDIT_REMEDIATION_20261029.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/COMPANY_CALENDAR.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/COMPANY_INTERFACE_PLAN.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/CONNECT.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/DAILY_WORK.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/DEVELOPMENT.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/DEVELOPMENT_ACCEPTANCE.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/DEVELOPMENT_PLAN.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/HARNESS_ENGINEERING.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/HARNESS_VALIDATION_NEXT.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/INSTALL.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/INSTALL_CLOUD.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/INSTALL_LOCAL.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/INSTALL_UPDATE_FLOW.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/INTEGRATION_GUIDE.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/LAYOUT.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/LEFT_RIGHT_WORKFLOW.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/LIBRARY.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/LIFECYCLE_API.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/MAINTENANCE_API.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/MANAGED_INSTALLER.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/MANAGED_RELEASE_CHANNELS.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/NATIVE_LIFECYCLE.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/OPERATING_MODEL.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/PRESENTATION_SYNC.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/PRIVACY.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/RELEASE.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/SITES_NATIVE_GATEWAY.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/SOURCE_CHECKPOINT.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/STUDIO_API.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/UPDATE_ASSISTANT.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/UPDATE_PUBLISHING.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/UPDATE_ROUTE.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/UPDATE_SYSTEM_DEVELOPMENT_PLAN.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/UPGRADE.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/USAGE.md": [
+      "installer",
+      "managed-core"
+    ],
+    "docs/USER_GUIDE.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "docs/V2.4.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "examples/integration_service.py": [
+      "installer"
+    ],
+    "feedback/harness-batch-2.json": [
+      "installer"
+    ],
+    "feedback/harness-batch-3.json": [
+      "installer"
+    ],
+    "feedback/harness-batch-4.json": [
+      "installer"
+    ],
+    "feedback/harness.json": [
+      "installer"
+    ],
+    "feedback/source-update-001/batch-2.json": [
+      "installer"
+    ],
+    "feedback/source-update-001/batch-3.json": [
+      "installer"
+    ],
+    "feedback/source-update-001/batch-4.json": [
+      "installer"
+    ],
+    "feedback/source-update-001/case.json": [
+      "installer"
+    ],
+    "integrations/mcp/calendar-tools.json": [
+      "installer",
+      "managed-core"
+    ],
+    "integrations/mcp/connection.mjs": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "integrations/mcp/maintenance-tools.json": [
+      "installer",
+      "managed-core"
+    ],
+    "integrations/mcp/sites.mjs": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "integrations/mcp/tools.json": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "integrations/sites/native-gateway.mjs": [
+      "installer",
+      "managed-core"
+    ],
+    "integrations/sites/presentation.mjs": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/agents.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/agents.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/app.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/brand.svg": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/calendar.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/calendar.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/connection-guide.json": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/connection.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/index.html": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/installer.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/installer.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/integrations.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/integrations.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/manifest.webmanifest": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/navigation.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/overview-cards.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/page-layout.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/page-layout.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/presentation-sync.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/service-worker.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/skills.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/skills.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/studio.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/studio.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/style.css": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/update.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/workdays.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "library_web/workspace.js": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "railway.json": [
+      "installer"
+    ],
+    "render.yaml": [
+      "installer"
+    ],
+    "requirements-installer.txt": [
+      "installer",
+      "managed-core"
+    ],
+    "requirements-mcp.txt": [
+      "installer",
+      "managed-core"
+    ],
+    "research/README.md": [],
+    "research/codex-workbench-reference.md": [],
+    "research/company-interface-preview.html": [],
+    "research/company-interface-reference.md": [],
+    "research/fastgpt-architecture.md": [],
+    "research/harness-engineering.md": [],
+    "templates/agent/AGENTS.md": [
+      "installer",
+      "managed-core"
+    ],
+    "templates/agent/README.md": [
+      "installer",
+      "managed-core"
+    ],
+    "templates/agent/agent.json": [
+      "installer",
+      "managed-core"
+    ],
+    "templates/skills/personal-video/README.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "templates/skills/personal-video/SKILL.md": [
+      "installer",
+      "workbench",
+      "managed-core"
+    ],
+    "templates/update-distribution/pages.yml": [
+      "installer"
+    ],
+    "tests/agent_bridge_fixture.mjs": [
+      "installer"
+    ],
+    "tests/check_agents_browser.py": [
+      "installer"
+    ],
+    "tests/check_calendar_browser.py": [
+      "installer"
+    ],
+    "tests/check_connection_browser.py": [
+      "installer"
+    ],
+    "tests/check_installer_browser.py": [
+      "installer"
+    ],
+    "tests/check_integrations_browser.py": [
+      "installer"
+    ],
+    "tests/check_layout_browser.py": [
+      "installer"
+    ],
+    "tests/check_mcp_interop.py": [
+      "installer"
+    ],
+    "tests/check_native_container.py": [
+      "installer"
+    ],
+    "tests/check_personalization_browser.py": [
+      "installer"
+    ],
+    "tests/check_presentation_browser.py": [
+      "installer"
+    ],
+    "tests/check_skills_browser.py": [
+      "installer"
+    ],
+    "tests/check_studio_browser.py": [
+      "installer"
+    ],
+    "tests/check_update_browser.py": [
+      "installer"
+    ],
+    "tests/mcp_http_fixture.mjs": [
+      "installer"
+    ],
+    "tests/sites_gateway_fixture.mjs": [
+      "installer"
+    ],
+    "tests/test_agents.py": [
+      "installer"
+    ],
+    "tests/test_agents_mcp.py": [
+      "installer"
+    ],
+    "tests/test_calendar.py": [
+      "installer"
+    ],
+    "tests/test_calendar_dates.cjs": [
+      "installer"
+    ],
+    "tests/test_calendar_http.py": [
+      "installer"
+    ],
+    "tests/test_calendar_lifecycle.py": [
+      "installer"
+    ],
+    "tests/test_calendar_mcp.py": [
+      "installer"
+    ],
+    "tests/test_calendar_runtime.py": [
+      "installer"
+    ],
+    "tests/test_calendar_sources.py": [
+      "installer"
+    ],
+    "tests/test_check_installation.py": [
+      "installer"
+    ],
+    "tests/test_cli_protocol.py": [
+      "installer"
+    ],
+    "tests/test_company_runtime.py": [
+      "installer"
+    ],
+    "tests/test_connection.cjs": [
+      "installer"
+    ],
+    "tests/test_core.py": [
+      "installer"
+    ],
+    "tests/test_dev_preview.py": [
+      "installer"
+    ],
+    "tests/test_installer.py": [
+      "installer"
+    ],
+    "tests/test_installer_backup_adoption.py": [
+      "installer"
+    ],
+    "tests/test_installer_bootstrap.py": [
+      "installer"
+    ],
+    "tests/test_installer_catalog.py": [
+      "installer"
+    ],
+    "tests/test_installer_component_failures.py": [
+      "installer"
+    ],
+    "tests/test_installer_components.py": [
+      "installer"
+    ],
+    "tests/test_installer_http.py": [
+      "installer"
+    ],
+    "tests/test_installer_module_backup.py": [
+      "installer"
+    ],
+    "tests/test_installer_module_runtime.py": [
+      "installer"
+    ],
+    "tests/test_installer_release.py": [
+      "installer"
+    ],
+    "tests/test_installer_ui.cjs": [
+      "installer"
+    ],
+    "tests/test_integration_contract.py": [
+      "installer"
+    ],
+    "tests/test_integrations.py": [
+      "installer"
+    ],
+    "tests/test_integrations_http.py": [
+      "installer"
+    ],
+    "tests/test_integrations_migration.py": [
+      "installer"
+    ],
+    "tests/test_integrations_ui.cjs": [
+      "installer"
+    ],
+    "tests/test_library_classify.py": [
+      "installer"
+    ],
+    "tests/test_library_company.py": [
+      "installer"
+    ],
+    "tests/test_library_context.py": [
+      "installer"
+    ],
+    "tests/test_library_http.py": [
+      "installer"
+    ],
+    "tests/test_library_integration.py": [
+      "installer"
+    ],
+    "tests/test_library_onboarding.py": [
+      "installer"
+    ],
+    "tests/test_library_remote.py": [
+      "installer"
+    ],
+    "tests/test_library_store.py": [
+      "installer"
+    ],
+    "tests/test_library_workday_cli.py": [
+      "installer"
+    ],
+    "tests/test_library_workday_revisions.py": [
+      "installer"
+    ],
+    "tests/test_library_workdays.py": [
+      "installer"
+    ],
+    "tests/test_lifecycle_plan.py": [
+      "installer"
+    ],
+    "tests/test_maintenance.py": [
+      "installer"
+    ],
+    "tests/test_maintenance_coverage.py": [
+      "installer"
+    ],
+    "tests/test_managed_preview_runtime.py": [
+      "installer"
+    ],
+    "tests/test_mcp_bridge.py": [
+      "installer"
+    ],
+    "tests/test_navigation.cjs": [
+      "installer"
+    ],
+    "tests/test_operations.py": [
+      "installer"
+    ],
+    "tests/test_overview_cards.cjs": [
+      "installer"
+    ],
+    "tests/test_packager.cjs": [
+      "installer"
+    ],
+    "tests/test_packages.py": [
+      "installer"
+    ],
+    "tests/test_page_layout.cjs": [
+      "installer"
+    ],
+    "tests/test_path_safety.py": [
+      "installer"
+    ],
+    "tests/test_presentation.py": [
+      "installer"
+    ],
+    "tests/test_presentation_sync.cjs": [
+      "installer"
+    ],
+    "tests/test_release_packaging.py": [
+      "installer"
+    ],
+    "tests/test_server_routing.py": [
+      "installer"
+    ],
+    "tests/test_sites_gateway.mjs": [
+      "installer"
+    ],
+    "tests/test_sites_gateway_integration.py": [
+      "installer"
+    ],
+    "tests/test_sites_mcp.mjs": [
+      "installer"
+    ],
+    "tests/test_sites_presentation.mjs": [
+      "installer"
+    ],
+    "tests/test_skill_handoff.cjs": [
+      "installer"
+    ],
+    "tests/test_source_checkpoint.py": [
+      "installer"
+    ],
+    "tests/test_studio.py": [
+      "installer"
+    ],
+    "tests/test_update.cjs": [
+      "installer"
+    ],
+    "tests/test_update_assistant.py": [
+      "installer"
+    ],
+    "tests/test_update_publication.py": [
+      "installer"
+    ],
+    "tests/test_upgrade_workspace.py": [
+      "installer"
+    ],
+    "tests/test_workflow_boundaries.py": [
+      "installer"
+    ],
+    "tests/test_workflow_routes.py": [
+      "installer"
+    ],
+    "tests/test_workspace.cjs": [
+      "installer"
+    ],
+    "tests/test_workspace_refresh.cjs": [
+      "installer"
+    ],
+    "tests/test_workspaces.py": [
+      "installer"
+    ],
+    "tools/build_icons.py": [
+      "installer"
+    ],
+    "tools/build_sites_gateway.py": [
+      "installer"
+    ],
+    "tools/build_web.py": [
+      "installer"
+    ],
+    "tools/check_installation.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/dev_preview.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/feedback_harness/.gitignore": [
+      "installer"
+    ],
+    "tools/feedback_harness/AGENTS.md": [
+      "installer"
+    ],
+    "tools/feedback_harness/README.md": [
+      "installer"
+    ],
+    "tools/feedback_harness/adapters/blueprint-studio.json": [
+      "installer"
+    ],
+    "tools/feedback_harness/cases/blueprint-login-001/README.md": [
+      "installer"
+    ],
+    "tools/feedback_harness/cases/blueprint-login-001/browser-check.mjs": [
+      "installer"
+    ],
+    "tools/feedback_harness/cases/blueprint-login-001/browser_fixture.py": [
+      "installer"
+    ],
+    "tools/feedback_harness/cases/blueprint-login-001/case.json": [
+      "installer"
+    ],
+    "tools/feedback_harness/contracts/browser-evidence.schema.json": [
+      "installer"
+    ],
+    "tools/feedback_harness/contracts/case.schema.json": [
+      "installer"
+    ],
+    "tools/feedback_harness/contracts/project.schema.json": [
+      "installer"
+    ],
+    "tools/feedback_harness/harness.py": [
+      "installer"
+    ],
+    "tools/feedback_harness/proposals/blueprint_native_login/UPSTREAM_HANDOFF.md": [
+      "installer"
+    ],
+    "tools/feedback_harness/proposals/blueprint_native_login/__init__.py": [
+      "installer"
+    ],
+    "tools/feedback_harness/proposals/blueprint_native_login/gateway.py": [
+      "installer"
+    ],
+    "tools/feedback_harness/tests/__init__.py": [
+      "installer"
+    ],
+    "tools/feedback_harness/tests/test_harness.py": [
+      "installer"
+    ],
+    "tools/feedback_harness/tests/test_native_login_gateway.py": [
+      "installer"
+    ],
+    "tools/lifecycle_plan.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/package_installer.py": [
+      "installer"
+    ],
+    "tools/package_managed_release.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/package_release_catalog.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/package_workbench.py": [
+      "installer"
+    ],
+    "tools/prepare_update_publication.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/release_files.json": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/release_policy.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/runtime_lock.json": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/source_checkpoint.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/studio_installer.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/update_assistant.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/upgrade_workspace.py": [
+      "installer",
+      "managed-core"
+    ],
+    "tools/verify_release_artifacts.py": [
+      "installer"
+    ],
+    "web/app.js": [
+      "installer"
+    ],
+    "web/icons.js": [
+      "installer"
+    ],
+    "web/index.html": [
+      "installer"
+    ],
+    "web/packager.js": [
+      "installer"
+    ],
+    "web/style.css": [
+      "installer"
+    ]
+  }
+}

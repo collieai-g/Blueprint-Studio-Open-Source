@@ -36,7 +36,7 @@ class WorkdayCLITests(unittest.TestCase):
 
     def run_cli(self, *arguments, raw=None, expected=0):
         result = subprocess.run([sys.executable, str(CLI), *map(str, arguments)], cwd=self.root,
-                                input=raw, capture_output=True, text=True, timeout=20)
+                                input=raw, capture_output=True, text=True, encoding="utf-8", timeout=20)
         self.assertEqual(result.returncode, expected, result.stderr or result.stdout)
         channel = result.stdout if expected == 0 else result.stderr
         return json.loads(channel), result

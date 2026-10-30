@@ -12,8 +12,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from blueprint_folders import __version__
 from blueprint_library.store import SCHEMA_VERSION
+from blueprint_folders.console import configure_utf8_streams
+from tools.release_policy import selected_names, external_output, write_archive
 
 EXCLUDED_PREFIXES = ('research/',)
+
+MANAGED_INSTALLER_FILES = {'blueprint_library/installer.py', 'blueprint_library/installer_release.py',
+    'blueprint_library/installer_catalog.py', 'blueprint_library/installer_components.py',
+    'blueprint_library/installer_modules.py', 'blueprint_library/installer_backup.py',
+    'blueprint_library/installer_preview.py', 'tools/dev_preview.py',
+    'blueprint_library/installer_http.py', 'tools/studio_installer.py', 'tools/package_managed_release.py',
+    'tools/package_release_catalog.py', 'docs/MANAGED_RELEASE_CHANNELS.md',
+    'requirements-installer.txt', 'library_web/installer.js', 'library_web/installer.css',
+    'docs/MANAGED_INSTALLER.md'}
 
 REQUIRED = {'docs/INSTALL_UPDATE_FLOW.md', 'docs/LIFECYCLE_API.md', 'tools/lifecycle_plan.py', 'blueprint_library/operations.py', 'blueprint_library/lifecycle.py', 'docs/MAINTENANCE_API.md', 'blueprint_library/runtime.py', 'integrations/sites/native-gateway.mjs', 'tools/build_sites_gateway.py', 'docs/SITES_NATIVE_GATEWAY.md', 'docs/AGENT_ROADMAP.md', 'blueprint_library/maintenance.py', 'blueprint_library/backup.py', 'tools/check_installation.py', 'integrations/mcp/maintenance-tools.json', 'docs/NATIVE_LIFECYCLE.md', 'tools/source_checkpoint.py', 'docs/SOURCE_CHECKPOINT.md', 'UPDATE_AI.txt', 'docs/UPDATE_ASSISTANT.md', 'library_web/update.js', 'tools/update_assistant.py', 'INSTALL_AI.txt', 'AI_CONNECT.md', 'START_HERE.md', 'AGENTS.md', 'blueprint.py',
             'library_web/connection.js', 'library_web/connection-guide.json',
@@ -52,30 +63,19 @@ REQUIRED = {'docs/INSTALL_UPDATE_FLOW.md', 'docs/LIFECYCLE_API.md', 'tools/lifec
 
 
 def build(output):
-    names = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
-    names = sorted(name for name in names if name and not name.startswith(EXCLUDED_PREFIXES))
-    if not REQUIRED.issubset(names):
-        raise ValueError('安裝來源不完整；先將正式公開來源加入 Git，不能產生部分安裝包。')
-    files = {}
-    for name in names:
-        path = ROOT / name
-        if (path.is_symlink() or not path.is_file() or path.resolve().is_relative_to(ROOT) is False
-                or any(part.startswith('.env') and part != '.env.example' for part in path.relative_to(ROOT).parts)
-                or path.name == 'access.json' or path.suffix in {'.zip', '.sqlite3', '.pyc'}):
-            raise ValueError('安裝包包含不允許的來源檔案。')
-        files[name] = path.read_bytes()
+    output = external_output(output, ROOT)
+    names = selected_names(ROOT, 'installer', required=REQUIRED | MANAGED_INSTALLER_FILES)
+    files = {name: (ROOT / name).read_bytes() for name in names}
     manifest = {'product': 'Blueprint Studio Open Source', 'version': __version__,
                 'entrypoint': 'INSTALL_AI.txt', 'ai_connection_entrypoint': 'AI_CONNECT.md', 'database_schema': SCHEMA_VERSION, 'private_data_included': False,
                 'integration_contract': '1.0', 'integration_backend': 'native',
                 'files': {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}}
-    with zipfile.ZipFile(output, 'x', compression=zipfile.ZIP_DEFLATED) as archive:
-        for name, data in files.items():
-            archive.writestr(name, data)
-        archive.writestr('installer-manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+    write_archive(output, files, 'installer-manifest.json', manifest)
     return {'archive': str(output), 'version': __version__, 'files': len(files), 'entrypoint': 'INSTALL_AI.txt'}
 
 
 def main():
+    configure_utf8_streams()
     parser = argparse.ArgumentParser(description='建立完整 AI 引導安裝包，包含來源、左側 AI 接駁入口、規則及驗收')
     parser.add_argument('--output', required=True)
     args = parser.parse_args()

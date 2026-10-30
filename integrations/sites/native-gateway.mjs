@@ -9,7 +9,7 @@ const CONTRACT = 'blueprint-native/1';
 const JSON_LIMIT = 512 * 1024;
 const FILE_LIMIT = Math.floor(20 * 1024 * 1024 * 4 / 3) + 128 * 1024;
 const ASSETS = new Set(['/', '/index.html', '/AI_CONNECT.md', '/app.js', '/workdays.js', '/workspace.js', '/presentation-sync.js', '/page-layout.js', '/page-layout.css', '/overview-cards.js',
-  '/brand.svg', '/style.css', '/connection.js', '/update.js', '/connection-guide.json',
+  '/brand.svg', '/style.css', '/connection.js', '/update.js', '/installer.js', '/installer.css', '/connection-guide.json',
   '/studio.js', '/studio.css', '/agents.js', '/agents.css', '/integrations.js', '/integrations.css', '/calendar.js', '/calendar.css', '/skills.js', '/skills.css', '/navigation.js', '/manifest.webmanifest', '/service-worker.js']);
 const failure = (status, message) => { throw Object.assign(new Error(message), { status, safe: true }); };
 const jsonResponse = (value, status = 200) => new Response(JSON.stringify(value), {
@@ -96,6 +96,12 @@ export function createNativeGateway({ tools, maintenanceTools, calendarTools = [
         return jsonResponse({ site_user_id: user, scope: 'this_site_only' });
       }
       const account = accountFor(env, user), backend = httpsOrigin(env.BLUEPRINT_BACKEND_ORIGIN);
+      if (url.pathname === '/api/installer' || url.pathname.startsWith('/api/installer/')) {
+        // A Sites identity mapping is not authority over the native host updater.
+        return request.method === 'GET' && url.pathname === '/api/installer'
+          ? jsonResponse({supported: false, reason: 'native_installer_adapter_required'})
+          : jsonResponse({error: '此入口尚未接入原生安裝器。'}, 503);
+      }
       const expectedAccount = request.headers.get('X-Blueprint-Account');
       if (url.pathname.startsWith('/api/maintenance') && expectedAccount !== null &&
           expectedAccount !== encodeURIComponent(account.username)) {

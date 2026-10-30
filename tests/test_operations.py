@@ -5,6 +5,7 @@ from copy import deepcopy
 import hashlib
 import http.client
 import json
+import os
 from pathlib import Path
 import tempfile
 import threading
@@ -44,7 +45,9 @@ class OperationTests(unittest.TestCase):
         self.assertEqual(reopened.get('synthetic-source-release', 'owner')['operation']['version'], 2)
         self.assertEqual(reopened.write(request(), 'owner'), first)
         self.assertEqual(reopened.get('synthetic-source-release', 'owner')['operation']['version'], 2)
-        self.assertEqual((self.directory / 'operations.json').stat().st_mode & 0o777, 0o600)
+        if os.name != 'nt':
+            self.assertEqual((self.directory / 'operations.json').stat().st_mode & 0o777, 0o600)
+        self.assertTrue((self.directory / 'operations.json').is_file())
 
     def test_stale_cas_changed_plan_and_changed_retry_payload_conflict(self):
         self.operations.write(request(), 'owner')

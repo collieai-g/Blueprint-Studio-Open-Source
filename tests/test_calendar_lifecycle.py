@@ -1,4 +1,5 @@
 """Synthetic schema-7 upgrades retain existing bytes; calendar data restores whole."""
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -28,7 +29,7 @@ class CalendarLifecycleTests(unittest.TestCase):
                                            'data': {'due_date': '2026-10-20', 'done': True}})['record']
         # Reproduce the prior schema using only synthetic data.  No native
         # process is running, and no company calendar data exists to discard.
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             conn.execute('PRAGMA foreign_keys=OFF')
             tables = [r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'calendar_%'")]

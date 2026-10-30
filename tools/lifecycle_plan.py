@@ -17,6 +17,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from blueprint_folders.console import configure_utf8_streams
+from blueprint_folders.path_safety import has_link
 from blueprint_library.lifecycle import (
     PHASES, ROUTES, SOURCE_FIELDS, digest, _text, provenance, plan,
 )
@@ -28,8 +30,8 @@ def inputs(project, filenames):
     The caller supplies the frozen test scope. No traversal of ignored files,
     credentials, repository history or private runtime data occurs.
     """
-    root = Path(project).absolute()
-    if root.is_symlink() or any(parent.is_symlink() for parent in root.parents):
+    root = Path(project).expanduser()
+    if has_link(root):
         raise ValueError('來源路徑不能包含符號連結。')
     root = root.resolve()
     if not root.is_dir():
@@ -43,7 +45,7 @@ def inputs(project, filenames):
         if relative.is_absolute() or '..' in relative.parts or '\\' in name or name != relative.as_posix() or '.git' in relative.parts:
             raise ValueError('來源檔案路徑不正確。')
         current = root.joinpath(*relative.parts)
-        if current.is_symlink() or any(parent.is_symlink() for parent in current.parents):
+        if has_link(current):
             raise ValueError('來源檔案不能包含符號連結。')
         if not current.exists():
             files[name] = {'deleted': True}
@@ -99,6 +101,7 @@ def package_preflight(manifest, source):
 
 
 def main(argv=None):
+    configure_utf8_streams()
     parser = argparse.ArgumentParser(description='唯讀安裝更新計劃及檢查去重；不執行部署')
     commands = parser.add_subparsers(dest='command', required=True)
     p = commands.add_parser('plan'); p.add_argument('--input', required=True)

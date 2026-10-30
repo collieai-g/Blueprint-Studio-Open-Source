@@ -9,6 +9,7 @@ import secrets
 import shutil
 import sys
 import tempfile
+import time
 import threading
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,13 +131,13 @@ def main():
                     page.locator('#skill-download-brief').click()
                 brief_download = pending.value
                 brief_download.save_as(output / 'task-brief.md')
-                assert (output / 'task-brief.md').read_text() == page.locator('#skill-brief-preview').input_value()
+                assert (output / 'task-brief.md').read_text(encoding='utf-8') == page.locator('#skill-brief-preview').input_value()
                 with page.expect_download() as pending:
                     page.locator('#skill-download-skill').click()
                 skill_download = pending.value
                 assert skill_download.suggested_filename == 'SKILL.md'
                 skill_download.save_as(output / 'SKILL.md')
-                assert (output / 'SKILL.md').read_text() == page.locator('#skill-reusable-preview').input_value()
+                assert (output / 'SKILL.md').read_text(encoding='utf-8') == page.locator('#skill-reusable-preview').input_value()
 
                 # A selected source changed after review must be reviewed again;
                 # the UI must not silently export a stale source version.
@@ -171,7 +172,11 @@ def main():
                 pending_writes = []
                 page.route('**/api/studio/records', lambda route: pending_writes.append(route) if route.request.method == 'POST' else route.continue_())
                 page.locator('#skill-save-brief').click()
-                page.wait_for_timeout(100)
+                # Source validation precedes the POST. Wait for the real held
+                # request while pumping browser events, not a fixed disk speed.
+                deadline = time.monotonic() + 10
+                while not pending_writes and time.monotonic() < deadline:
+                    page.wait_for_timeout(25)
                 assert pending_writes, 'Hold a real save after its input snapshot was created'
                 pending = pending_writes.pop()
                 expected_content = pending.request.post_data_json['data']['content']

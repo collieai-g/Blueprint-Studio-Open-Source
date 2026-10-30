@@ -1,5 +1,6 @@
 """Daily summaries are explicit, bounded, atomic and safe to retry."""
 
+from contextlib import closing
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -153,7 +154,7 @@ class WorkdayTests(unittest.TestCase):
             self.assert_error(500, lambda: self.store.import_workday(payload))
         self.assertEqual(self.store.stats()["total"], 0)
         self.assertEqual(self.store.workday_stats()["workdays"], 0)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM history").fetchone()[0], 0)
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM workday_entries").fetchone()[0], 0)
         self.assertTrue(self.store.import_workday(payload)["created"])
@@ -267,7 +268,7 @@ class WorkdayTests(unittest.TestCase):
         (self.data / "access.json").write_bytes(auth)
         # Remove only the new v3 tables/index and mark the actual prior v2
         # schema, leaving realistic records, files and history in place.
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             conn.executescript("DROP TABLE workday_entries; DROP TABLE workdays; DROP INDEX items_active_url; PRAGMA user_version=2;")
             old_items = conn.execute("SELECT * FROM items").fetchall()
             old_history = conn.execute("SELECT * FROM history ORDER BY version").fetchall()
@@ -277,7 +278,7 @@ class WorkdayTests(unittest.TestCase):
             self.assertEqual(migrated.get_file(item["id"])[0].read_bytes(), "公司私人文件".encode())
             self.assertEqual((self.data / "access.json").read_bytes(), auth)
             self.assertEqual(migrated.workday_stats(), {"workdays": 0, "todos_open": 0, "todos_done": 0})
-            with sqlite3.connect(migrated.db_path) as conn:
+            with closing(sqlite3.connect(migrated.db_path)) as conn, conn:
                 self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
                 self.assertEqual(conn.execute("SELECT * FROM items").fetchall(), old_items)
                 self.assertEqual(conn.execute("SELECT * FROM history ORDER BY version").fetchall(), old_history)

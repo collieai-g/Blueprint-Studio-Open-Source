@@ -6,6 +6,8 @@ rule suggestion; this module never sends company files to a model or website.
 
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 import hashlib
 import json
 import mimetypes
@@ -110,7 +112,7 @@ class Store(CompanyMixin, WorkdayMixin):
     def __init__(self, data_dir):
         try:
             original = Path(data_dir).expanduser()
-            if original.is_symlink():
+            if has_link(original):
                 raise LibraryError("資料目錄不能係符號連結。")
             self.data_dir = original.resolve()
         except (TypeError, OSError, RuntimeError) as exc:
@@ -130,9 +132,9 @@ class Store(CompanyMixin, WorkdayMixin):
             raise LibraryError('此資料由運行中的工作台管理，請使用其 HTTP／MCP 工具。', 409) from exc
         try:
             self.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-            if self.db_path.is_symlink() or (self.db_path.exists() and not self.db_path.is_file()):
+            if has_link(self.db_path) or (self.db_path.exists() and not self.db_path.is_file()):
                 raise LibraryError("資料庫必須係正常檔案。")
-            if self.blobs_dir.is_symlink() or (self.blobs_dir.exists() and not self.blobs_dir.is_dir()):
+            if has_link(self.blobs_dir) or (self.blobs_dir.exists() and not self.blobs_dir.is_dir()):
                 raise LibraryError("檔案儲存位置必須係正常目錄。")
             self.blobs_dir.mkdir(exist_ok=True, mode=0o700)
             self._initialize()
@@ -141,8 +143,8 @@ class Store(CompanyMixin, WorkdayMixin):
 
     @contextmanager
     def _connection(self):
-        if (self.data_dir.is_symlink() or self.data_dir.resolve() != self.data_dir
-                or self.db_path.is_symlink() or self.blobs_dir.is_symlink()
+        if (has_link(self.data_dir) or self.data_dir.resolve() != self.data_dir
+                or has_link(self.db_path) or has_link(self.blobs_dir)
                 or self.blobs_dir.resolve() != self.blobs_dir):
             raise LibraryError("資料儲存位置不能改為符號連結。", 500)
         conn = None
@@ -502,7 +504,7 @@ class Store(CompanyMixin, WorkdayMixin):
             if item["kind"] != "file":
                 raise LibraryError("呢項資料唔係檔案。", 404)
             blob = self.blobs_dir / item["blob_name"]
-            if not re.fullmatch(r"[0-9a-f]{32}", item["blob_name"]) or blob.is_symlink() or blob.resolve().parent != self.blobs_dir.resolve():
+            if not re.fullmatch(r"[0-9a-f]{32}", item["blob_name"]) or has_link(blob) or blob.resolve().parent != self.blobs_dir.resolve():
                 raise LibraryError("檔案儲存位置無效。", 500)
             if not blob.is_file():
                 raise LibraryError("原始檔案遺失，請從完整備份還原。", 404)

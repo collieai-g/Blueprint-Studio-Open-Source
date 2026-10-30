@@ -19,6 +19,7 @@ import uuid
 
 from .store import LibraryError, _now
 from .studio import Studio
+from .time_utils import parse_iso
 
 CONTRACT_VERSION = '1.0'
 RECORD_TYPES = ('thread', 'message', 'work_item', 'artifact', 'note', 'status', 'knowledge')
@@ -66,7 +67,7 @@ def _timestamp(value):
     if not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})', value):
         _error('時間需要使用含時區的 RFC3339 格式。')
     try:
-        parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        parsed = parse_iso(value)
         if parsed.tzinfo is None or 'T' not in value:
             raise ValueError
         return parsed.astimezone(timezone.utc).isoformat(timespec='microseconds')

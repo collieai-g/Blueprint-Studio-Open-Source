@@ -28,7 +28,7 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(archive.read("空白起步/main.py"), content)
             self.assertEqual(archive.read("空白起步/sample.bin"), binary)
             self.assertEqual(archive.read("空白起步/AGENTS.md"), (self.folder / "AGENTS.md").read_bytes())
-            original = json.loads((self.folder / ".blueprint/folder.json").read_text())
+            original = json.loads((self.folder / ".blueprint/folder.json").read_text(encoding="utf-8"))
             exported = json.loads(archive.read("空白起步/.blueprint/folder.json"))
             self.assertEqual(exported["id"], original["id"])
             self.assertEqual(exported["description"], "")

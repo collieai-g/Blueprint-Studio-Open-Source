@@ -1,6 +1,8 @@
 """Real persistence, source boundaries and explicit AI handoff acceptance."""
+from contextlib import closing
 import base64
 import copy
+import gc
 import json
 from pathlib import Path
 import sqlite3
@@ -37,6 +39,8 @@ class AgentTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='blueprint-agent-test-')
         self.addCleanup(self.temp.cleanup)
+        # Release SQLite context-manager cycles before Windows removes fixtures.
+        self.addCleanup(gc.collect)
         self.root = Path(self.temp.name)
         self.directory = self.root / 'private'
         initialize_library(self.directory, 'owner', 'only-for-agent-tests')
@@ -102,6 +106,144 @@ class AgentTests(unittest.TestCase):
         self.error(400, self.service.update_agent, self.agent['id'], {'expected_version': 2, 'settings': {'arbitrary': 'value'}})
         self.error(400, self.service.update_agent, self.agent['id'], {'expected_version': 2, 'enabled': 'true'})
         self.assertEqual(self.service.get_agent(self.agent['id'])['settings'], {'language': 'en'})
+
+    def upgrade_request(self, **changes):
+        manifest = sample_manifest()
+        manifest['version'] = '1.1.0'
+        manifest['instructions'] = '新版仍只使用已選定資料，保留來源。'
+        manifest['settings'].append({'key': 'detail', 'label': '詳細程度', 'type': 'text', 'default': '簡潔'})
+        return {'expected_version': self.service.get_agent(self.agent['id'])['version'],
+                'upgrade_key': 'package-upgrade-001', 'manifest': manifest,
+                'source': {**package()['source'], 'revision': 'b' * 40}, **changes}
+
+    def test_package_upgrade_keeps_same_id_company_data_jobs_and_pinned_snapshots(self):
+        attachment = self.store.add_file('retained.txt', b'retained attachment')
+        original_login = (self.directory / 'access.json').read_bytes()
+        self.agent = self.service.update_agent(self.agent['id'], {'expected_version': 1, 'settings': {'language': 'en'}})
+        self.connect()
+        pending = self.job(title='保留待辦工作')
+        finished = self.complete(self.start(self.job(title='保留已完成工作')))
+        old = self.service.get_agent(self.agent['id'])
+        history = self.service.history('agent', old['id'])
+        upgraded = self.service.update_agent(old['id'], self.upgrade_request())
+        for key in ['id', 'created_at', 'enabled', 'connection_state']:
+            self.assertEqual(upgraded[key], old[key])
+        self.assertEqual(upgraded['settings'], {'language': 'en', 'detail': '簡潔'})
+        self.assertEqual(upgraded['version'], old['version'] + 1)
+        self.assertEqual(upgraded['source']['revision'], 'b' * 40)
+        self.assertEqual(self.service.list_agents()['total'], 1)
+        self.assertEqual(self.service.get_job(pending['id']), pending)
+        self.assertEqual(self.service.get_job(finished['id']), finished)
+        self.assertEqual(self.service.context(pending['id'])['agent']['source'], old['source'])
+        self.assertEqual(self.job()['agent_snapshot']['manifest']['version'], '1.1.0')
+        self.assertEqual(self.service.history('agent', old['id'])[1:], history)
+        self.assertEqual(self.store.get_file(attachment['id'])[0].read_bytes(), b'retained attachment')
+        self.assertEqual((self.directory / 'access.json').read_bytes(), original_login)
+        with self.store._connection() as conn:
+            self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], SCHEMA_VERSION)
+        # The current package key follows the same registration, not a new card.
+        self.assertEqual(self.service.register({'manifest': self.upgrade_request()['manifest'],
+                                               'source': upgraded['source']})['agent']['id'], old['id'])
+
+    def test_package_upgrade_retry_survives_restart_backup_and_later_setting_changes(self):
+        request = self.upgrade_request(settings={'language': 'en'})
+        upgraded = self.service.update_agent(self.agent['id'], request)
+        self.service = Agents(Store(self.directory))
+        retry = {**request, 'expected_version': upgraded['version']}
+        self.assertEqual(self.service.update_agent(self.agent['id'], retry), upgraded)
+        current = self.service.update_agent(self.agent['id'], {'expected_version': upgraded['version'],
+                                             'settings': {'language': 'zh-Hant', 'detail': '完整'}})
+        self.assertEqual(self.service.update_agent(self.agent['id'], request), upgraded)
+        self.assertEqual(self.service.get_agent(self.agent['id']), current)
+        self.error(409, self.service.update_agent, self.agent['id'], {**retry, 'settings': {'language': 'zh-Hant'}})
+        snapshot, restored = self.root / 'upgrade-backup', self.root / 'upgrade-restored'
+        backup.snapshot(self.directory, snapshot)
+        backup.restore(snapshot, restored)
+        restored_service = Agents(Store(restored))
+        self.assertEqual(restored_service.update_agent(self.agent['id'], request), upgraded)
+        self.assertEqual(restored_service.get_agent(self.agent['id']), current)
+
+    def test_package_upgrade_rejects_permission_identity_source_and_incomplete_requests(self):
+        request = self.upgrade_request()
+        old = self.service.get_agent(self.agent['id'])
+        self.error(403, self.member.update_agent, old['id'], request)
+        for missing in ['manifest', 'source', 'upgrade_key']:
+            invalid = {key: value for key, value in request.items() if key != missing}
+            self.error(400, self.service.update_agent, old['id'], invalid)
+        for invalid_key in ['', '../key', 'x' * 101, True]:
+            self.error(400, self.service.update_agent, old['id'], {**request, 'upgrade_key': invalid_key})
+        self.error(400, self.service.update_agent, old['id'], {**request, 'enabled': True})
+        self.error(400, self.service.update_agent, old['id'], {**request, 'expected_version': True})
+        wrong = copy.deepcopy(request); wrong['manifest']['id'] = 'different-agent'
+        self.error(409, self.service.update_agent, old['id'], wrong)
+        wrong = copy.deepcopy(request); wrong['source']['repository'] = 'https://github.com/example/different'
+        self.error(409, self.service.update_agent, old['id'], wrong)
+        wrong = copy.deepcopy(request); wrong['source']['revision'] = 'main'
+        self.error(400, self.service.update_agent, old['id'], wrong)
+        self.error(409, self.service.update_agent, old['id'], {**request, 'source': old['source']})
+        self.error(409, self.service.update_agent, old['id'], {**request, 'expected_version': old['version'] + 1})
+        self.assertEqual(self.service.get_agent(old['id']), old)
+
+    def test_package_upgrade_retains_settings_and_refuses_silent_loss(self):
+        old = self.service.update_agent(self.agent['id'], {'expected_version': 1, 'enabled': False,
+                                                         'settings': {'language': 'en'}})
+        for change in ['removed', 'type', 'options']:
+            invalid = self.upgrade_request()
+            if change == 'removed': invalid['manifest']['settings'] = []
+            elif change == 'type': invalid['manifest']['settings'][0] = {'key': 'language', 'label': '語言', 'type': 'text'}
+            else: invalid['manifest']['settings'][0]['options'] = [{'value': 'zh-Hant', 'label': '繁體中文'}]
+            self.error(409, self.service.update_agent, old['id'], invalid)
+            self.assertEqual(self.service.get_agent(old['id']), old)
+        request = self.upgrade_request()
+        request['manifest']['settings'].append({'key': 'new_required', 'label': '新版必要設定', 'type': 'text', 'required': True})
+        self.error(409, self.service.update_agent, old['id'], request)
+        upgraded = self.service.update_agent(old['id'], {**request, 'settings': {'new_required': '明確提供'}})
+        self.assertFalse(upgraded['enabled'])
+        self.assertEqual(upgraded['connection_state'], 'added')
+        self.assertEqual(upgraded['settings']['language'], 'en')
+        self.assertEqual(upgraded['settings']['new_required'], '明確提供')
+
+    def test_package_upgrade_collision_and_failed_history_write_roll_back_everything(self):
+        request = self.upgrade_request()
+        other = self.service.register({'manifest': request['manifest'], 'source': request['source']})['agent']
+        original = self.service.get_agent(self.agent['id'])
+        self.error(409, self.service.update_agent, original['id'], request)
+        self.assertNotEqual(original['id'], other['id'])
+        self.assertEqual(self.service.get_agent(original['id']), original)
+        request['source']['revision'] = 'c' * 40
+        history = self.service.history('agent', original['id'])
+        save_history = self.service._history
+        def interrupted(conn, entity, record):
+            if entity == 'agent_upgrade': raise RuntimeError('synthetic receipt interruption')
+            return save_history(conn, entity, record)
+        with patch.object(self.service, '_history', side_effect=interrupted):
+            with self.assertRaises(RuntimeError): self.service.update_agent(original['id'], request)
+        self.assertEqual(self.service.get_agent(original['id']), original)
+        self.assertEqual(self.service.history('agent', original['id']), history)
+        self.assertEqual(self.service.update_agent(original['id'], request)['id'], original['id'])
+
+    def test_concurrent_package_upgrade_retries_commit_once(self):
+        request = self.upgrade_request()
+        def attempt(_):
+            return Agents(self.store).update_agent(self.agent['id'], request)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(attempt, range(8)))
+        self.assertTrue(all(record == results[0] for record in results))
+        self.assertEqual(results[0]['version'], self.agent['version'] + 1)
+        self.assertEqual(len(self.service.history('agent', self.agent['id'])), 2)
+
+    def test_package_upgrade_cannot_rewrite_a_historical_source_pin(self):
+        original = self.service.get_agent(self.agent['id'])
+        upgraded = self.service.update_agent(original['id'], self.upgrade_request())
+        changed = copy.deepcopy(original['manifest'])
+        changed['version'] = '2.0.0'
+        changed['instructions'] = '不應該改寫舊 commit 的內容。'
+        self.error(409, self.service.update_agent, original['id'], {
+            'expected_version': upgraded['version'], 'upgrade_key': 'rewrite-old-pin',
+            'manifest': changed, 'source': original['source']})
+        self.error(409, self.service.register, {'manifest': changed, 'source': original['source']})
+        self.assertEqual(self.service.get_agent(original['id']), upgraded)
+        self.assertEqual(self.service.list_agents()['total'], 1)
 
     def test_job_pins_settings_and_manifest_then_preserves_actual_result_on_restart(self):
         source = self.studio.create({'kind': 'report', 'title': '資料', 'data': {'content': '星期一完成設計。', 'source': '手動測試'}})['record']
@@ -275,7 +417,7 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(self.service.list_jobs()['total'], 0)
 
     def _make_v5(self):
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             for table in ['agent_history', 'agent_jobs', 'agent_registrations']:
                 conn.execute('DROP TABLE ' + table)
             conn.execute('PRAGMA user_version = 5')
@@ -301,7 +443,7 @@ class AgentTests(unittest.TestCase):
         with patch('blueprint_library.agents.initialize', interrupted):
             with self.assertRaises(RuntimeError):
                 Store(self.directory)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute('PRAGMA user_version').fetchone()[0], 5)
             self.assertIsNone(conn.execute("SELECT name FROM sqlite_master WHERE name='agent_partial'").fetchone())
             self.assertIsNone(conn.execute("SELECT name FROM sqlite_master WHERE name='agent_jobs'").fetchone())

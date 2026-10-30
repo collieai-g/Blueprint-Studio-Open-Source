@@ -13,10 +13,11 @@ import json
 import re
 import sqlite3
 import uuid
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 from .store import LibraryError
 from .studio import Studio
+from .time_utils import parse_iso, timezone_info
 
 EMPLOYMENT_TYPES = [
     {'value': 'full_time', 'label': '全職'},
@@ -73,7 +74,7 @@ def _timestamp(value):
     if not isinstance(value, str) or len(value) > 64 or 'T' not in value:
         raise LibraryError('時間需要使用帶時區的 ISO 格式。')
     try:
-        result = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        result = parse_iso(value)
         if result.tzinfo is None or result.utcoffset() is None or not 1900 <= result.year <= 9998:
             raise ValueError
         return _stamp(result)
@@ -83,10 +84,7 @@ def _timestamp(value):
 
 def _zone(value):
     value = _text(value, 100, required=True)
-    try:
-        ZoneInfo(value)
-    except (ZoneInfoNotFoundError, ValueError):
-        raise LibraryError('請使用有效的 IANA 時區，例如 Asia/Hong_Kong。') from None
+    timezone_info(value, factory=ZoneInfo)
     return value
 
 
@@ -247,7 +245,7 @@ class Calendar:
         settings = self._settings(conn)
         own = self._self(conn)
         return {'timezone': settings['timezone'], 'settings': settings, 'settings_version': settings['version'],
-                'today': _now().astimezone(ZoneInfo(settings['timezone'])).date().isoformat(),
+                'today': _now().astimezone(timezone_info(settings['timezone'], factory=ZoneInfo)).date().isoformat(),
                 'identity': self.identity, 'admin': self.admin, 'employees': self._employees(conn),
                 'accounts': self._accounts(conn), 'employment_types': EMPLOYMENT_TYPES,
                 'self_employee': own, 'current_attendance': self._current(conn, own)}
@@ -574,8 +572,9 @@ class Calendar:
         from .calendar_sources import aggregate
         return aggregate(self.studio, conn, start, end, self._settings(conn)['timezone'])
 
-    def month(self, month, employee_id='', employment_type=''):
-        if not isinstance(month, str) or not re.fullmatch(r'\d{4}-\d{2}', month):
+    @staticmethod
+    def _month_range(month):
+        if not isinstance(month, str) or not re.fullmatch('\\d{4}-\\d{2}', month):
             raise LibraryError('月份需要使用 YYYY-MM。')
         try:
             year, number = map(int, month.split('-'))
@@ -585,71 +584,88 @@ class Calendar:
             end = start + timedelta(days=monthrange(year, number)[1])
         except (ValueError, OverflowError):
             raise LibraryError('月份需要使用有效的 YYYY-MM。') from None
-        if not isinstance(employee_id, str) or (employee_id and not re.fullmatch(r'[a-zA-Z0-9-]{1,80}', employee_id)):
+        return start, end
+
+    @staticmethod
+    def _month_filters(employee_id, employment_type):
+        if not isinstance(employee_id, str) or (employee_id and (not re.fullmatch('[a-zA-Z0-9-]{1,80}', employee_id))):
             raise LibraryError('員工篩選不正確。')
         if not isinstance(employment_type, str) or (employment_type and employment_type not in TYPE_KEYS):
             raise LibraryError('員工類型篩選不正確。')
+
+    def _month_entries(self, conn, days, start, end, allowed, employee_id, employment_type):
+        undated = []
+        rows = conn.execute("SELECT id,employee_id,kind,date FROM calendar_entries WHERE date='' OR (date>=? AND date<?) ORDER BY date,created_at,id", (start.isoformat(), end.isoformat()))
+        for row in rows:
+            if row['employee_id'] and row['employee_id'] not in allowed:
+                continue
+            if not row['employee_id'] and (employee_id or employment_type):
+                continue
+            entry = self._entry(conn, row['id'])
+            if not entry['date']:
+                undated.append(entry)
+            else:
+                days[entry['date']]['work_logs' if entry['kind'] == 'work_log' else 'todos'].append(entry)
+        return undated
+
+    @staticmethod
+    def _attendance_segments(attendance, left, right, zone, now):
+        beginning = parse_iso(attendance['started_at'])
+        ending = parse_iso(attendance['ended_at']) if attendance['ended_at'] else now
+        cursor = max(beginning, left.astimezone(timezone.utc))
+        limit = min(ending, right.astimezone(timezone.utc))
+        while cursor < limit:
+            local_day = cursor.astimezone(zone).date()
+            next_day = datetime.combine(local_day + timedelta(days=1), datetime.min.time(), zone).astimezone(timezone.utc)
+            segment_end = min(limit, next_day)
+            yield local_day.isoformat(), {
+                **attendance, 'segment_start': _stamp(cursor), 'segment_end': _stamp(segment_end),
+                'display_start': cursor.astimezone(zone).isoformat(),
+                'display_end': segment_end.astimezone(zone).isoformat(),
+                'minutes': int((segment_end - cursor).total_seconds() // 60),
+                'open': attendance['ended_at'] is None,
+            }
+            cursor = segment_end
+
+    def _month_attendance(self, conn, days, allowed, left, right, zone):
+        attendance_ids = set()
+        now = _now()
+        rows = conn.execute('SELECT id,employee_id FROM calendar_attendance WHERE started_at<? AND (ended_at IS NULL OR ended_at>?) ORDER BY started_at,id', (_stamp(right), _stamp(left)))
+        for row in rows:
+            if row['employee_id'] not in allowed:
+                continue
+            attendance = self._attendance(conn, row['id'])
+            for day, segment in self._attendance_segments(attendance, left, right, zone, now):
+                if day in days:
+                    days[day]['attendance'].append(segment)
+                    attendance_ids.add(attendance['id'])
+        return attendance_ids
+
+    def _month_legacy(self, conn, days, start, end, employee_id, employment_type):
+        for item in self._legacy(conn, start, end, employee_id, employment_type):
+            if item.get('date') not in days:
+                continue
+            kind = item.get('source_kind', item.get('type'))
+            bucket = 'workdays' if kind == 'workday' else 'todos' if kind in {'todo', 'task'} else 'deadlines'
+            days[item['date']][bucket].append(item)
+
+    def month(self, month, employee_id='', employment_type=''):
+        start, end = self._month_range(month)
+        self._month_filters(employee_id, employment_type)
         with self.store._connection() as conn:
             conn.execute('BEGIN')
             result = self._meta(conn)
             if employee_id:
                 self._subject(conn, employee_id)
-            employees = [employee for employee in result['employees']
-                         if (not employee_id or employee['id'] == employee_id)
-                         and (not employment_type or employee['employment_type'] == employment_type)]
+            employees = [employee for employee in result['employees'] if (not employee_id or employee['id'] == employee_id) and (not employment_type or employee['employment_type'] == employment_type)]
             allowed = {employee['id'] for employee in employees}
-            zone = ZoneInfo(result['timezone'])
+            zone = timezone_info(result['timezone'], factory=ZoneInfo)
             left = datetime.combine(start, datetime.min.time(), zone)
             right = datetime.combine(end, datetime.min.time(), zone)
-            days = { (start + timedelta(days=index)).isoformat():
-                    {'date': (start + timedelta(days=index)).isoformat(), 'attendance': [], 'work_logs': [],
-                     'todos': [], 'deadlines': [], 'workdays': []}
-                    for index in range((end - start).days)}
-            undated = []
-            rows = conn.execute("SELECT id,employee_id,kind,date FROM calendar_entries WHERE date='' OR (date>=? AND date<?) ORDER BY date,created_at,id", (start.isoformat(), end.isoformat()))
-            for row in rows:
-                if row['employee_id'] and row['employee_id'] not in allowed:
-                    continue
-                if not row['employee_id'] and (employee_id or employment_type):
-                    continue
-                entry = self._entry(conn, row['id'])
-                if not entry['date']:
-                    undated.append(entry)
-                else:
-                    days[entry['date']]['work_logs' if entry['kind'] == 'work_log' else 'todos'].append(entry)
-            attendance_ids = set()
-            now = _now()
-            rows = conn.execute('SELECT id,employee_id FROM calendar_attendance WHERE started_at<? AND (ended_at IS NULL OR ended_at>?) ORDER BY started_at,id', (_stamp(right), _stamp(left)))
-            for row in rows:
-                if row['employee_id'] not in allowed:
-                    continue
-                attendance = self._attendance(conn, row['id'])
-                beginning = datetime.fromisoformat(attendance['started_at'].replace('Z', '+00:00'))
-                ending = datetime.fromisoformat(attendance['ended_at'].replace('Z', '+00:00')) if attendance['ended_at'] else now
-                cursor = max(beginning, left.astimezone(timezone.utc))
-                limit = min(ending, right.astimezone(timezone.utc))
-                while cursor < limit:
-                    local_day = cursor.astimezone(zone).date()
-                    next_day = datetime.combine(local_day + timedelta(days=1), datetime.min.time(), zone).astimezone(timezone.utc)
-                    segment_end = min(limit, next_day)
-                    if local_day.isoformat() in days:
-                        segment = {**attendance, 'segment_start': _stamp(cursor), 'segment_end': _stamp(segment_end),
-                                   'display_start': cursor.astimezone(zone).isoformat(),
-                                   'display_end': segment_end.astimezone(zone).isoformat(),
-                                   'minutes': int((segment_end - cursor).total_seconds() // 60),
-                                   'open': attendance['ended_at'] is None}
-                        days[local_day.isoformat()]['attendance'].append(segment)
-                        attendance_ids.add(attendance['id'])
-                    cursor = segment_end
-            for item in self._legacy(conn, start, end, employee_id, employment_type):
-                if item.get('date') not in days:
-                    continue
-                kind = item.get('source_kind', item.get('type'))
-                bucket = 'workdays' if kind == 'workday' else 'todos' if kind in {'todo', 'task'} else 'deadlines'
-                days[item['date']][bucket].append(item)
-            totals = {key: sum(len(day[key]) for day in days.values()) for key in ('work_logs', 'todos', 'deadlines', 'workdays')}
-            result.update(month=month, employees=employees, days=list(days.values()), undated_todos=undated,
-                          company_items_included=not (employee_id or employment_type),
-                          summary={'employees': len(employees), 'attendance_sessions': len(attendance_ids),
-                                   **totals, 'undated_todos': len(undated)})
+            days = {(start + timedelta(days=index)).isoformat(): {'date': (start + timedelta(days=index)).isoformat(), 'attendance': [], 'work_logs': [], 'todos': [], 'deadlines': [], 'workdays': []} for index in range((end - start).days)}
+            undated = self._month_entries(conn, days, start, end, allowed, employee_id, employment_type)
+            attendance_ids = self._month_attendance(conn, days, allowed, left, right, zone)
+            self._month_legacy(conn, days, start, end, employee_id, employment_type)
+            totals = {key: sum((len(day[key]) for day in days.values())) for key in ('work_logs', 'todos', 'deadlines', 'workdays')}
+            result.update(month=month, employees=employees, days=list(days.values()), undated_todos=undated, company_items_included=not (employee_id or employment_type), summary={'employees': len(employees), 'attendance_sessions': len(attendance_ids), **totals, 'undated_todos': len(undated)})
             return result

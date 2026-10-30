@@ -6,6 +6,8 @@ phone. Runtime dependencies are limited to the Python standard library.
 
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 from pathlib import Path
 import shutil
 
@@ -28,24 +30,27 @@ def apply_folder_icon(folder: Path, kind: str = "general") -> dict:
         "icon": "",
     }
     try:
-        folder = Path(folder).expanduser().resolve(strict=True)
+        folder = Path(folder).expanduser()
+        if has_link(folder):
+            raise ValueError("指定位置不能包含符號連結或重新解析點。")
+        folder = folder.resolve(strict=True)
         if not folder.is_dir():
             raise ValueError("指定位置並非文件夾。")
         kind = kind if kind in ICON_KINDS else "general"
         directory = folder / ".blueprint"
-        if directory.is_symlink():
+        if has_link(directory):
             raise ValueError("資源目錄不能係符號連結。")
         directory.mkdir(exist_ok=True)
         for extension in ("svg", "png"):
             destination = directory / f"icon.{extension}"
-            if destination.is_symlink():
+            if has_link(destination):
                 raise ValueError("圖示檔不能係符號連結。")
             data = (ASSETS / f"{kind}.{extension}").read_bytes()
             if destination.exists():
                 if destination.read_bytes() == data:
                     continue
                 backup = directory / "backups" / f"icon.{extension}"
-                if backup.parent.is_symlink() or backup.is_symlink():
+                if has_link(backup.parent) or has_link(backup):
                     raise ValueError("圖示備份位置不能係符號連結。")
                 if not backup.exists():
                     backup.parent.mkdir(parents=True, exist_ok=True)

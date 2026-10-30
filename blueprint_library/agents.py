@@ -209,6 +209,17 @@ class Agents:
     def _history(conn, entity, record):
         conn.execute('INSERT INTO agent_history VALUES(?,?,?,?)', (entity, record['id'], record['version'], _dump(record)))
 
+    @staticmethod
+    def _package_content(conn, manifest, source):
+        # A past pin stays immutable after the current package_key moves on.
+        snapshots = conn.execute("SELECT document AS snapshot FROM agent_registrations UNION ALL "
+                                 "SELECT snapshot FROM agent_history WHERE entity='agent'")
+        for row in snapshots:
+            previous = json.loads(row['snapshot'])
+            if (previous['source'] == source and previous['manifest']['id'] == manifest['id']
+                    and previous['manifest'] != manifest):
+                raise LibraryError('同一個固定來源已有不同套件內容，請核對新來源。', 409)
+
     def _get_agent(self, conn, agent_id):
         row = conn.execute('SELECT document FROM agent_registrations WHERE id=?', (_text(agent_id, 80, True),)).fetchone()
         if not row:
@@ -231,6 +242,7 @@ class Agents:
         key = _digest({'id': manifest['id'], 'version': manifest['version'], 'source': source})
         with self.store._connection() as conn:
             conn.execute('BEGIN IMMEDIATE')
+            self._package_content(conn, manifest, source)
             existing = conn.execute('SELECT document FROM agent_registrations WHERE package_key=?', (key,)).fetchone()
             if existing:
                 record = json.loads(existing['document'])
@@ -263,7 +275,9 @@ class Agents:
 
     def update_agent(self, agent_id, payload):
         self._admin()
-        _object(payload, {'expected_version', 'settings', 'enabled'}, {'expected_version'})
+        _object(payload, {'expected_version', 'settings', 'enabled', 'manifest', 'source', 'upgrade_key'}, {'expected_version'})
+        if set(payload) & {'manifest', 'source', 'upgrade_key'}:
+            return self._upgrade_agent(agent_id, payload)
         if set(payload) == {'expected_version'}:
             raise LibraryError('請提供要修改的設定。')
         with self.store._connection() as conn:
@@ -277,6 +291,58 @@ class Agents:
                     raise LibraryError('是否啟用需要是或否。')
                 record['enabled'] = payload['enabled']
             return self._save_agent(conn, record)
+
+    def _upgrade_agent(self, agent_id, payload):
+        """Replace a pinned package in place; business records and jobs stay put."""
+        _object(payload, {'expected_version', 'manifest', 'source', 'settings', 'upgrade_key'},
+                {'expected_version', 'manifest', 'source', 'upgrade_key'})
+        if type(payload['expected_version']) is not int or payload['expected_version'] < 1:
+            raise LibraryError('請提供剛讀取的 Agent 版本。')
+        upgrade_key = payload['upgrade_key']
+        if not isinstance(upgrade_key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', upgrade_key):
+            raise LibraryError('請提供固定的升級重試編號。')
+        manifest, source = validate_manifest(payload['manifest']), _source(payload['source'])
+        fields = {field['key']: field for field in manifest['settings']}
+        overrides = _object(payload.get('settings', {}), fields)
+        overrides = {key: _field_value(fields[key], value) for key, value in overrides.items()}
+        # CAS is a precondition, not part of the intent: a caller may read the
+        # new version before retrying an operation whose response was lost.
+        intent = _digest({'manifest': manifest, 'source': source, 'settings': overrides})
+        package_key = _digest({'id': manifest['id'], 'version': manifest['version'], 'source': source})
+        with self.store._connection() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            record = self._get_agent(conn, agent_id)
+            # Existing history also stores durable receipts, so schema and
+            # backups stay compatible. Do not use the 100-entry UI history cap.
+            receipts = conn.execute("SELECT snapshot FROM agent_history WHERE entity='agent_upgrade' AND record_id=? ORDER BY version DESC", (record['id'],))
+            for row in receipts:
+                receipt = json.loads(row['snapshot'])
+                if receipt['upgrade_key'] == upgrade_key:
+                    if receipt['request_digest'] != intent:
+                        raise LibraryError('同一升級編號已有不同內容，請核對原計劃。', 409)
+                    return receipt['agent']
+            self._expected(record, payload['expected_version'])
+            if manifest['id'] != record['manifest']['id'] or source['repository'] != record['source']['repository']:
+                raise LibraryError('升級必須保留同一套件識別及來源倉庫。', 409)
+            if source == record['source'] and manifest != record['manifest']:
+                raise LibraryError('同一個固定來源不能改寫套件內容，請核對新來源。', 409)
+            self._package_content(conn, manifest, source)
+            old_fields = {field['key']: field for field in record['manifest']['settings']}
+            if (set(record['settings']) - set(fields) or
+                    any(old_fields[key]['type'] != fields[key]['type'] for key in old_fields.keys() & fields.keys())):
+                raise LibraryError('新版會移除或改變既有設定類型，請先準備相容遷移。', 409)
+            try:
+                settings = _values(manifest['settings'], {**record['settings'], **overrides})
+            except LibraryError:
+                raise LibraryError('新版無法保留既有設定，請核對選項及新版必要欄位。', 409) from None
+            existing = conn.execute('SELECT id FROM agent_registrations WHERE package_key=?', (package_key,)).fetchone()
+            if existing and existing['id'] != record['id']:
+                raise LibraryError('目標套件已有另一個實例，不能合併或覆蓋。', 409)
+            conn.execute('UPDATE agent_registrations SET package_key=? WHERE id=?', (package_key, record['id']))
+            upgraded = self._save_agent(conn, {**record, 'manifest': manifest, 'source': source, 'settings': settings})
+            self._history(conn, 'agent_upgrade', {'id': record['id'], 'version': upgraded['version'],
+                          'upgrade_key': upgrade_key, 'request_digest': intent, 'actor': self.actor, 'agent': upgraded})
+            return upgraded
 
     def agent_action(self, agent_id, payload):
         self._admin()
@@ -331,6 +397,18 @@ class Agents:
         return job
 
     def create_job(self, payload):
+        # The managed updater closes admission for only the affected Agent.
+        # The same lock surrounds the job transaction, so quiesce cannot miss
+        # a job that was already being created when the update began.
+        gate = getattr(self.store, 'agent_update_lock', None)
+        if gate is None:
+            return self._create_job(payload)
+        with gate:
+            if isinstance(payload, dict) and payload.get('agent_id') in self.store.agent_updates_paused:
+                raise LibraryError('這個 AI 正在安全更新，請稍後建立工作。', 409)
+            return self._create_job(payload)
+
+    def _create_job(self, payload):
         _object(payload, {'agent_id', 'operation_id', 'title', 'inputs', 'refs', 'source_key'}, {'agent_id', 'operation_id', 'title', 'inputs'})
         title = _text(payload['title'], 240, True)
         source_key = _text(payload['source_key'], 200, True) if 'source_key' in payload else None

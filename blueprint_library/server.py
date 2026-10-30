@@ -25,6 +25,7 @@ from blueprint_folders import __version__
 from blueprint_folders.core import CATEGORIES, _atomic_json
 from .classify import classify_item
 from .context import build_context
+from blueprint_folders.path_safety import has_link
 from .store import LibraryError, SCHEMA_VERSION, Store
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,7 +58,7 @@ def _initialize_library(data_dir, username: str, password: str, company_profile=
     store = Store(data_dir)
     directory = Path(data_dir).expanduser().resolve()
     credential_path = directory / "access.json"
-    if credential_path.exists() or credential_path.is_symlink():
+    if credential_path.exists() or has_link(credential_path):
         raise LibraryError("此資料庫已有登入設定，未有覆寫。", status=409)
     salt = secrets.token_hex(24)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), PASSWORD_ROUNDS).hex()
@@ -118,7 +119,7 @@ def _make_server(data_dir, host, port, maintenance):
     store = Store(data_dir)
     path = Path(data_dir).expanduser().resolve() / "access.json"
     try:
-        if path.is_symlink():
+        if has_link(path):
             raise ValueError("登入設定不能為符號連結。")
         credential = json.loads(path.read_text(encoding="utf-8"))
         if (not isinstance(credential, dict) or not isinstance(credential.get("username"), str)
@@ -130,13 +131,21 @@ def _make_server(data_dir, host, port, maintenance):
             raise ValueError("登入設定格式不正確。")
     except (OSError, ValueError) as exc:
         raise LibraryError("請先使用 library-init 設定管理員，或修復外部資料目錄內的 access.json。") from exc
+    from .installer_http import development_preview_title
+    preview_title = development_preview_title(store.data_dir, credential['username'])
     server = LibraryHTTPServer((host, port), store, credential)
+    server.development_preview_title = preview_title
     server.maintenance = maintenance
+    from .installer_http import configure as configure_installer
+    configure_installer(server)
     if maintenance:
         from .operations import Operations
         server.operations = Operations(maintenance.directory)
         maintenance.start()
     return server
+
+
+ROUTE_UNHANDLED = object()
 
 
 class LibraryHandler(BaseHTTPRequestHandler):
@@ -259,111 +268,94 @@ class LibraryHandler(BaseHTTPRequestHandler):
             raise LibraryError("JSON 內容必須是物件。")
         return data
 
-    def _route(self, method):
-        if len(self.path) > 8192:
-            raise LibraryError("網址過長。", status=414)
-        parsed = urlsplit(self.path)
-        path = parsed.path
-        if method == "GET" and path == "/health":
-            return self._json({"status": "ok"})
-        from .integrations_http import handle as integration_handler, is_integration_path
-        if not self._authorized(integration_route=is_integration_path(path)):
-            return
-        if method in {"POST", "PATCH"}:
-            self._write_allowed()
-        if integration_handler(self, method, path, parse_qs(parsed.query, keep_blank_values=True)):
-            return
-        if method == 'GET' and path == '/api/runtime':
-            from .runtime import runtime_contract
-            return self._json(runtime_contract(managed=self.server.maintenance is not None))
-        if path.startswith('/api/maintenance'):
-            if self.identity.get('role') != 'owner':
-                raise LibraryError('只有工作台擁有人可以管理完整備份。', 403)
-            expected_account = self.headers.get('X-Blueprint-Account')
-            if expected_account is not None and expected_account != quote(self.identity['username'], safe="~()*!.'"):
-                raise LibraryError('登入帳戶已改變；請重新開啟更新助手。', 409)
-            maintenance = self.server.maintenance
-            if not maintenance:
-                return self._json({'supported': False, 'status': 'not_configured'}, 503)
-            if path == '/api/maintenance' and method == 'GET':
+    def _maintenance_status(self, method, path, parsed, studio=None):
+        maintenance = self.server.maintenance
+        if path == '/api/maintenance' and method == 'GET':
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            if set(query) - {'operation_id'} or any(len(values) != 1 for values in query.values()):
+                raise LibraryError('維護查詢參數不正確。')
+            result = maintenance.status(actor=self.identity['username'])
+            if 'operation_id' in query:
+                result['backup_request'] = maintenance.read_backup_request(query['operation_id'][0])
+            return self._json(result)
+        if path == '/api/maintenance/backup' and method == 'POST':
+            body = self._body()
+            if not body:
+                return self._json(maintenance.request_backup(), 202)
+            from .operations import identifier, plan_digest
+            if set(body) != {'contract_version', 'operation_id', 'plan_digest'} or type(body.get('contract_version')) is not int or body['contract_version'] != 2:
+                raise LibraryError('備份請求需要 maintenance 合約版本 2、operation_id 及 plan_digest。')
+            return self._json(maintenance.request_backup(identifier(body['operation_id']), plan_digest(body['plan_digest'])), 202)
+        return ROUTE_UNHANDLED
+
+    def _maintenance_operations(self, method, path, parsed, studio=None):
+        maintenance = self.server.maintenance
+        if path == '/api/maintenance/operations':
+            if method == 'GET':
                 query = parse_qs(parsed.query, keep_blank_values=True)
-                if set(query) - {'operation_id'} or any(len(values) != 1 for values in query.values()):
-                    raise LibraryError('維護查詢參數不正確。')
-                result = maintenance.status(actor=self.identity['username'])
-                if 'operation_id' in query:
-                    result['backup_request'] = maintenance.read_backup_request(query['operation_id'][0])
-                return self._json(result)
-            if path == '/api/maintenance/backup' and method == 'POST':
-                body = self._body()
-                if not body:
-                    return self._json(maintenance.request_backup(), 202)
-                from .operations import identifier, plan_digest
-                if set(body) != {'contract_version', 'operation_id', 'plan_digest'} or type(body.get('contract_version')) is not int or body['contract_version'] != 2:
-                    raise LibraryError('備份請求需要 maintenance 合約版本 2、operation_id 及 plan_digest。')
-                return self._json(maintenance.request_backup(identifier(body['operation_id']), plan_digest(body['plan_digest'])), 202)
-            if path == '/api/maintenance/operations':
-                if method == 'GET':
-                    query = parse_qs(parsed.query, keep_blank_values=True)
-                    if set(query) - {'id'} or any(len(values) != 1 for values in query.values()):
-                        raise LibraryError('工作查詢參數不正確。')
-                    operation = query.get('id')
-                    if operation:
-                        if len(operation) != 1:
-                            raise LibraryError('工作識別碼不正確。')
-                        return self._json(self.server.operations.get(operation[0], self.identity['username']))
-                    return self._json(self.server.operations.list(self.identity['username']))
-                if method == 'POST':
-                    return self._json(self.server.operations.write(self._body(), self.identity['username']))
-            operation = re.fullmatch(r'/api/maintenance/operations/([A-Za-z0-9][A-Za-z0-9_.-]{0,99})', path)
-            if operation:
-                if method == 'GET':
-                    return self._json(self.server.operations.get(operation[1], self.identity['username']))
-                if method == 'POST':
-                    return self._json(self.server.operations.write(self._body(), self.identity['username'], operation[1]))
-            receipt = re.fullmatch(r'/api/maintenance/backups/(\d{8}T\d{6}Z-[0-9a-f]{12})/(metadata|private-copy)', path)
-            if receipt:
-                if receipt[2] == 'metadata' and method == 'GET':
-                    return self._json(maintenance.backup_info(receipt[1], actor=self.identity['username']))
-                if receipt[2] == 'private-copy' and method == 'POST':
-                    return self._json(maintenance.record_client_receipt(receipt[1], self._body(), actor=self.identity['username']))
-            download = re.fullmatch(r'/api/maintenance/backups/(\d{8}T\d{6}Z-[0-9a-f]{12})', path)
-            if download and method in {'GET', 'HEAD'}:
-                archive = maintenance.download(download[1])
-                with archive.open('rb') as stream:
-                    self._headers(200, 'application/zip', archive.stat().st_size,
-                                  {'Content-Disposition': 'attachment; filename="blueprint-private-backup-' + download[1] + '.zip"'})
-                    if method != 'HEAD':
-                        shutil.copyfileobj(stream, self.wfile)
-                return
-            raise LibraryError('找不到此維護操作。', 404)
+                if set(query) - {'id'} or any(len(values) != 1 for values in query.values()):
+                    raise LibraryError('工作查詢參數不正確。')
+                operation = query.get('id')
+                if operation:
+                    if len(operation) != 1:
+                        raise LibraryError('工作識別碼不正確。')
+                    return self._json(self.server.operations.get(operation[0], self.identity['username']))
+                return self._json(self.server.operations.list(self.identity['username']))
+            if method == 'POST':
+                return self._json(self.server.operations.write(self._body(), self.identity['username']))
+        operation = re.fullmatch(r'/api/maintenance/operations/([A-Za-z0-9][A-Za-z0-9_.-]{0,99})', path)
+        if operation:
+            if method == 'GET':
+                return self._json(self.server.operations.get(operation[1], self.identity['username']))
+            if method == 'POST':
+                return self._json(self.server.operations.write(self._body(), self.identity['username'], operation[1]))
+        return ROUTE_UNHANDLED
+
+    def _maintenance_archive(self, method, path, parsed, studio=None):
+        maintenance = self.server.maintenance
+        receipt = re.fullmatch(r'/api/maintenance/backups/(\d{8}T\d{6}Z-[0-9a-f]{12})/(metadata|private-copy)', path)
+        if receipt:
+            if receipt[2] == 'metadata' and method == 'GET':
+                return self._json(maintenance.backup_info(receipt[1], actor=self.identity['username']))
+            if receipt[2] == 'private-copy' and method == 'POST':
+                return self._json(maintenance.record_client_receipt(receipt[1], self._body(), actor=self.identity['username']))
+        download = re.fullmatch(r'/api/maintenance/backups/(\d{8}T\d{6}Z-[0-9a-f]{12})', path)
+        if download and method in {'GET', 'HEAD'}:
+            archive = maintenance.download(download[1])
+            with archive.open('rb') as stream:
+                self._headers(200, 'application/zip', archive.stat().st_size,
+                              {'Content-Disposition': 'attachment; filename="blueprint-private-backup-' + download[1] + '.zip"'})
+                if method != 'HEAD':
+                    shutil.copyfileobj(stream, self.wfile)
+            return
+        return ROUTE_UNHANDLED
+
+    def _route_maintenance(self, method, path, parsed):
+        if self.identity.get('role') != 'owner':
+            raise LibraryError('只有工作台擁有人可以管理完整備份。', 403)
+        expected_account = self.headers.get('X-Blueprint-Account')
+        if expected_account is not None and expected_account != quote(self.identity['username'], safe="~()*!.'"):
+            raise LibraryError('登入帳戶已改變；請重新開啟更新助手。', 409)
+        maintenance = self.server.maintenance
+        if not maintenance:
+            return self._json({'supported': False, 'status': 'not_configured'}, 503)
+        for route in (self._maintenance_status, self._maintenance_operations, self._maintenance_archive):
+            result = route(method, path, parsed)
+            if result is not ROUTE_UNHANDLED:
+                return result
+        raise LibraryError('找不到此維護操作。', 404)
+
+    def _route_profile(self, method, path, parsed, studio=None):
         store = self.server.store
         actor = self.identity['username']
-        from .studio import Studio
-        from .studio_http import handle as studio_route
-        studio = Studio(store, self.identity)
-        def collection_payload(data):
-            collection_id = data.get('collection_id')
-            if collection_id and not studio.admin:
-                if not isinstance(collection_id, str):
-                    raise LibraryError('收藏集編號不正確。')
-                with store._connection() as conn:
-                    if conn.execute("SELECT 1 FROM studio_records WHERE id=? AND visibility='admin'", (collection_id,)).fetchone():
-                        raise LibraryError('你的帳戶不能把資料放入這個私人主題。', 403)
-            return data
-        if studio_route(self, method, path, parse_qs(parsed.query, keep_blank_values=True)):
-            return
-        if not studio.admin:
-            if path == '/api/export' or (path == '/api/company-profile' and method == 'PATCH'):
-                raise LibraryError('你的帳戶沒有這項權限。', 403)
-            protected = re.fullmatch(r'/api/(items|files|workdays|todos)/([a-zA-Z0-9-]+)(?:/history)?', path)
-            if protected and not studio.resource_allowed({'items':'item','files':'item','workdays':'workday','todos':'todo'}[protected.group(1)], protected.group(2)):
-                raise LibraryError('你的帳戶沒有這項權限。', 403)
         if method == "GET" and path == "/api/info":
             profile = store.get_company_profile()
+            preview_title = getattr(self.server, 'development_preview_title', None)
             return self._json({"version": __version__, "company_name": profile["name"] or "藍圖工作室 Blueprint Studio",
                                "company_profile": profile,
                                "product_name": "Blueprint Studio Backend",
-                               "product_title": "Blueprint Studio Backend｜藍圖工作室（後台）",
+                               "product_title": preview_title or "Blueprint Studio Backend｜藍圖工作室（後台）",
+                               "development_preview_mode": "managed_candidate" if preview_title else None,
                                "connection_mode": "native", "classification": "rules", "stats": store.stats(member_access=not studio.admin), "account": self.identity, "studio_schema": SCHEMA_VERSION,
                                "maintenance": self.server.maintenance.status(actor=self.identity['username'], verify_current=False) if self.server.maintenance and self.identity.get('role') == 'owner' else {'supported': False}})
         if path == "/api/company-profile":
@@ -385,6 +377,11 @@ class LibraryHandler(BaseHTTPRequestHandler):
                     raise LibraryError("日期需要使用 YYYY-MM-DD 格式。") from exc
             return self._json({"instruction": workday_instruction(requested_date),
                                "format": workday_example(requested_date)})
+        return ROUTE_UNHANDLED
+
+    def _route_workdays(self, method, path, parsed, studio=None):
+        store = self.server.store
+        actor = self.identity['username']
         if path == "/api/workdays":
             if method == "GET":
                 query = parse_qs(parsed.query, keep_blank_values=True)
@@ -402,6 +399,11 @@ class LibraryHandler(BaseHTTPRequestHandler):
             return self._json({"workday": store.get_workday(workday_match.group(1))})
         if workday_match and method == "PATCH" and not workday_match.group(2):
             return self._json(store.update_workday(workday_match.group(1), self._body(), actor=actor))
+        return ROUTE_UNHANDLED
+
+    def _route_todos(self, method, path, parsed, studio=None):
+        store = self.server.store
+        actor = self.identity['username']
         if path == "/api/todos" and method == "GET":
             query = parse_qs(parsed.query, keep_blank_values=True)
             done = query.get("done", ["0"])[0]
@@ -415,6 +417,23 @@ class LibraryHandler(BaseHTTPRequestHandler):
         todo_match = re.fullmatch(r"/api/todos/([a-zA-Z0-9-]+)", path)
         if todo_match and method == "PATCH":
             return self._json({"todo": store.update_todo(todo_match.group(1), self._body(), actor=actor)})
+        return ROUTE_UNHANDLED
+
+    def _collection_payload(self, data, studio):
+        store = self.server.store
+        collection_id = data.get('collection_id')
+        if collection_id and not studio.admin:
+            if not isinstance(collection_id, str):
+                raise LibraryError('收藏集編號不正確。')
+            with store._connection() as conn:
+                if conn.execute("SELECT 1 FROM studio_records WHERE id=? AND visibility='admin'", (collection_id,)).fetchone():
+                    raise LibraryError('你的帳戶不能把資料放入這個私人主題。', 403)
+        return data
+
+    def _route_items(self, method, path, parsed, studio=None):
+        store = self.server.store
+        actor = self.identity['username']
+        collection_payload = lambda data: self._collection_payload(data, studio)
         if path == "/api/collections":
             if method == "GET":
                 return self._json({"collections": store.list_collections(member_access=not studio.admin)})
@@ -446,6 +465,12 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 return self._json({"versions": store.item_history(item_id)} if history else {"item": store.get_item(item_id)})
             if method == "PATCH" and not history:
                 return self._json({"item": store.update_item(item_id, collection_payload(self._body()), actor=actor)})
+        return ROUTE_UNHANDLED
+
+    def _route_files(self, method, path, parsed, studio=None):
+        store = self.server.store
+        actor = self.identity['username']
+        collection_payload = lambda data: self._collection_payload(data, studio)
         if path == "/api/files" and method == "POST":
             data = collection_payload(self._body(MAX_FILE_BYTES * 4 // 3 + 128 * 1024))
             content = data.get("content_base64")
@@ -472,6 +497,11 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 while chunk := stream.read(64 * 1024):
                     self.wfile.write(chunk)
             return
+        return ROUTE_UNHANDLED
+
+    def _route_library_tools(self, method, path, parsed, studio=None):
+        store = self.server.store
+        actor = self.identity['username']
         if path == "/api/classify" and method == "POST":
             data = self._body()
             fields = {key: data.get(key, "") for key in ("name", "url", "mime", "text")}
@@ -487,13 +517,16 @@ class LibraryHandler(BaseHTTPRequestHandler):
             return self._json(build_context(store, data.get("item_ids"), data.get("task", "general")))
         if path == "/api/export" and method == "GET":
             return self._json(store.export_metadata(), extra={"Content-Disposition": 'attachment; filename="blueprint-library-metadata.json"'})
+        return ROUTE_UNHANDLED
+
+    def _route_static(self, method, path, parsed, studio=None):
         if method == "GET":
             if path == "/AI_CONNECT.md":
                 data = (ROOT / "AI_CONNECT.md").read_bytes()
                 self._headers(200, "text/markdown; charset=utf-8", len(data))
                 self.wfile.write(data)
                 return
-            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/presentation-sync.js", "/page-layout.js", "/page-layout.css", "/overview-cards.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/integrations.js", "/integrations.css", "/calendar.js", "/calendar.css", "/skills.js", "/skills.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
+            if path in {"/", "/index.html", "/app.js", "/workdays.js", "/workspace.js", "/presentation-sync.js", "/page-layout.js", "/page-layout.css", "/overview-cards.js", "/brand.svg", "/style.css", "/connection.js", "/update.js", "/installer.js", "/installer.css", "/connection-guide.json", "/studio.js", "/studio.css", "/agents.js", "/agents.css", "/integrations.js", "/integrations.css", "/calendar.js", "/calendar.css", "/skills.js", "/skills.css", "/navigation.js", "/manifest.webmanifest", "/service-worker.js"}:
                 target = WEB / ("index.html" if path == "/" else path[1:])
                 if target.is_file():
                     data = target.read_bytes()
@@ -507,7 +540,54 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 self._headers(200, "image/svg+xml", len(data))
                 self.wfile.write(data)
                 return
+        return ROUTE_UNHANDLED
+
+    def _route(self, method):
+        if len(self.path) > 8192:
+            raise LibraryError("網址過長。", status=414)
+        parsed = urlsplit(self.path)
+        path = parsed.path
+        from .installer_http import internal as installer_internal, handle as installer_handle
+        if installer_internal(self, method, path):
+            return
+        if method == "GET" and path == "/health":
+            return self._json({"status": "ok"})
+        from .integrations_http import handle as integration_handler, is_integration_path
+        if not self._authorized(integration_route=is_integration_path(path)):
+            return
+        if method in {"POST", "PATCH"}:
+            self._write_allowed()
+            if self.server.installer_stopping:
+                raise LibraryError('工作室正在安全切換版本，請稍後再保存。', 503)
+        if installer_handle(self, method, path):
+            return
+        if integration_handler(self, method, path, parse_qs(parsed.query, keep_blank_values=True)):
+            return
+        if method == 'GET' and path == '/api/runtime':
+            from .runtime import runtime_contract
+            return self._json(runtime_contract(managed=self.server.maintenance is not None))
+        if path.startswith('/api/maintenance'):
+            return self._route_maintenance(method, path, parsed)
+        store = self.server.store
+        actor = self.identity['username']
+        from .studio import Studio
+        from .studio_http import handle as studio_route
+        studio = Studio(store, self.identity)
+        if studio_route(self, method, path, parse_qs(parsed.query, keep_blank_values=True)):
+            return
+        if not studio.admin:
+            if path == '/api/export' or (path == '/api/company-profile' and method == 'PATCH'):
+                raise LibraryError('你的帳戶沒有這項權限。', 403)
+            protected = re.fullmatch(r'/api/(items|files|workdays|todos)/([a-zA-Z0-9-]+)(?:/history)?', path)
+            if protected and not studio.resource_allowed({'items':'item','files':'item','workdays':'workday','todos':'todo'}[protected.group(1)], protected.group(2)):
+                raise LibraryError('你的帳戶沒有這項權限。', 403)
+        for route in (self._route_profile, self._route_workdays, self._route_todos,
+                      self._route_items, self._route_files, self._route_library_tools, self._route_static):
+            result = route(method, path, parsed, studio)
+            if result is not ROUTE_UNHANDLED:
+                return result
         raise LibraryError("找不到此內容。", status=404)
+
 
     def _dispatch(self, method):
         from .integrations_http import error_body, is_integration_path
@@ -516,7 +596,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
             self._json(value, status)
         try:
             self._route(method)
-        except (BrokenPipeError, ConnectionResetError):
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass
         except LibraryError as exc:
             fail(exc, exc.status, getattr(exc, 'code', None))

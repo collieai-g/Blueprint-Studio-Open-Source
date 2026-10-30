@@ -1,5 +1,6 @@
 """Persistent library tests use private data outside the public checkout."""
 
+from contextlib import closing
 import hashlib
 import json
 import sqlite3
@@ -35,7 +36,7 @@ class LibraryStoreTests(unittest.TestCase):
         self.assert_error(400, lambda: Store(source / "private-company"))
         self.assert_error(400, lambda: Store(source))
         self.assert_error(400, lambda: Store(source.parent))
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0], "wal")
 
     def test_file_bytes_text_search_and_empty_files(self):
@@ -157,7 +158,7 @@ class LibraryStoreTests(unittest.TestCase):
         self.assertEqual(self.store.stats()["total"], 0)
         self.assertEqual(list(self.store.blobs_dir.iterdir()), [])
         item = self.store.add_file("safe.txt", b"value")
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             conn.execute("UPDATE items SET blob_name='../library.sqlite3' WHERE id=?", (item["id"],))
         self.assert_error(500, lambda: self.store.get_file(item["id"]))
 
@@ -183,7 +184,12 @@ class LibraryStoreTests(unittest.TestCase):
         original_blobs = self.store.blobs_dir
         moved_blobs = self.data / "moved-blobs"
         original_blobs.rename(moved_blobs)
-        original_blobs.symlink_to(moved_blobs, target_is_directory=True)
+        try:
+            original_blobs.symlink_to(moved_blobs, target_is_directory=True)
+        except OSError as exc:
+            if getattr(exc, 'winerror', None) == 1314:
+                self.skipTest('Windows symlink privilege unavailable')
+            raise
         self.assert_error(500, lambda: self.store.get_file(item["id"]))
         self.assert_error(500, lambda: self.store.add_file("another.txt", b"value"))
 
@@ -267,7 +273,7 @@ class LibraryStoreTests(unittest.TestCase):
         snapshot.update(tags=["保留"], classification=classification, archived=True, icon="research")
         snapshot_json = json.dumps(snapshot, ensure_ascii=False)
         db = data / "library.sqlite3"
-        with sqlite3.connect(db) as conn:
+        with closing(sqlite3.connect(db)) as conn, conn:
             conn.executescript("""
                 CREATE TABLE collections(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT NOT NULL,icon TEXT NOT NULL,created_at TEXT NOT NULL);
                 CREATE TABLE items(id TEXT PRIMARY KEY,kind TEXT NOT NULL,title TEXT NOT NULL,notes TEXT NOT NULL,url TEXT NOT NULL,
@@ -293,7 +299,7 @@ class LibraryStoreTests(unittest.TestCase):
             self.assertEqual((data / "access.json").read_bytes(), auth_bytes)
             self.assertIs(migrated.item_history(item["id"])[0]["snapshot"]["pinned"], False)
             self.assertIs(migrated.export_metadata()["history"][0]["snapshot"]["pinned"], False)
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn, conn:
                 conn.row_factory = sqlite3.Row
                 self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
                 stored = dict(conn.execute("SELECT * FROM items").fetchone())
@@ -303,12 +309,12 @@ class LibraryStoreTests(unittest.TestCase):
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM history").fetchone()[0], 1)
 
     def test_future_schema_is_rejected_without_modifying_database(self):
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             conn.execute(f"PRAGMA user_version={SCHEMA_VERSION + 1}")
         before = self.store.db_path.read_bytes()
         self.assert_error(500, lambda: Store(self.data))
         self.assertEqual(self.store.db_path.read_bytes(), before)
-        with sqlite3.connect(self.store.db_path) as conn:
+        with closing(sqlite3.connect(self.store.db_path)) as conn, conn:
             self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION + 1)
 
 

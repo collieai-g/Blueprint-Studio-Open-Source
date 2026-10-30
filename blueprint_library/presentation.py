@@ -89,70 +89,88 @@ def _encoded(value):
         _error()
 
 
+def _validate_pins(data):
+    _object(data, {'version', 'refs'})
+    refs = data.get('refs', [])
+    if not isinstance(refs, list) or len(refs) > 24:
+        _error('最多加入 24 張跨頁卡片。')
+    seen = set()
+    for ref in refs:
+        _pin(ref)
+        marker = (ref['kind'], ref.get('id', ref.get('route')))
+        if marker in seen:
+            _error('總覽卡片來源不能重複。')
+        seen.add(marker)
+
+
+def _validate_overview(data):
+    if 'layoutVersion' in data:
+        _integer(data['layoutVersion'], 4, 4)
+    if 'mode' in data and data['mode'] not in ('ai', 'manual'):
+        _error()
+    if 'visible' in data:
+        visible = data['visible']
+        if not isinstance(visible, list) or len(visible) > 40 or any((not _widget_id(value) for value in visible)) or (len(set(visible)) != len(visible)):
+            _error('總覽顯示項目不正確。')
+    if 'texts' in data:
+        _object(data['texts'], {'heading', 'description', 'date'})
+        for text in data['texts'].values():
+            _text(text, 2000)
+
+
+def _validate_card(card, overview):
+    _object(card, set(COORDINATES) | {'collapsed'} | (set() if overview else {'visible', 'text'}))
+    for name, (minimum, maximum) in COORDINATES.items():
+        if name in card:
+            _integer(card[name], minimum, maximum)
+    for name in ('visible', 'collapsed'):
+        if name in card and type(card[name]) is not bool:
+            _error()
+    if 'text' in card:
+        _text(card['text'], 4000)
+
+
+def _validate_cards(cards, overview):
+    if not isinstance(cards, dict) or len(cards) > (40 if overview else 200):
+        _error('版面卡片超出數量限制。')
+    for card_id, card in cards.items():
+        if not (_widget_id(card_id) if overview else _safe_id(card_id, 240)):
+            _error('版面卡片識別碼不正確。')
+        _validate_card(card, overview)
+
+
+def _validate_layout(key, data):
+    overview = key == 'overview'
+    allowed = {'version', 'pages', 'columns', 'cards'} | ({'layoutVersion', 'visible', 'mode', 'texts'} if overview else {'active'})
+    _object(data, allowed)
+    if 'pages' in data:
+        _integer(data['pages'], 1, 3)
+    if 'columns' in data:
+        _integer(data['columns'], 6, 96)
+    if overview:
+        _validate_overview(data)
+    elif 'active' in data and type(data['active']) is not bool:
+        _error()
+    _validate_cards(data.get('cards', {}), overview)
+
+
 def validate_document(key, data):
     """Validate known fields without inserting defaults or changing literal text.
 
-    A document replaces its previous value. Optional fields permit a client to
-    reset to UI defaults; callers preserving other settings must read and merge.
-    """
+        A document replaces its previous value. Optional fields permit a client to
+        reset to UI defaults; callers preserving other settings must read and merge.
+        """
     validate_key(key)
     if key == 'pins':
-        _object(data, {'version', 'refs'})
-        refs = data.get('refs', [])
-        if not isinstance(refs, list) or len(refs) > 24:
-            _error('最多加入 24 張跨頁卡片。')
-        seen = set()
-        for ref in refs:
-            _pin(ref)
-            marker = (ref['kind'], ref.get('id', ref.get('route')))
-            if marker in seen:
-                _error('總覽卡片來源不能重複。')
-            seen.add(marker)
+        _validate_pins(data)
     else:
-        overview = key == 'overview'
-        allowed = {'version', 'pages', 'columns', 'cards'} | (
-            {'layoutVersion', 'visible', 'mode', 'texts'} if overview else {'active'})
-        _object(data, allowed)
-        if 'pages' in data:
-            _integer(data['pages'], 1, 3)
-        if 'columns' in data:
-            _integer(data['columns'], 6, 96)
-        if overview:
-            if 'layoutVersion' in data:
-                _integer(data['layoutVersion'], 4, 4)
-            if 'mode' in data and data['mode'] not in ('ai', 'manual'):
-                _error()
-            if 'visible' in data:
-                visible = data['visible']
-                if (not isinstance(visible, list) or len(visible) > 40 or
-                        any(not _widget_id(value) for value in visible) or len(set(visible)) != len(visible)):
-                    _error('總覽顯示項目不正確。')
-            if 'texts' in data:
-                _object(data['texts'], {'heading', 'description', 'date'})
-                for text in data['texts'].values():
-                    _text(text, 2000)
-        elif 'active' in data and type(data['active']) is not bool:
-            _error()
-        cards = data.get('cards', {})
-        if not isinstance(cards, dict) or len(cards) > (40 if overview else 200):
-            _error('版面卡片超出數量限制。')
-        for card_id, card in cards.items():
-            if not (_widget_id(card_id) if overview else _safe_id(card_id, 240)):
-                _error('版面卡片識別碼不正確。')
-            _object(card, set(COORDINATES) | {'collapsed'} | (set() if overview else {'visible', 'text'}))
-            for name, (minimum, maximum) in COORDINATES.items():
-                if name in card:
-                    _integer(card[name], minimum, maximum)
-            for name in ('visible', 'collapsed'):
-                if name in card and type(card[name]) is not bool:
-                    _error()
-            if 'text' in card:
-                _text(card['text'], 4000)
+        _validate_layout(key, data)
     if 'version' in data:
         _integer(data['version'], 1, 1)
     if len(_encoded(data).encode('utf-8')) > MAX_DOCUMENT_BYTES:
         _error('本頁版面設定超出儲存上限。', 413)
     return data
+
 
 
 def _read(conn, username):

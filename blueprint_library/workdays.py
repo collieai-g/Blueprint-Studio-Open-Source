@@ -130,6 +130,37 @@ def _entry_public(row, *, context=False):
     return result
 
 
+def _workday_update_payload(workday_id, payload, actor):
+    from .store import LibraryError, _identifier, _payload, _text
+    workday_id = _identifier(workday_id, '工作紀錄編號')
+    payload = _payload(payload, {'expected_version', 'title', 'summary', 'entries'})
+    expected = payload.get('expected_version')
+    if type(expected) is not int or expected < 1:
+        raise LibraryError('更新必須提供正確嘅 expected_version。')
+    entries = _entries(payload.get('entries'), allow_ids=True)
+    actor = _text(actor, '操作人', 120, empty=False)
+    title = _text(payload['title'], '工作紀錄標題', 240) if 'title' in payload else None
+    summary = _text(payload['summary'], '工作摘要', 8000) if 'summary' in payload else None
+    return workday_id, expected, entries, actor, title, summary
+
+
+def _workday_update_content(current, entries, title, summary):
+    from .store import LibraryError
+
+    existing = {entry['id']: entry for entry in current['entries']}
+    if any((entry.get('id') not in existing for entry in entries if 'id' in entry)):
+        raise LibraryError('內容編號不屬於此工作紀錄，未有修改任何內容。')
+    report = {name: current[name] for name in ('date', 'source', 'source_key', 'title', 'summary')}
+    if title is not None:
+        report['title'] = title or f"{current['date']} 工作紀錄"
+    if summary is not None:
+        report['summary'] = summary
+    report['entries'] = [{name: entry[name] for name in _ENTRY_FIELDS} for entry in entries]
+    payload_hash = _report_hash(report)
+    unchanged = report['title'] == current['title'] and report['summary'] == current['summary'] and (len(entries) == len(current['entries'])) and all((entry.get('id') == saved['id'] and all((entry[name] == saved[name] for name in _ENTRY_FIELDS)) for entry, saved in zip(entries, current['entries'])))
+    return existing, report, payload_hash, unchanged
+
+
 class WorkdayMixin:
     """Persistence operations mixed into Store; no independent storage paths."""
 
@@ -280,83 +311,58 @@ class WorkdayMixin:
             self._workday_revision(conn, workday_id, "create", actor, now)
             return {"workday": self._workday_full(conn, workday_id), "created": True, "duplicate": False}
 
+    def _updated_entry_rows(self, conn, workday_id, entries, existing, actor, now):
+        desired_rows = []
+        for position, entry in enumerate(entries):
+            library_item_id = self._workday_reference(conn, entry, actor)
+            old = existing.get(entry.get('id'))
+            row = self._entry_row(workday_id, position, entry, actor, now, library_item_id)
+            if old is not None:
+                changed = any((entry[name] != old[name] for name in _ENTRY_FIELDS))
+                changed = changed or library_item_id != old['library_item_id']
+                row.update(id=old['id'], created_at=old['created_at'], created_by=old['created_by'], version=old['version'] + int(changed), updated_at=now if changed else old['updated_at'], updated_by=actor if changed else old['updated_by'])
+                if old['type'] == 'todo' and entry['type'] == 'todo':
+                    row.update(done=int(old['done']), completed_at=old['completed_at'])
+            desired_rows.append(row)
+        return desired_rows
+
+    def _replace_workday_entries(self, conn, workday_id, existing, desired_rows):
+        from .store import _json
+
+        desired_ids = {row['id'] for row in desired_rows}
+        conn.execute('UPDATE workday_entries SET position=-position-1 WHERE workday_id=?', (workday_id,))
+        for entry_id in existing:
+            if entry_id not in desired_ids:
+                conn.execute('DELETE FROM workday_entries WHERE id=? AND workday_id=?', (entry_id, workday_id))
+        for row in desired_rows:
+            if row['id'] not in existing:
+                self._insert_workday_entry(conn, row)
+            else:
+                columns = tuple((key for key in row if key not in {'id', 'workday_id', 'created_at', 'created_by'}))
+                values = [_json(row[key]) if key == 'tags' else row[key] for key in columns]
+                conn.execute('UPDATE workday_entries SET ' + ','.join((key + '=?' for key in columns)) + ' WHERE id=? AND workday_id=?', [*values, row['id'], workday_id])
+
     def update_workday(self, workday_id, payload, actor="owner") -> dict:
-        from .store import LibraryError, _identifier, _json, _now, _payload, _text
+        from .store import LibraryError, _now
 
-        workday_id = _identifier(workday_id, "工作紀錄編號")
-        payload = _payload(payload, {"expected_version", "title", "summary", "entries"})
-        expected = payload.get("expected_version")
-        if type(expected) is not int or expected < 1:
-            raise LibraryError("更新必須提供正確嘅 expected_version。")
-        entries = _entries(payload.get("entries"), allow_ids=True)
-        actor = _text(actor, "操作人", 120, empty=False)
-        title = _text(payload["title"], "工作紀錄標題", 240) if "title" in payload else None
-        summary = _text(payload["summary"], "工作摘要", 8000) if "summary" in payload else None
+        workday_id, expected, entries, actor, title, summary = _workday_update_payload(workday_id, payload, actor)
         with self._connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
+            conn.execute('BEGIN IMMEDIATE')
             current = self._workday_full(conn, workday_id)
-            if current["version"] != expected:
-                raise LibraryError("工作紀錄已被其他操作更新，請重新讀取後再整理。", 409)
-            existing = {entry["id"]: entry for entry in current["entries"]}
-            if any(entry.get("id") not in existing for entry in entries if "id" in entry):
-                raise LibraryError("內容編號不屬於此工作紀錄，未有修改任何內容。")
-            report = {name: current[name] for name in ("date", "source", "source_key", "title", "summary")}
-            if title is not None:
-                report["title"] = title or f"{current['date']} 工作紀錄"
-            if summary is not None:
-                report["summary"] = summary
-            report["entries"] = [{name: entry[name] for name in _ENTRY_FIELDS} for entry in entries]
-            payload_hash = _report_hash(report)
-            unchanged = (
-                report["title"] == current["title"] and report["summary"] == current["summary"]
-                and len(entries) == len(current["entries"])
-                and all(entry.get("id") == saved["id"]
-                        and all(entry[name] == saved[name] for name in _ENTRY_FIELDS)
-                        for entry, saved in zip(entries, current["entries"]))
-            )
+            if current['version'] != expected:
+                raise LibraryError('工作紀錄已被其他操作更新，請重新讀取後再整理。', 409)
+            existing, report, payload_hash, unchanged = _workday_update_content(current, entries, title, summary)
             if unchanged:
-                return {"workday": current, "updated": False}
-
-            # Validate all entries and ownership before taking a snapshot or
-            # creating bookmarks. Every subsequent write shares this transaction.
+                return {'workday': current, 'updated': False}
             self._ensure_workday_revision(conn, current)
             now = _now()
             context, search_text = _report_text(report)
-            desired_rows = []
-            for position, entry in enumerate(entries):
-                library_item_id = self._workday_reference(conn, entry, actor)
-                old = existing.get(entry.get("id"))
-                row = self._entry_row(workday_id, position, entry, actor, now, library_item_id)
-                if old is not None:
-                    changed = any(entry[name] != old[name] for name in _ENTRY_FIELDS)
-                    changed = changed or library_item_id != old["library_item_id"]
-                    row.update(id=old["id"], created_at=old["created_at"], created_by=old["created_by"],
-                               version=old["version"] + int(changed),
-                               updated_at=now if changed else old["updated_at"],
-                               updated_by=actor if changed else old["updated_by"])
-                    if old["type"] == "todo" and entry["type"] == "todo":
-                        row.update(done=int(old["done"]), completed_at=old["completed_at"])
-                desired_rows.append(row)
-            desired_ids = {row["id"] for row in desired_rows}
-            # Temporary negative positions avoid UNIQUE(workday_id, position)
-            # collisions when retained entries move; their IDs remain stable.
-            conn.execute("UPDATE workday_entries SET position=-position-1 WHERE workday_id=?", (workday_id,))
-            for entry_id in existing:
-                if entry_id not in desired_ids:
-                    conn.execute("DELETE FROM workday_entries WHERE id=? AND workday_id=?", (entry_id, workday_id))
-            for row in desired_rows:
-                if row["id"] not in existing:
-                    self._insert_workday_entry(conn, row)
-                else:
-                    columns = tuple(key for key in row if key not in {"id", "workday_id", "created_at", "created_by"})
-                    values = [_json(row[key]) if key == "tags" else row[key] for key in columns]
-                    conn.execute("UPDATE workday_entries SET " + ",".join(key + "=?" for key in columns)
-                                 + " WHERE id=? AND workday_id=?", [*values, row["id"], workday_id])
-            conn.execute("""UPDATE workdays SET title=?,summary=?,payload_hash=?,search_text=?,context_text=?,
-                         updated_at=?,updated_by=?,version=version+1 WHERE id=?""",
-                         (report["title"], report["summary"], payload_hash, search_text, context, now, actor, workday_id))
-            self._workday_revision(conn, workday_id, "update", actor, now)
-            return {"workday": self._workday_full(conn, workday_id), "updated": True}
+            desired_rows = self._updated_entry_rows(conn, workday_id, entries, existing, actor, now)
+            self._replace_workday_entries(conn, workday_id, existing, desired_rows)
+            conn.execute('UPDATE workdays SET title=?,summary=?,payload_hash=?,search_text=?,context_text=?,\n                         updated_at=?,updated_by=?,version=version+1 WHERE id=?', (report['title'], report['summary'], payload_hash, search_text, context, now, actor, workday_id))
+            self._workday_revision(conn, workday_id, 'update', actor, now)
+            return {'workday': self._workday_full(conn, workday_id), 'updated': True}
+
 
     def get_workday(self, workday_id) -> dict:
         with self._connection() as conn:

@@ -1,0 +1,105 @@
+{
+  "contract_version": 1,
+  "case_id": "source-update-001",
+  "project_id": "blueprint-studio",
+  "title": "Blueprint 維護來源的既有回歸與更新證據分界",
+  "source_revision": "2a474b81931bdd9564327bd2dbfca699858b063a",
+  "observations": [
+    {
+      "id": "source-preview-instance-boundary",
+      "classification": "installation_bug",
+      "status": "workflow_observed_source_regression_only",
+      "summary": "來源預覽與既有實例混淆會令驗收對象錯誤。本案例只接駁既有來源回歸；目標身份、私人資料保留及真正運行版本由更新流程另行核對。",
+      "private_evidence_required": false
+    },
+    {
+      "id": "agent-package-upgrade",
+      "classification": "installation_bug",
+      "status": "source_candidate_synthetic_regression",
+      "summary": "既有 Agent 原更新入口只能改設定，換套件需另行登記。來源新增同 ID manifest/source/upgrade_key 升級，驗證權限、CAS、原設定與工作快照、歷史 pin 不可改寫、重試、交易回復及備份還原；不部署任何實例。",
+      "private_evidence_required": false
+    },
+    {
+      "id": "installer-windows-regressions",
+      "classification": "installation_bug",
+      "status": "source_candidate_synthetic_regression",
+      "summary": "修正 Windows SQLite 連線釋放、原始 LF 合約校驗、索引鎖等候及跨程序測試傳輸；保留平台能力差異，沒有用重新產生雜湊掩蓋合約差異。",
+      "private_evidence_required": false
+    },
+    {
+      "id": "installer-managed-components",
+      "classification": "installation_bug",
+      "status": "source_candidate_synthetic_regression",
+      "summary": "新增簽章渠道與明確版本依賴、客服獨立停止／備份／換版／同 ID 讀回及原生保護收據重用；失敗保留已觀察版本，客服錯誤不停止核心。未知多元件結果保留 recovery_required，未宣稱自動恢復。",
+      "private_evidence_required": false
+    },
+    {
+      "id": "managed-preview-adoption",
+      "classification": "installation_bug",
+      "status": "source_candidate_synthetic_regression",
+      "summary": "既有來源預覽未有安裝器接駁；固定套件程序亦曾因合法 program 容器被當成來源祖先而不能讀取更新 API。新增同 marker/data/帳號/native backups 接入、sidecar 防浮動回退、動態埠、專用名稱及真實套件 HTTP/更新/重啟驗收。不包含私人工作室或對客渠道驗收。",
+      "private_evidence_required": false
+    },
+    {
+      "id": "audit-update-preservation-20261029",
+      "classification": "installation_bug",
+      "status": "source_candidate_synthetic_regression",
+      "summary": "BA-001 through BA-018 are reconciled against current source. Windows junction, UTF-8, timezone, release privacy and behavior-preserving refactors use synthetic regression; immutable package promotion, customer modifications and account presentation retention are checked independently. No existing instance or online update source is changed.",
+      "private_evidence_required": false
+    }
+  ],
+  "expected": [
+    "使用唯一共用 runner 執行本來源既有 Python 單元測試及 Node packager 測試，不複製執行器。",
+    "檢查綁定完整來源輸入及實際 runtime；來源改動後不能沿用失效的舊通過結果。",
+    "公開交接只包含通用入口與薄宣告，不包含實例資料、帳號、知識、對話或私人證據。",
+    "同 ID 套件升級的合成來源測試涵蓋設定、舊工作、附件、權限、交易回復、重試及歷史來源不可改寫；HTTP、原生與 Sites MCP 橋接使用同一合成後台。",
+    "來源回歸結果不證明完整 UI、已部署宿主的升級能力、runtime／資產替換或私人工作室已更新。",
+    "藍圖預覽的來源檢查驗證獨立存儲、登入、真實介面檔案與安全重新開啟；不代替瀏覽器或現有工作室驗收。",
+    "受管原生安裝器驗證簽章渠道、版本依賴、候選撤回、資料域備份與核心／客服獨立換版；其他模組、橋接程式及跨 schema 遷移仍有能力缺項。"
+  ],
+  "required_checks": [
+    "python_agents",
+    "python_calendar",
+    "python_calendar_lifecycle",
+    "python_calendar_sources_part2",
+    "python_core_suite",
+    "python_integrations_http",
+    "python_library_company",
+    "python_library_onboarding",
+    "python_library_workday_revisions",
+    "python_library_storage_part2",
+    "python_lifecycle",
+    "python_mcp_bridge",
+    "python_presentation",
+    "python_studio",
+    "python_workspaces",
+    "python_installer_release",
+    "python_installer_http",
+    "python_installer_components_suite",
+    "python_installer_backup_adoption",
+    "python_managed_preview_runtime"
+  ],
+  "required_attestations": [],
+  "public_status": "candidate_not_submitted",
+  "instance_status": "external_private_evidence_only",
+  "scope": "固定來源輸入的合成回歸，包含原有功能、原生核心及 BlueSAI 更新協調。跨來源實際候選另記真實來源 pin、inventory 與 ZIP SHA256；共享 runner 的本來源指紋不獨自覆蓋外部來源。沒有私人工作室或真實渠道／模型驗收。 此為四批的第1批；本批完成不能代替其餘批次。",
+  "regression_partition": "Four source batches cover every default Python test exactly once, plus the portable harness contracts and complete Node suite; maximum 20 checks per batch and 300 seconds per check remain unchanged.",
+  "regression_batches": [
+    {
+      "adapter": "feedback/harness.json",
+      "case": "feedback/source-update-001/case.json"
+    },
+    {
+      "adapter": "feedback/harness-batch-2.json",
+      "case": "feedback/source-update-001/batch-2.json"
+    },
+    {
+      "adapter": "feedback/harness-batch-3.json",
+      "case": "feedback/source-update-001/batch-3.json"
+    },
+    {
+      "adapter": "feedback/harness-batch-4.json",
+      "case": "feedback/source-update-001/batch-4.json"
+    }
+  ]
+}

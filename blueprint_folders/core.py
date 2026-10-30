@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from blueprint_folders.path_safety import has_link
+
 import csv
 import io
 import json
@@ -116,21 +118,21 @@ def _fields(name: str, description: str, category: str, tags) -> tuple[str, str,
 
 def _path(value) -> Path:
     path = Path(value).expanduser()
-    if path.is_symlink():
+    if has_link(path):
         raise FolderError("請選擇實際文件夾，避免標記捷徑或符號連結。")
     return path.resolve()
 
 
 def _private_dir(folder: Path) -> Path:
     private = folder / ".blueprint"
-    if private.is_symlink() or (private.exists() and not private.is_dir()):
+    if has_link(private) or (private.exists() and not private.is_dir()):
         raise FolderError(".blueprint 必須係正常目錄，不能係檔案或符號連結。")
     private.mkdir(exist_ok=True)
     return private
 
 
 def _atomic_text(path: Path, value: str) -> None:
-    if path.is_symlink():
+    if has_link(path):
         raise FolderError(f"拒絕覆寫符號連結：{path.name}")
     temp_name = None
     try:
@@ -153,7 +155,7 @@ def _atomic_json(path: Path, value) -> None:
 def _index_lock(root: Path):
     """OS advisory lock, released automatically even if a process exits."""
     lock = _private_dir(root) / "index.lock"
-    if lock.is_symlink():
+    if has_link(lock):
         raise FolderError("索引鎖不能係符號連結。")
     with lock.open("a+b") as handle:
         handle.seek(0, os.SEEK_END)
@@ -161,7 +163,9 @@ def _index_lock(root: Path):
             handle.write(b"0")
             handle.flush()
         handle.seek(0)
-        deadline = time.monotonic() + 15
+        # A Windows spawn worker may wait behind several fsync-heavy creations.
+        # Keep the acquisition bounded without failing valid queued writers.
+        deadline = time.monotonic() + 60
         while True:
             try:
                 if os.name == "nt":
@@ -188,7 +192,7 @@ def _index_lock(root: Path):
 
 
 def _read_json(path: Path):
-    if path.is_symlink():
+    if has_link(path):
         raise FolderError(f"身份檔或索引不能係符號連結：{path}")
     try:
         if path.stat().st_size > 32 * 1024 * 1024:
@@ -252,7 +256,7 @@ def init_studio(path) -> dict:
     with _index_lock(root):
         _save_index(root, _load_entries(root))
         guidance = root / "AGENTS.md"
-        if not guidance.exists() and not guidance.is_symlink():
+        if not guidance.exists() and not has_link(guidance):
             _atomic_text(guidance, STUDIO_GUIDANCE)
     return {"path": str(root), "index": str(root / ".blueprint" / "INDEX.csv")}
 
@@ -265,7 +269,7 @@ def _mark(folder: Path, description: str, category: str, tags: list[str]) -> dic
         raise FolderError("現有 folder.json 格式不正確，未作修改。")
     # Reject unsafe resources before invoking any platform integration.
     for name in ("icon.svg", "icon.png", "icon.ico"):
-        if (private / name).is_symlink():
+        if has_link(private / name):
             raise FolderError("圖示檔不能係符號連結。")
     try:
         icon = apply_folder_icon(folder, category)
@@ -285,7 +289,7 @@ def _mark(folder: Path, description: str, category: str, tags: list[str]) -> dic
     })
     _atomic_json(metadata, data)
     guidance = folder / "AGENTS.md"
-    if not guidance.exists() and not guidance.is_symlink():
+    if not guidance.exists() and not has_link(guidance):
         _atomic_text(guidance, FOLDER_GUIDANCE)
     return data | {"path": str(folder)}
 
@@ -338,13 +342,13 @@ def reindex(root) -> dict:
     entries, warnings = [], []
     with _index_lock(root):
         for here, dirs, files in os.walk(root, followlinks=False):
-            dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not (Path(here) / d).is_symlink()]
+            dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not has_link(Path(here) / d)]
             folder = Path(here)
             marker = folder / ".blueprint" / "folder.json"
             if folder == root or not marker.exists():
                 continue
             try:
-                if (folder / ".blueprint").is_symlink():
+                if has_link(folder / ".blueprint"):
                     raise FolderError("略過符號連結資源目錄")
                 data = _read_json(marker)
                 if (not isinstance(data, dict)

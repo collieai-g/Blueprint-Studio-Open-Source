@@ -1,0 +1,9 @@
+.installer-entry { gap: 8px; width: 100%; margin-bottom: 6px; color: var(--accent-dark); }
+.installer-entry[hidden] { display: none; }
+.installer-indicator { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: currentColor; }
+.installer-dialog { width: min(540px, calc(100% - 40px)); }
+.installer-dialog p { line-height: 1.8; }
+.installer-status { margin: 15px 0 5px; font-weight: 600; }
+.installer-notes { margin: 16px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.installer-drafts { padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--canvas); }
+.installer-dialog .dialog-actions { gap: 8px; }

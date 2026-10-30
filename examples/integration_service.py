@@ -7,6 +7,8 @@ sends a message. All temporary private data remains outside the source checkout.
 """
 from __future__ import annotations
 
+from contextlib import closing
+
 import argparse
 import base64
 from datetime import datetime, timedelta, timezone
@@ -71,7 +73,7 @@ def _check(condition: bool, message: str):
 
 def _save_delivery(path: Path, response: dict):
     """The simulated external service saves its inbox and cursor atomically."""
-    with sqlite3.connect(path) as conn:
+    with closing(sqlite3.connect(path)) as conn, conn:
         conn.execute("CREATE TABLE IF NOT EXISTS inbox (event_id TEXT PRIMARY KEY, document TEXT NOT NULL)")
         conn.execute("CREATE TABLE IF NOT EXISTS checkpoint (id INTEGER PRIMARY KEY CHECK(id=1), cursor TEXT NOT NULL)")
         for event in response["events"]:
@@ -151,7 +153,7 @@ def run_demo() -> dict:
             result = service.request("POST", PREFIX + "/command-results", completed)
             final = admin.request("GET", PREFIX + "/commands/" + command_id)["command"]
             _check(final["state"] == "completed", "Actual completed result did not read back.")
-            with sqlite3.connect(root / "simulated-service.sqlite3") as conn:
+            with closing(sqlite3.connect(root / "simulated-service.sqlite3")) as conn, conn:
                 cursor = conn.execute("SELECT cursor FROM checkpoint WHERE id=1").fetchone()[0]
             resumed = service.request("GET", PREFIX + "/events?" + urlencode({"cursor": cursor, "limit": 100}))
             _save_delivery(root / "simulated-service.sqlite3", resumed)
