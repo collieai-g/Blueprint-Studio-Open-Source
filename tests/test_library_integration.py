@@ -22,7 +22,7 @@ class WorkdayIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="blueprint-workday-integration-")
         self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
+        self.base = Path(self.temporary.name).resolve()
         self.workspace = self.base / "私人 工作室 $(literal)"
         self.data = self.base / "私人 資料"
         self.tool = self.base / "工具 ' $(literal)"

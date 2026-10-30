@@ -16,7 +16,7 @@ class OnboardingTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="blueprint-setup-")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.output = self.root / "公司私人安裝"
         self.company = {"name": "  藍圖公司  ", "industry": "AI 工具", "description": "公司簡介", "goals": "做好文件及收藏"}
 
@@ -112,7 +112,7 @@ class OnboardingTests(unittest.TestCase):
     def test_preflight_preserves_custom_files_before_writing_any_company_input(self):
         self.output.mkdir()
         (self.output / "START_HERE.md").write_text("我的自訂指引", encoding='utf-8')
-        (self.output / "existing.txt").write_text("保留")
+        (self.output / "existing.txt").write_text("保留", encoding='utf-8')
         self.assert_error(lambda: prepare_setup(self.output, self.company), 409)
         self.assertEqual(sorted(path.name for path in self.output.iterdir()), ["START_HERE.md", "existing.txt"])
         self.assertEqual((self.output / "START_HERE.md").read_text(encoding='utf-8'), "我的自訂指引")

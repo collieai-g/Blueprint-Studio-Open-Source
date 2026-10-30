@@ -28,7 +28,7 @@ class MaintenanceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='blueprint-lifecycle-test-')
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.data = self.root / 'data'
         self.backups = self.root / 'backups'
         self.password = 'only-for-local-lifecycle-tests'

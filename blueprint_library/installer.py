@@ -450,6 +450,10 @@ class CoreSupervisor:
         # A pre-existing listener must never be mistaken for the child about to start.
         family = socket.AF_INET6 if self.config['host'] == '::1' else socket.AF_INET
         with socket.socket(family) as probe:
+            if os.name != 'nt':
+                # Match the server's POSIX TIME_WAIT policy after an owned stop.
+                # No SO_REUSEPORT: an active listener must still reject this bind.
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             probe.bind((self.config['host'], self.config['port']))
         token = secrets.token_urlsafe(32)
         env = dict(os.environ, BLUEPRINT_INSTALLATION_ROOT=str(self.root),

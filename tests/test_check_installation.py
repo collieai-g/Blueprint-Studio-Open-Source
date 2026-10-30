@@ -16,7 +16,7 @@ class InstallationCheckTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='blueprint-install-check-')
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.data = self.root / 'data'
         initialize_library(self.data, 'owner', 'synthetic-install-password')
         self.server = make_server(self.data, managed=True, backup_dir=self.root / 'backups')

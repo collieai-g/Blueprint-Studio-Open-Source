@@ -26,7 +26,7 @@ class ManagedReleaseTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.private = Ed25519PrivateKey.generate()
         self.keys = {'test-publisher': base64.b64encode(self.private.public_key().public_bytes_raw()).decode()}
         self.files = {'blueprint.py': b"print('entrypoint')\n",
@@ -226,7 +226,7 @@ class ManagedPublisherTests(unittest.TestCase):
         self.publisher = package_managed_release
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.source = self.root / 'source'
         self.source.mkdir()
         self.source_patch = mock.patch.object(self.publisher, 'ROOT', self.source)
@@ -305,7 +305,7 @@ class ModuleReleaseTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.key = Ed25519PrivateKey.generate()
         self.keys = {'module-key': base64.b64encode(self.key.public_key().public_bytes_raw()).decode()}
         self.node = self.root / ('node.exe' if sys.platform == 'win32' else 'node')

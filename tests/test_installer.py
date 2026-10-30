@@ -2,6 +2,7 @@
 import base64
 from copy import deepcopy
 import hashlib
+import os
 import socket
 import threading
 import time
@@ -31,7 +32,7 @@ class InstallerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.work = Path(self.temp.name)
+        self.work = Path(self.temp.name).resolve()
         self.private = Ed25519PrivateKey.generate()
         self.keys = {'publisher': base64.b64encode(self.private.public_key().public_bytes_raw()).decode()}
         self.old = self.release('2.10.0')
@@ -352,13 +353,23 @@ class InstallerTests(unittest.TestCase):
                 time.sleep(.1)
             else:
                 self.fail('Initial readiness timed out: ' + str(status))
+            live = json.loads((self.root / 'state.json').read_text(encoding='utf-8'))
+            with self.assertRaises(OSError):
+                controller._launch(live['installed'])
+            still_live = controller._internal(live['child'])
+            self.assertEqual(still_live['pid'], live['child']['pid'])
+            self.assertTrue(still_live['ready'])
             request_apply(self.root, status['prepared']['release_id'], status['version'])
             deadline = time.monotonic() + 50
             while time.monotonic() < deadline:
                 status = read_status(self.root)
                 if status['phase'] == 'complete' and status['installed']['version'] == new_version:
                     break
-                self.assertNotEqual(status['phase'], 'recovery_required', status)
+                failure = status
+                if status['phase'] == 'recovery_required':
+                    failure = {'status': status, 'service_log':
+                        (self.root / 'service.log').read_text(encoding='utf-8', errors='replace')[-8000:]}
+                self.assertNotEqual(status['phase'], 'recovery_required', failure)
                 self.assertFalse(errors, errors)
                 time.sleep(.1)
             else:
@@ -373,6 +384,18 @@ class InstallerTests(unittest.TestCase):
             worker.join(50)
             self.assertFalse(worker.is_alive(), 'Owned child did not stop gracefully.')
         self.assertFalse(errors, errors)
+        if os.name != 'nt':
+            legacy_error = None
+            with socket.socket() as probe:
+                try:
+                    probe.bind(('127.0.0.1', port))
+                except OSError as error:
+                    legacy_error = error.errno
+            with socket.socket() as probe:
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                probe.bind(('127.0.0.1', port))
+            print('POSIX probe after confirmed graceful shutdown: '
+                  f'legacy bind errno={legacy_error}; reusable bind succeeded.', flush=True)
         self.assertEqual(backup.coverage(self.data), before)
         self.assertEqual(Store(self.data).get_item(item['id'])['id'], item['id'])
 

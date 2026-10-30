@@ -1,7 +1,7 @@
 """Synthetic path boundaries, including real unprivileged Windows junctions."""
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import os
 from pathlib import Path
 import sqlite3
@@ -82,8 +82,20 @@ class PathSafetyTests(unittest.TestCase):
 
     def test_relative_path_checks_ancestors_above_working_directory(self):
         with directory_link(self.root / 'linked-cwd', self.outside) as link:
-            with patch('os.getcwd', return_value=str(link)):
-                self.assertTrue(has_link(Path('not-created')))
+            for cwd, expected_link in ((self.data, False), (link, True)):
+                with self.subTest(linked=expected_link), ExitStack() as stack:
+                    stack.enter_context(patch('os.getcwd', return_value=str(cwd)))
+                    # Python 3.10 caches getcwd in its pathlib accessor.
+                    # Patch both cwd providers while keeping real path/link checks.
+                    accessor = getattr(Path, '_accessor', None)
+                    if accessor is not None:
+                        stack.enter_context(patch.object(accessor, 'getcwd',
+                                                         return_value=str(cwd)))
+                    target = Path('not-created')
+                    self.assertEqual(has_link(target), expected_link)
+                    if expected_link:
+                        with self.assertRaises(ValueError):
+                            backup.safe_path(target)
 
     def test_restore_and_snapshot_reject_linked_output_ancestors(self):
         with directory_link(self.root / 'linked-output', self.outside) as link:

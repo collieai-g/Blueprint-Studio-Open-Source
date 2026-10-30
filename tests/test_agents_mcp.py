@@ -127,7 +127,7 @@ class AgentMCPTests(unittest.TestCase):
             input=json.dumps({'backend': self.url, 'username': 'test-owner', 'password': self.password,
                              'agent_id': agent['id'], 'job_id': job['id'], 'version': started['version'],
                              'context_digest': context['context_digest'], 'source': source, 'refs': refs, 'result': result}),
-            capture_output=True, text=True, timeout=30)
+            capture_output=True, text=True, encoding='utf-8', timeout=30)
         self.assertEqual(fixture.returncode, 0, fixture.stderr)
         evidence = json.loads(fixture.stdout)
         self.assertEqual(self.call('agent_job_get', id=job['id'])['job'], evidence['job'])
@@ -261,7 +261,7 @@ class AgentMCPTests(unittest.TestCase):
             input=json.dumps({'mode': 'upgrade', 'backend': self.url, 'username': 'test-owner',
                              'password': self.password, 'agent_id': agent['id'], 'job_id': job['id'],
                              'upgrade': self.upgrade(agent, 'sites-upgrade-1')}),
-            capture_output=True, text=True, timeout=30)
+            capture_output=True, text=True, encoding='utf-8', timeout=30)
         self.assertEqual(fixture.returncode, 0, fixture.stderr)
         evidence = json.loads(fixture.stdout)
         self.assertEqual(self.call('agent_get', id=agent['id'])['agent'], evidence['agent'])

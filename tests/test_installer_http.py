@@ -18,7 +18,7 @@ from test_agents import sample_manifest
 class InstallerHTTPTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='blueprint-installer-http-')
-        base = Path(self.temp.name)
+        base = Path(self.temp.name).resolve()
         self.data = base / 'data'
         self.root = base / 'installation'
         self.root.mkdir()

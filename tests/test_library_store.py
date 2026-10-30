@@ -9,6 +9,7 @@ import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest.mock import patch
 
 from blueprint_library.store import LibraryError, SCHEMA_VERSION, Store
 
@@ -58,6 +59,14 @@ class LibraryStoreTests(unittest.TestCase):
         empty = self.store.add_file("empty.txt", b"")
         self.assertEqual(empty["size"], 0)
         self.assertEqual(self.store.get_file(empty["id"])[0].read_bytes(), b"")
+        with patch("blueprint_library.store.mimetypes.guess_type", return_value=("application/octet-stream", None)):
+            for suffix, expected in ((".MD", "text/markdown"), (".markdown", "text/markdown"), (".txt", "text/plain")):
+                with self.subTest(suffix=suffix):
+                    saved = self.store.add_file("synthetic" + suffix, content)
+                    self.assertEqual(self.store.get_file(saved["id"])[2], expected)
+                    self.assertEqual(self.store.get_file(saved["id"])[0].read_bytes(), content)
+            supplied = self.store.add_file("synthetic.md", content, mime="application/x-synthetic")
+            self.assertEqual(self.store.get_file(supplied["id"])[2], "application/x-synthetic")
 
     def test_binary_and_large_text_preserve_data_without_extraction(self):
         item = self.store.add_file("capture.png", b"\x89PNG\x00\xff", "image/png")

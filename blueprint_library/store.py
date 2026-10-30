@@ -459,7 +459,10 @@ class Store(CompanyMixin, WorkdayMixin):
         mime = _text(mime, "檔案格式", 200).split(";", 1)[0].strip().lower()
         if mime and not re.fullmatch(r"[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+", mime):
             raise LibraryError("無效檔案格式。")
-        mime = mime or mimetypes.guess_type(name)[0] or "application/octet-stream"
+        # Known text formats have stable defaults across Python/OS MIME databases.
+        # Preserve caller-supplied MIME types.
+        text_mime = {".md": "text/markdown", ".markdown": "text/markdown", ".txt": "text/plain"}
+        mime = mime or text_mime.get(Path(name).suffix.casefold()) or mimetypes.guess_type(name)[0] or "application/octet-stream"
         notes = _text(notes, "筆記", 20000)
         checked_tags = _tags(tags) if tags is not None else None
         item = self._base_item("file", name[:240], notes, "", None)

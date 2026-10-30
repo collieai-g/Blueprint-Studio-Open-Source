@@ -200,7 +200,11 @@ class ManagedPreviewRuntimeTests(unittest.TestCase):
             deadline = time.monotonic() + 150
             while time.monotonic() < deadline:
                 state = _state(program)
-                self.assertNotEqual(state['phase'], 'recovery_required', read_status(program))
+                failure = read_status(program)
+                if state['phase'] == 'recovery_required':
+                    failure = {'status': failure, 'service_log':
+                        (program / 'service.log').read_text(encoding='utf-8', errors='replace')[-8000:]}
+                self.assertNotEqual(state['phase'], 'recovery_required', failure)
                 self.assertFalse(runner['errors'], runner['errors'])
                 if state['phase'] == 'complete' and state['installed']['version'] == new_version:
                     break
