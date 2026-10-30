@@ -23,7 +23,8 @@ from urllib.parse import urlsplit
 import zipfile
 
 from blueprint_library import backup
-from blueprint_library.installer import _state, read_status
+from blueprint_library.installer import CoreSupervisor, _lock, _state, read_status
+from blueprint_library import installer_components
 from blueprint_library.installer_preview import (
     MANAGED_MARKER, PREVIEW_TITLE, enable_preview_installer, run_managed_preview,
 )
@@ -47,6 +48,31 @@ class ManagedPreviewRuntimeTests(unittest.TestCase):
         self.work.chmod(0o700)
         self.password = secrets.token_urlsafe(30)
         self.runners = []
+        self.preparation_errors = []
+
+        def observe(stage, original):
+            def observed(*args, **kwargs):
+                try:
+                    return original(*args, **kwargs)
+                except (OSError, ValueError, KeyError, TypeError) as error:
+                    self.preparation_errors.append({'stage': stage, 'type': type(error).__name__,
+                        'error': str(error), 'cause': repr(error.__cause__)})
+                    raise
+            return observed
+
+        for owner, name in [(CoreSupervisor, '_verify_installed'),
+                            (installer_components.ComponentSupervisor, '_catalog'),
+                            (installer_components, 'prepare_release')]:
+            original = getattr(owner, name)
+            observing = patch.object(owner, name, observe(name, original))
+            observing.start()
+            self.addCleanup(observing.stop)
+
+    def private_state(self, program):
+        # A raw Windows reader can prevent the writer's atomic os.replace.
+        # Use the same reader/writer lock as the real installer status API.
+        with _lock(program, '.state.lock'):
+            return _state(program)
 
     def tearDown(self):
         for runner in self.runners:
@@ -105,7 +131,7 @@ class ManagedPreviewRuntimeTests(unittest.TestCase):
         runner['thread'].join(180)
         self.assertFalse(runner['thread'].is_alive(), 'Owned preview did not stop: ' + str(self.work))
         self.assertFalse(runner['errors'], runner['errors'])
-        state = _state(program)
+        state = self.private_state(program)
         self.assertFalse(state.get('child'))
         self.assertFalse(state.get('module_children'))
 
@@ -171,7 +197,7 @@ class ManagedPreviewRuntimeTests(unittest.TestCase):
         self.assertTrue(adopted['backup_verified'])
         self.assertEqual(backup.coverage(root / 'data'), coverage)
         program = root / 'managed-installer'
-        self.assertEqual(_state(program)['checkpoint']['native_backup_id'], old_backup)
+        self.assertEqual(self.private_state(program)['checkpoint']['native_backup_id'], old_backup)
         sidecar = (root / MANAGED_MARKER).read_bytes()
         runner, ready = self.launch(root)
         try:
@@ -199,30 +225,32 @@ class ManagedPreviewRuntimeTests(unittest.TestCase):
             operation_id = queued['operation_id']
             deadline = time.monotonic() + 150
             while time.monotonic() < deadline:
-                state = _state(program)
+                state = self.private_state(program)
                 failure = read_status(program)
-                if state['phase'] == 'recovery_required':
-                    failure = {'status': failure, 'service_log':
+                if state['phase'] in ('prepare_failed', 'blocked', 'recovery_required'):
+                    failure = {'status': failure, 'preparation_errors': list(self.preparation_errors), 'service_log':
                         (program / 'service.log').read_text(encoding='utf-8', errors='replace')[-8000:]}
+                self.assertNotIn(state['phase'], ('prepare_failed', 'blocked'), failure)
                 self.assertNotEqual(state['phase'], 'recovery_required', failure)
                 self.assertFalse(runner['errors'], runner['errors'])
                 if state['phase'] == 'complete' and state['installed']['version'] == new_version:
                     break
                 time.sleep(.1)
             else:
-                self.fail('Managed preview apply timed out: ' + str(read_status(program)))
+                self.fail('Managed preview apply timed out: ' + str({
+                    'status': read_status(program), 'preparation_errors': list(self.preparation_errors)}))
             status, updated = self.api(url, 'GET', '/api/info')
             self.assertEqual(status, 200, updated)
             self.assertEqual(updated['version'], new_version)
             self.assertEqual(updated['product_title'], PREVIEW_TITLE)
             self.assertEqual(updated['development_preview_mode'], 'managed_candidate')
-            new_pid = _state(program)['child']['pid']
+            new_pid = self.private_state(program)['child']['pid']
             self.assertNotEqual(new_pid, ready['pid'])
             status, replay = self.api(url, 'POST', '/api/installer/apply', apply)
             self.assertEqual(status, 202, replay)
             self.assertTrue(replay['idempotent'])
             self.assertEqual(replay['operation_id'], operation_id)
-            self.assertEqual(len(_state(program)['history']), 1)
+            self.assertEqual(len(self.private_state(program)['history']), 1)
             self.assertEqual(self.api(url, 'GET', '/api/items/' + note['id']), (200, {'item': note}))
             self.assertEqual(self.api(url, 'GET', '/api/files/' + attachment['id']), (200, b'Synthetic managed preview attachment.'))
             self.assertEqual(self.api(url, 'GET', '/api/studio/presentation'), (200, owner_layout))
@@ -271,7 +299,8 @@ class ManagedPreviewRuntimeTests(unittest.TestCase):
                 'PID and actual version changed', 'preview title/mode retained', 'original data/credential/marker retained',
                 'native identity and original backup retained', 'same binding restart retained installed version',
                 'two account layouts and customer overrides retained and isolated'],
-            'cleanup': {'child': _state(program).get('child'), 'module_children': _state(program).get('module_children', {})}}
+            'cleanup': {'child': self.private_state(program).get('child'),
+                        'module_children': self.private_state(program).get('module_children', {})}}
         (self.work / 'acceptance.json').write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
